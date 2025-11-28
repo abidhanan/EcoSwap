@@ -1,0 +1,549 @@
+/* Asumsi variabel warna (--color-bg-dark, --color-primary, dll.) diimpor dari file global/dashboard.css */
+
+/* --- FILTER CONTROLS (Header Filter) --- */
+.user-filter {
+    display: flex;
+    justify-content: flex-start; 
+    align-items: center;
+    padding: 15px;
+    background-color: #FFD700;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    gap: 15px;
+}
+
+.user-filter .search-input {
+    flex-grow: 1;
+    max-width: 400px; 
+    padding: 10px 15px;
+    border: 1px solid #444; 
+    border-radius: 8px;
+    background-color: #fff2a8ff; 
+    color: var(--color-text-light);
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.user-filter .search-input:focus {
+    border-color: var(--color-primary); 
+    outline: none;
+}
+
+.user-filter .filter-select {
+    padding: 10px 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background-color: #fff2a8ff;
+    color: var(--color-text-light);
+    font-size: 14px;
+    appearance: none; 
+    cursor: pointer;
+}
+
+/* --- TOMBOL TAMBAH PENGGUNA BARU --- */
+.action-btn.new-user-btn {
+    background-color: var(--color-success);
+    color: #fff; 
+    padding: 10px 15px; 
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.action-btn.new-user-btn:hover {
+    background-color: #388e3c; 
+}
+
+
+/* --- TABEL ADMIN & PENGGUNA --- */
+.admin-table td, .member-table td {
+    border-bottom: 1px solid #333; 
+    padding: 12px 15px;
+    vertical-align: top;
+    color: #000000ff;
+}
+
+.admin-table tr.admin-row:hover, 
+.admin-table tr:hover {
+    background-color: #fff2a8ff;
+}
+
+.member-table tr:hover {
+    background-color: #fff2a8ff;
+}
+
+/* Sorotan Baris Admin */
+.admin-table .admin-row {
+    background-color: #FFD700; 
+    color: var(--color-warning); 
+    font-weight: 600;
+}
+
+.admin-table .admin-row td {
+    border-bottom: 1px solid #3c3e56; 
+}
+
+.admin-table th, .member-table th { 
+    background-color: #000000ff;
+    color: #fff;
+}
+
+/* Tombol Aksi di Baris Tabel */
+.action-btn {
+    padding: 8px 12px; 
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color 0.3s;
+    color: var(--color-text-light);
+}
+
+.admin-table td:last-child,
+.member-table td:last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px; 
+    flex-wrap: nowrap;
+}
+
+/* Pewarnaan Tombol */
+.action-btn.view-btn { 
+    background-color: var(--color-success); 
+    color: #fff;
+}
+.action-btn.view-btn:hover { background-color: #2d8943ff; }
+.action-btn.history-btn { 
+    background-color: var(--color-info); 
+    color: #fff;
+}
+.action-btn.history-btn:hover { 
+    background-color: #0b5ed7; 
+    color: #fff;
+}
+.action-btn.edit-btn { 
+    background-color: var(--color-info); 
+    color: #fff;
+}
+.action-btn.edit-btn:hover { background-color: var(--color-primary-dark); }
+.action-btn.delete-btn, .action-btn.block-btn { 
+    background-color: var(--color-danger); 
+    color: #fff;
+}
+.action-btn.delete-btn:hover, .action-btn.block-btn:hover { background-color: #c9302c; }
+
+/* Style Status Tag & Rating */
+.status {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    display: inline-block;
+    min-width: 70px;
+    text-align: center;
+}
+
+.status-success { background-color: var(--color-success); }
+.status-warning { background-color: var(--color-info); color: #fff; }
+.status-info { background-color: var(--color-info); }
+
+/* --- PERBAIKAN LEBAR KOLOM RATING & ALIGNMENT --- */
+.member-table th:nth-child(4), .member-table td:nth-child(4) { /* Kolom Rating */
+    width: 15%; 
+    min-width: 90px;
+    text-align: center;
+    padding: 12px 5px; 
+    vertical-align: top;
+}
+.member-table td:nth-child(4) .status {
+    min-width: 65px; 
+    padding: 4px 8px;
+}
+
+
+/* ============================================== */
+/* --- MODAL TAMBAH ADMIN & HAK AKSES --- */
+/* ============================================== */
+
+.modal-content.add-admin-size {
+    width: 450px; 
+    max-width: 90%;
+    padding: 30px;
+}
+
+
+/* Modal Hak Akses - Kontainer */
+.modal-content.access-modal-size {
+    width: 600px;
+    max-width: 90%;
+    padding-bottom: 20px; 
+}
+
+/* 1. Judul Modal */
+.access-modal-size h2 {
+    font-size: 20px;
+    margin-bottom: 5px; 
+    padding-bottom: 5px;
+    border-bottom: 1px solid #444; 
+}
+
+/* 2. Detail User Info (ID dan Role Saat Ini) */
+.current-role-info {
+    font-size: 14px;
+    margin-bottom: 15px; 
+    color: #fff; 
+    padding-bottom: 10px;
+}
+
+.current-role-info strong {
+    color: #fff; 
+    font-weight: 700;
+}
+
+/* 3. Form Input & Select */
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 20px;
+    margin-top: 20px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1; 
+}
+
+.admin-form-grid label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.admin-form-grid input[type="text"],
+.admin-form-grid input[type="email"],
+.admin-form-grid input[type="tel"],
+.admin-form-grid input[type="password"],
+.admin-form-grid select { 
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background-color: #fff2a8ff; 
+    color: var(--color-text-light); 
+    height: 40px; 
+    cursor: pointer;
+    /* FIX DROPDOWN VISUAL BUG */
+    -webkit-appearance: none; 
+    -moz-appearance: none; 
+    appearance: none; 
+}
+
+.admin-form-grid select option {
+    background-color: #fff2a8ff; 
+    color: var(--color-text-light); 
+}
+
+.access-form-container hr {
+    border-color: #333;
+    margin: 15px 0; 
+}
+
+/* 4. Permissions Grid */
+.permissions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    margin-top: 10px; 
+}
+
+.permissions-grid label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.permissions-grid input[type="checkbox"] {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.form-group label {
+    color: #fff;
+}
+
+.form-group option {
+    background-color: #fff2a8ff;
+}
+
+/* 5. Tombol Submit (Footer Modal) */
+.action-btn.success-btn {
+    background-color: var(--color-success); 
+    color: #fff; 
+    padding: 10px 20px; 
+    font-size: 14px;
+    font-weight: bold;
+    width: auto;
+}
+
+.action-btn.success-btn:hover {
+    background-color: #388e3c; 
+}
+
+.action-btn.success-btn.submit-admin-btn {
+    background-color: var(--color-success); 
+    color: #fff; /* REVISI: Warna teks menjadi PUTIH */
+    padding: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 100%; 
+    margin-top: 15px;
+}
+
+/* Tombol Submit di Modal Edit */
+.action-btn.primary-btn.submit-edit-btn {
+    /* UBAH DARI PRIMARY MENJADI WARNA SUCCESS/HIJAU */
+    background-color: var(--color-success); 
+    color: #fff; 
+    
+    /* Memastikan tombol full width dan padding yang rapi */
+    padding: 12px 20px; 
+    font-size: 16px;
+    font-weight: bold;
+    width: 100%; 
+    border: none;
+    border-radius: 8px;
+    transition: background-color 0.3s;
+}
+
+.action-btn.primary-btn.submit-edit-btn:hover {
+    /* Hover state untuk warna hijau */
+    background-color: #388e3c; /* Warna hijau yang sedikit lebih gelap */
+}
+
+.access-form-container .form-group.full-width:last-child {
+    margin-top: 25px; 
+    text-align: right; 
+}
+
+
+/* ============================================== */
+/* --- MODAL DETAIL & RIWAYAT --- */
+/* ============================================== */
+
+/* Modal Riwayat */
+.modal-content.history-modal-size {
+    width: 800px;
+    max-width: 95%;
+}
+
+/* Modal Detail Pengguna - Layout Vertikal */
+.user-detail-info-simple {
+    padding: 10px 0;
+}
+
+.user-detail-info-simple .info-group-detail {
+    margin-bottom: 10px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+}
+
+.user-detail-info-simple label {
+    font-size: 14px;
+    color: #FFD700;
+    display: block; 
+    margin-bottom: 3px;
+    font-weight: 500;
+}
+
+.user-detail-info-simple p {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-light);
+}
+
+/* Tabs Riwayat */
+.tabs-container { margin-top: 20px; }
+
+.tab-header {
+    display: flex;
+    border-bottom: 1px solid #444;
+    margin-bottom: 15px;
+}
+
+.tab-header button {
+    color: #FFD700
+}
+
+.tab-link {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.2s;
+}
+
+.tab-link.active {
+    color: #FFD700;
+    border-bottom: 3px solid #FFD700;
+    font-weight: bold;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Tombol Riwayat di Modal Detail */
+.action-btn.info-btn {
+    background-color: var(--color-info); /* Biru */
+    color: var(--color-text-light);
+    font-size: 15px;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: 8px; 
+}
+
+.action-btn.info-btn:hover {
+    background-color: #0b5ed7; /* Hover Biru lebih gelap */
+}
+
+.full-width-btn { width: 100%; }
+
+.modal-footer-actions-single {
+    padding-top: 20px;
+    margin-top: 10px;
+    border-top: 1px solid #444;
+}
+
+#blockForm .form-group {
+    /* Mengubah tata letak agar input menjadi vertikal penuh */
+    display: block; 
+    margin-bottom: 15px;
+}
+
+#blockForm label {
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--color-text-light);
+    display: block;
+}
+
+/* Memastikan SELECT dan TEXTAREA memiliki style dark mode yang benar */
+#blockForm select,
+#blockForm textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background-color: #fff2a8ff; 
+    color: #000000ff;
+    resize: vertical; /* Izinkan textarea diubah ukurannya secara vertikal */
+    height: 40px; /* Tinggi seragam untuk select */
+}
+
+/* Container Tombol di Modal Blokir */
+#blockModal .modal-action-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding-top: 20px; /* Jarak dari form */
+    margin-top: 15px;
+}
+
+/* Tombol Batal (Secondary) */
+#blockModal .action-btn.secondary-btn {
+    background-color: #6c757d; /* Abu-abu Sekunder */
+    color: #fff;
+    flex-grow: 1;
+    padding: 10px 15px;
+    font-weight: bold;
+}
+
+/* Tombol Yakin (Danger) */
+#blockModal .action-btn.danger-btn {
+    background-color: var(--color-danger);
+    color: #fff;
+    flex-grow: 1;
+    padding: 10px 15px;
+    font-weight: bold;
+}
+/* --- MODAL KONFIRMASI NONAKTIFKAN --- */
+#confirmDeactivateModal {
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    padding: 20px;
+}
+
+.modal-title-center {
+    text-align: center;
+    margin-bottom: 5px; 
+    font-size: 20px;
+    color: var(--color-danger); /* Judul Merah */
+}
+
+.modal-content p, strong {
+    color: #fff;
+}
+
+.modal-text-center {
+    text-align: center;
+    margin-bottom: 20px; /* Jarak yang cukup */
+    font-size: 15px;
+    line-height: 1.4;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #333; /* Garis pemisah dari form */
+}
+
+.modal-action-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding-top: 10px;
+}
+
+.confirm-action-btn {
+    width: 100%;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.action-btn.secondary-btn {
+    background-color: #6c757d; 
+    color: var(--color-text-light);
+}
+.action-btn.secondary-btn:hover {
+    background-color: #5a6268;
+}
+
+/* Tombol Ya (Nonaktifkan) */
+.action-btn.danger-btn {
+    background-color: var(--color-danger);
+    color: #fff;; /* Merah untuk Blokir/Nonaktifkan */
+}
+.action-btn.danger-btn:hover {
+    background-color: #c9302c;
+}
+
+/* Tombol Batal */
+.action-btn.secondary-btn {
+    background-color: #6c757d; /* Abu-abu sekunder yang lebih terang dari background card */
+    color: #fff;
+}
+.action-btn.secondary-btn:hover {
+    background-color: #5a6268;
+}

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Ecoswap</title>
+    <link rel="stylesheet" href="../newDashboard/dashboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <div class="logo">ECO<span>SWAP</span></div>
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Cari barang bekas berkualitas...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+        </div>
+        <div class="nav-right">
+            <!-- Ikon Keranjang dengan Badge -->
+            <button class="nav-icon-btn" onclick="toggleCart()">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-badge">3</span>
+            </button>
+            
+            <button class="nav-icon-btn">
+                <i class="fas fa-bell"></i>
+            </button>
+
+            <!-- Profil Avatar -->
+            <div class="user-avatar" onclick="window.location.href='../newProfil/profil.html'">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dimas" alt="User">
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO CAROUSEL -->
+    <div class="container">
+        <div class="hero-section">
+            <div class="carousel-track" id="carouselTrack">
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=1200" alt="Slide 1">
+                    <div class="hero-text">
+                        <h1>Barang Bekas <br><span>Berkualitas</span></h1>
+                        <p>Hemat uang dan selamatkan bumi.</p>
+                    </div>
+                </div>
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=1200" alt="Slide 2">
+                        <div class="hero-text">
+                        <h1>Elektronik <br><span>Murah</span></h1>
+                        <p>Upgrade gadget tanpa bikin kantong bolong.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORIES -->
+        <div class="section-header">
+            <h2 class="section-title">Kategori Pilihan</h2>
+            <a href="#" style="font-size: 0.9rem; color: var(--primary); font-weight: bold;">Lihat Semua</a>
+        </div>
+        <div class="category-pills">
+            <div class="category-pill active">Semua</div>
+            <div class="category-pill">Elektronik</div>
+            <div class="category-pill">Fashion</div>
+            <div class="category-pill">Hobi</div>
+            <div class="category-pill">Rumah Tangga</div>
+            <div class="category-pill">Buku</div>
+            <div class="category-pill">Otomotif</div>
+        </div>
+
+        <!-- PRODUCT GRID -->
+        <div class="product-grid" id="productGrid">
+            <!-- Produk akan di-generate oleh JS -->
+        </div>
+
+    </div>
+
+    <!-- PRODUCT DETAIL MODAL (POP UP) -->
+    <div class="modal-overlay" id="productModal">
+        <div class="product-modal">
+            <button class="close-modal-btn" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="modal-left">
+                <img id="modalImg" src="" alt="Product Image">
+            </div>
+            
+            <div class="modal-right">
+                <h2 class="modal-title" id="modalTitle">Judul Produk</h2>
+                <div class="modal-price" id="modalPrice">Rp 0</div>
+                
+                <div class="modal-meta-row">
+                    <span><i class="fas fa-map-marker-alt"></i> <span id="modalLoc">Lokasi</span></span>
+                    <span><i class="fas fa-star"></i> <span id="modalCond">Kondisi</span></span>
+                </div>
+
+                <div class="modal-desc" id="modalDesc">
+                    Deskripsi produk akan muncul di sini...
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-outline" onclick="goToChat()"><i class="fas fa-comment"></i> Chat</button>
+                    <button class="btn btn-dark" onclick="addToCart()"><i class="fas fa-cart-plus"></i> Tambah</button>
+                    <button class="btn btn-primary">Beli Sekarang</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOPPING CART SIDEBAR -->
+    <div class="cart-overlay-bg" id="cartOverlay" onclick="toggleCart()"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-bag"></i> Keranjang Saya</h3>
+            <button class="close-cart-btn" onclick="toggleCart()"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="cart-items">
+            <!-- Dummy Items -->
+            <div class="cart-item">
+                <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=200" class="cart-item-img" alt="Item">
+                <div class="cart-item-info">
+                    <div class="cart-item-title">Sepatu Nike Bekas</div>
+                    <div class="cart-item-price">Rp 450.000</div>
+                    <div class="cart-qty-ctrl">
+                        <button class="qty-btn">-</button>
+                        <span>1</span>
+                        <button class="qty-btn">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cart-item">
+                <img src="https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?auto=format&fit=crop&q=80&w=200" class="cart-item-img" alt="Item">
+                <div class="cart-item-info">
+                    <div class="cart-item-title">Monitor Dell 24"</div>
+                    <div class="cart-item-price">Rp 1.200.000</div>
+                    <div class="cart-qty-ctrl">
+                        <button class="qty-btn">-</button>
+                        <span>1</span>
+                        <button class="qty-btn">+</button>
+                    </div>
+                </div>
+            </div>
+            
+                <div class="cart-item">
+                <img src="https://images.unsplash.com/photo-1588160298175-9c5957303e3a?auto=format&fit=crop&q=80&w=200" class="cart-item-img" alt="Item">
+                <div class="cart-item-info">
+                    <div class="cart-item-title">Novel Harry Potter</div>
+                    <div class="cart-item-price">Rp 150.000</div>
+                    <div class="cart-qty-ctrl">
+                        <button class="qty-btn">-</button>
+                        <span>1</span>
+                        <button class="qty-btn">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total</span>
+                <span style="color: var(--primary);">Rp 1.800.000</span>
+            </div>
+            <button class="btn btn-primary" style="width: 100%;">Checkout</button>
+        </div>
+    </div>
+
+    <script>
+        // DATA PRODUK
+        const products = [
+            { id: 1, title: "Koleksi Komik One Piece Vol 1-50", price: 450000, loc: "Bandung", img: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", cond: "Bekas Baik", desc: "Sepatu masih sangat nyaman, sol tebal. Ada sedikit lecet pemakaian wajar." },
+            { id: 2, title: "Laptop Asus ROG Bekas Gaming Murah", price: 8500000, loc: "Jakarta", img: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&fit=crop&q=80&w=400", cond: "Mulus", desc: "RAM 16GB, SSD 512GB. Kelengkapan fullset dus dan charger." },
+            { id: 3, title: "Kamera Canon DSLR 600D Lensa Kit", price: 3100000, loc: "Surabaya", img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=400", cond: "Lecet Pemakaian", desc: "Fungsi normal 100%, bonus tas kamera dan memory card." },
+            { id: 4, title: "Headphone Sony WH-1000XM4", price: 2500000, loc: "Yogyakarta", img: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?auto=format&fit=crop&q=80&w=400", cond: "Like New", desc: "Baru dipakai 2 bulan, garansi masih aktif. Suara jernih noice cancelling mantap." },
+            { id: 5, title: "Sepeda Lipat Polygon Urbano 3", price: 1800000, loc: "Semarang", img: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&q=80&w=400", cond: "Bekas", desc: "Lipatan aman, rem pakem, siap gowes santai." },
+            { id: 6, title: "Meja Belajar Kayu Jati Minimalis", price: 350000, loc: "Jepara", img: "https://images.unsplash.com/photo-1519643381401-22c77e60520e?auto=format&fit=crop&q=80&w=400", cond: "Kokoh", desc: "Kayu jati asli, finishing varnish ulang biar kinclong." },
+            { id: 7, title: "Jam Tangan Fossil Leather Original", price: 900000, loc: "Jakarta", img: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&q=80&w=400", cond: "Strap Aus", desc: "Mesin original normal, strap kulit agak aus perlu ganti." },
+            { id: 8, title: "Koleksi Komik One Piece Vol 1-50", price: 500000, loc: "Malang", img: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", cond: "Terawat", desc: "Koleksi pribadi, kertas sedikit menguning karena usia tapi tidak sobek." },
+        ];
+
+        // RENDER PRODUK
+        const productGrid = document.getElementById('productGrid');
+        
+        products.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            card.onclick = () => openModal(p);
+            card.innerHTML = `
+                <div class="product-img-wrapper">
+                    <img src="${p.img}" alt="${p.title}">
+                </div>
+                <div class="product-info">
+                    <div class="product-title">${p.title}</div>
+                    <div class="product-price">Rp ${p.price.toLocaleString('id-ID')}</div>
+                    <div class="product-meta">
+                        <i class="fas fa-map-marker-alt"></i> ${p.loc}
+                    </div>
+                </div>
+            `;
+            productGrid.appendChild(card);
+        });
+
+        // MODAL LOGIC
+        const modalOverlay = document.getElementById('productModal');
+        
+        function openModal(product) {
+            document.getElementById('modalImg').src = product.img;
+            document.getElementById('modalTitle').textContent = product.title;
+            document.getElementById('modalPrice').textContent = 'Rp ' + product.price.toLocaleString('id-ID');
+            document.getElementById('modalLoc').textContent = product.loc;
+            document.getElementById('modalCond').textContent = product.cond;
+            document.getElementById('modalDesc').textContent = product.desc;
+            
+            modalOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden'; // Stop scroll
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('open');
+            document.body.style.overflow = 'auto'; // Resume scroll
+        }
+
+        // Close modal when clicking outside
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+
+        // CART LOGIC
+        const cartSidebar = document.getElementById('cartSidebar');
+        const cartOverlay = document.getElementById('cartOverlay');
+
+        function toggleCart() {
+            cartSidebar.classList.toggle('open');
+            cartOverlay.classList.toggle('open');
+            
+            // Prevent body scroll when cart is open
+            if(cartSidebar.classList.contains('open')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+        }
+        // Fungsi menuju tampilan chat
+        function goToChat() {
+            window.location.href = '../newDashboard/chat.html';
+        }
+
+        function addToCart() {
+            closeModal();
+            setTimeout(toggleCart, 300); // Buka cart setelah modal tutup
+            alert("Barang berhasil ditambahkan ke keranjang!");
+        }
+
+        // CAROUSEL LOGIC (Simple Auto Slide)
+        const track = document.getElementById('carouselTrack');
+        let index = 0;
+        
+        setInterval(() => {
+            index = (index + 1) % 2; // 2 slides
+            track.style.transform = `translateX(-${index * 100}%)`;
+        }, 5000);
+
+    </script>
+</body>
+</html>

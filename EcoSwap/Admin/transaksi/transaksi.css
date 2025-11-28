@@ -1,0 +1,231 @@
+/* Import styles.css untuk variabel warna dan layout dasar */
+
+/* --- TRANSACTION TABLE ENHANCEMENTS --- */
+/* (Gaya Flexbox untuk Tombol Aksi di Baris Tabel) */
+.transaction-table td:last-child {
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    flex-wrap: nowrap; 
+}
+
+/* --- LOGISTIC STATUS COLORS --- */
+/* Status Dikemas (Kuning) */
+.status-warning {
+    background-color: var(--color-warning); 
+    color: #333; /* Gunakan teks gelap agar terbaca */
+}
+/* Status Dikirim (Biru Primer) */
+.status-primary {
+    background-color: var(--color-info); 
+    color: #fff;
+}
+/* Status Diterima (Hijau Sukses) */
+.status-success {
+    background-color: var(--color-success); 
+    color: #fff;
+}
+/* Status Tag Umum */
+.status {
+    padding: 6px 10px; 
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* --- FILTER CONTROLS (Top Filter Bar) REVISI --- */
+.filter-controls {
+    display: flex; /* KRUSIAL: Memastikan item berdampingan */
+    gap: 15px;
+    padding: 15px;
+    background-color: #FFD700;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    align-items: center; /* Memastikan semua elemen sejajar vertikal */
+}
+
+.search-input {
+    flex-grow: 1;
+    max-width: 400px; 
+    padding: 10px 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    /* WARNA DARK MODE YANG KONSISTEN */
+    background-color: #fff2a8ff; 
+    color: #000000ff;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.search-input:focus, .filter-select:focus {
+    border-color: var(--color-primary);
+    outline: none;
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background-color: #fff2a8ff;
+    color: #000000ff;
+    font-size: 14px;
+    appearance: none; /* Penting untuk tampilan dropdown */
+    cursor: pointer;
+    height: 40px; /* Menyamakan tinggi dengan input */
+}
+
+/* --- MODAL STRUCTURE (GLOBAL) --- */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6); 
+}
+
+.modal-content {
+    background-color: #000000ff;
+    margin: 10% auto; 
+    padding: 30px;
+    border: 1px solid #444;
+    width: 40%; 
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
+    position: relative;
+    animation-name: animatetop;
+    animation-duration: 0.4s
+}
+
+@keyframes animatetop {
+    from {top: -300px; opacity: 0}
+    to {top: 0; opacity: 1}
+}
+
+.modal-content h2 {
+    color: #FFD700;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 1001; 
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: var(--color-danger);
+    text-decoration: none;
+}
+
+.data-table th {
+    background-color: #000000ff;
+    color: #FFD700;
+}
+
+.transaction-table tr:hover {
+    background-color: #fff2a8ff;
+}
+
+.transaction-table td {
+    color: #000000ff;
+}
+
+/* --- GAYA KHUSUS MODAL DETAIL LOGISTIK (REVISI TATA LETAK) --- */
+
+.modal-content.logistic-modal-size {
+    width: 750px; 
+    max-width: 90%;
+}
+
+.logistic-detail-grid {
+    display: flex;
+    gap: 30px;
+}
+
+/* Kolom Kiri: Foto */
+.detail-photo-column {
+    width: 250px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.modal-item-img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover; /* Potong dan isi kotak */
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.photo-caption {
+    font-size: 14px;
+    color: #fff;
+}
+
+/* Kolom Kanan: Info */
+.detail-info-column {
+    flex-grow: 1;
+}
+
+.item-name-heading {
+    font-size: 24px;
+    color: #FFD700; 
+    margin-bottom: 5px;
+}
+
+.item-description-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.detail-info-column h4 {
+    color: #FFD700; /* Highlight subheading */
+    margin-top: 15px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 5px;
+}
+
+.detail-info-column p {
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #fff;
+}
+.detail-info-column strong {
+    color: #fff;
+    display: inline-block;
+    width: 150px; /* Lebar tetap untuk label */
+}
+
+.detail-info-column hr {
+    border-color: #333;
+    margin: 15px 0;
+}
+.tracking-link {
+    margin-top: 20px;
+}
+.tracking-link a {
+    text-decoration: none;
+    color: var(--color-success);
+    font-weight: bold;
+}
+.tracking-link a:hover {
+    color: #388e3c;
+}
