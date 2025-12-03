@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil Pengguna - Ecoswap</title>
+    <link rel="stylesheet" href="../newProfil/profil.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button class="sidebar-back-btn" onclick="goToDashboard()">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-item">
+                    <a href="#" class="menu-link">Dashboard</a>
+                </li>
+                <li class="menu-item active"> <!-- Aktif di halaman Profil -->
+                    <a href="#" class="menu-link">Biodata Diri</a>
+                </li>
+                <li class="menu-item">
+                    <!-- Link ke halaman Alamat yang kita buat sebelumnya -->
+                    <a href="../alamat/alamat.html" class="menu-link">Alamat</a>
+                </li>
+                <li class="menu-item">
+                    <a href="../histori/histori.html" class="menu-link">Histori</a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">Toko Saya</a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT WRAPPER -->
+        <main class="main-content-wrapper">
+            <!-- HEADER -->
+            <div class="header">
+                <div class="page-title">Profil Pengguna</div>
+            </div>
+
+            <!-- SCROLLABLE CONTENT -->
+            <div class="content">
+                <div class="profile-container">
+                    <div class="profile-card">
+                        
+                        <!-- PROFILE LEFT: FOTO & AKSI -->
+                        <div class="profile-left">
+                            <div class="photo-area">
+                                <span class="photo-placeholder-text">Foto</span> 
+                                <!-- Placeholder Image (Kosongkan src jika ingin default) -->
+                                <img id="profile-picture" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dimas" alt="Foto Profil">
+                            </div>
+                            
+                            <input type="file" id="file-upload" accept="image/*" style="display: none;">
+                            <button class="btn-select-photo" onclick="document.getElementById('file-upload').click()">
+                                <i class="fas fa-camera"></i> Ubah Foto
+                            </button>
+                            
+                            <div class="action-buttons">
+                                <button class="btn-action" onclick="showModal('ubah-biodata-modal')">
+                                    <i class="fas fa-user-edit"></i> Ubah Biodata
+                                </button>
+                                <button class="btn-action" onclick="showModal('ubah-password-modal')">
+                                    <i class="fas fa-lock"></i> Ubah Password
+                                </button>
+                                <button class="btn-action" onclick="goToChat()">
+                                    <i class="fas fa-comment-dots"></i> Pesan
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PROFILE RIGHT: BIODATA -->
+                        <div class="profile-right">
+                            
+                            <!-- Section Biodata -->
+                            <div class="biodata-section">
+                                <h3 class="section-title">Biodata Diri</h3>
+                                <div class="data-row">
+                                    <span class="data-label">Nama Lengkap</span>
+                                    <span class="data-value" id="nama-lengkap-display">Dimas Sudarmono</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Tanggal Lahir</span>
+                                    <span class="data-value" id="tgl-lahir-display">01 Januari 2001</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Jenis Kelamin</span>
+                                    <span class="data-value" id="jenis-kelamin-display">Laki - Laki</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Section Kontak -->
+                            <div class="contact-section">
+                                <h3 class="section-title">Kontak</h3>
+                                <div class="data-row">
+                                    <span class="data-label">Nomor Hp</span>
+                                    <span class="data-value" id="nomor-hp-display">+62 877 5931 5863</span>
+                                    <span class="verification-status"><i class="fas fa-check-circle"></i> Terverifikasi</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Email</span>
+                                    <span class="data-value" id="email-display">monotxploit@gmail.com</span>
+                                    <span class="verification-status"><i class="fas fa-check-circle"></i> Terverifikasi</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: UBAH PASSWORD -->
+    <div id="ubah-password-modal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">Ubah Password</div>
+                <button class="close-modal" onclick="closeModal('ubah-password-modal')">&times;</button>
+            </div>
+            <form id="ubah-password-form">
+                <div class="form-group">
+                    <label>Password Lama</label>
+                    <div class="password-input-container">
+                        <input type="password" class="form-input" id="old-password" required>
+                        <i class="far fa-eye toggle-password" onclick="togglePasswordVisibility('old-password', this)"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Password Baru</label>
+                    <div class="password-input-container">
+                        <input type="password" class="form-input" id="new-password" required>
+                        <i class="far fa-eye toggle-password" onclick="togglePasswordVisibility('new-password', this)"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Konfirmasi Password Baru</label>
+                    <div class="password-input-container">
+                        <input type="password" class="form-input" id="confirm-password" required>
+                        <i class="far fa-eye toggle-password" onclick="togglePasswordVisibility('confirm-password', this)"></i>
+                    </div>
+                </div>
+                <button type="submit" class="btn-save-changes">Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: UBAH BIODATA -->
+    <div id="ubah-biodata-modal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">Ubah Biodata</div>
+                <button class="close-modal" onclick="closeModal('ubah-biodata-modal')">&times;</button>
+            </div>
+            <form id="ubah-biodata-form">
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" class="form-input" id="edit-nama" value="Dimas Sudarmono" required>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Lahir</label>
+                    <input type="date" class="form-input" id="edit-tgl-lahir" value="2001-01-01" required>
+                </div>
+                <div class="form-group">
+                    <label>Jenis Kelamin</label>
+                    <select class="form-input" id="edit-jenis-kelamin" required>
+                        <option value="Laki - Laki" selected>Laki - Laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nomor Hp</label>
+                    <input type="tel" class="form-input" id="edit-nomor-hp" value="+62 877 5931 5863" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" class="form-input" id="edit-email" value="monotxploit@gmail.com" required>
+                </div>
+                <button type="submit" class="btn-save-changes">Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // FUNGSI NAVIGASI
+        function goToDashboard() {
+            alert("Navigasi ke halaman Dashboard.");
+            window.location.href = '../newDashboard/dashboard.html';
+        }
+
+        function goToChat() {
+            alert("Navigasi ke halaman Chat");
+            window.location.href = '../pesan/pesan.html';
+        }
+
+        // LOGIKA UPLOAD FOTO
+        document.getElementById('file-upload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profile-picture').src = e.target.result;
+                    document.querySelector('.photo-placeholder-text').style.display = 'none';
+                    alert("Foto profil berhasil diubah (Simulasi).");
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // LOGIKA MODAL
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('open');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('open');
+        }
+
+        // Tutup modal jika klik di luar box
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(modal => {
+                if (event.target == modal) {
+                    modal.classList.remove('open');
+                }
+            });
+        }
+        
+        // LOGIKA LIHAT PASSWORD
+        function togglePasswordVisibility(id, iconElement) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+                iconElement.classList.remove('fa-eye');
+                iconElement.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                iconElement.classList.remove('fa-eye-slash');
+                iconElement.classList.add('fa-eye');
+            }
+        }
+
+        // LOGIKA SIMPAN PERUBAHAN PASSWORD
+        document.getElementById('ubah-password-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newPass = document.getElementById('new-password').value;
+            const confPass = document.getElementById('confirm-password').value;
+
+            if (newPass !== confPass) {
+                alert("Konfirmasi password baru tidak cocok!");
+                return;
+            }
+
+            alert(`Password berhasil diubah. (Simulasi)`);
+            closeModal('ubah-password-modal');
+            this.reset();
+        });
+
+        // LOGIKA SIMPAN PERUBAHAN BIODATA
+        document.getElementById('ubah-biodata-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const newNama = document.getElementById('edit-nama').value;
+            const newTglLahir = document.getElementById('edit-tgl-lahir').value;
+            // Format tanggal untuk tampilan (sederhana)
+            const dateObj = new Date(newTglLahir);
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = dateObj.toLocaleDateString('id-ID', options);
+
+            const newJenisKelamin = document.getElementById('edit-jenis-kelamin').value;
+            const newNomorHp = document.getElementById('edit-nomor-hp').value;
+            const newEmail = document.getElementById('edit-email').value;
+
+            document.getElementById('nama-lengkap-display').textContent = newNama;
+            document.getElementById('tgl-lahir-display').textContent = dateStr;
+            document.getElementById('jenis-kelamin-display').textContent = newJenisKelamin;
+            document.getElementById('nomor-hp-display').textContent = newNomorHp;
+            document.getElementById('email-display').textContent = newEmail;
+            
+            alert(`Biodata berhasil diubah. (Simulasi)`);
+            closeModal('ubah-biodata-modal');
+        });
+    </script>
+</body>
+</html>

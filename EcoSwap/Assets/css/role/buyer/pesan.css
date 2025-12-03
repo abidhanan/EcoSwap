@@ -1,0 +1,395 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5; /* Background luar sedikit abu agar container pop-up */
+            color: #333; /* Text utama jadi gelap */
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Container Utama - Putih Bersih */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            max-width: 1440px;
+            background-color: #ffffff; /* Latar Putih */
+            box-shadow: 0 0 20px rgba(0,0,0,0.05); /* Shadow halus */
+        }
+
+        /* ===========================
+           BAGIAN KIRI (SIDEBAR LIST)
+           =========================== */
+        .sidebar {
+            width: 350px;
+            background-color: #ffffff; /* Sidebar Putih */
+            border-right: 1px solid #e0e0e0; /* Border abu tipis */
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        /* Header Sidebar - Tetap Hitam untuk Aksen Kuat */
+        .sidebar-header {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background-color: #1e1e1e; /* AKSEN HITAM */
+            border-bottom: 1px solid #333;
+        }
+
+        .back-icon {
+            color: #ffd700; /* Aksen Kuning */
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .back-icon:hover {
+            opacity: 0.8;
+        }
+
+        .header-title {
+            color: #ffd700;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        /* List Chat */
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0; /* Separator halus */
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .chat-item:hover {
+            background-color: #f9f9f9; /* Hover sangat terang */
+        }
+
+        .chat-item.active {
+            background-color: #f0f0f0; /* Active state */
+        }
+
+        /* Avatar & Status Online */
+        .avatar-container {
+            position: relative;
+            margin-right: 15px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff; /* Border putih agar bersih */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .online-indicator {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            width: 12px;
+            height: 12px;
+            background-color: #4cd137;
+            border-radius: 50%;
+            border: 2px solid #ffffff; /* Border putih */
+            display: none;
+        }
+
+        .is-online .online-indicator {
+            display: block;
+        }
+
+        /* Info Chat */
+        .chat-info {
+            flex: 1;
+        }
+
+        .chat-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1e1e1e; /* Nama gelap */
+            margin-bottom: 4px;
+        }
+
+        .chat-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .unread-badge {
+            background-color: #ffd700;
+            color: #1e1e1e; /* Text hitam di atas kuning */
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .has-unread .unread-badge {
+            display: block;
+        }
+
+        .chat-time {
+            font-size: 0.85rem;
+            color: #888; /* Waktu abu-abu */
+        }
+
+        /* ===========================
+           BAGIAN KANAN (MAIN CONTENT)
+           =========================== */
+        .main-content {
+            flex: 1;
+            background-color: #ffffff; /* Main area Putih */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Placeholder Default */
+        .placeholder-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            background-color: #ffffff;
+        }
+
+        .brand-title {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ffd700; /* Tetap Kuning Emas */
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-shadow: 1px 1px 0px #1e1e1e; /* Sedikit outline hitam agar terbaca */
+        }
+
+        .brand-subtitle {
+            font-size: 1.2rem;
+            color: #1e1e1e; /* Subtitle Hitam */
+            font-weight: 500;
+        }
+
+        /* Chat Room View */
+        .chat-room-view {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-room-view.active {
+            display: flex;
+        }
+
+        /* Chat Header - Hitam (Aksen) */
+        .chat-header {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background-color: #1e1e1e; /* AKSEN HITAM */
+            border-bottom: 1px solid #333;
+            color: white;
+        }
+
+        .header-back-btn {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-right: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .header-back-btn:hover {
+            color: #ffd700;
+        }
+
+        .header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+            background-color: #555;
+            border: 2px solid #ffd700; /* Ring kuning */
+        }
+
+        .header-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        /* Area Pesan - Putih */
+        .messages-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #ffffff; /* Canvas putih */
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(#e0e0e0 1px, transparent 1px); /* Pattern titik halus opsional */
+            background-size: 20px 20px;
+        }
+
+        .message-wrapper {
+            display: flex;
+            margin-bottom: 20px;
+            align-items: flex-end;
+            max-width: 80%;
+        }
+
+        .message-wrapper.incoming {
+            align-self: flex-start;
+        }
+
+        .message-wrapper.outgoing {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Shadow lebih halus */
+        }
+
+        /* Warna Bubble Incoming - Abu Terang */
+        .message-wrapper.incoming .message-bubble {
+            background-color: #f0f0f0;
+            color: #333;
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Warna Bubble Outgoing - Kuning */
+        .message-wrapper.outgoing .message-bubble {
+            background-color: #ffd700;
+            color: #1a1a1a;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-time-inner {
+            display: block;
+            font-size: 0.7rem;
+            margin-top: 5px;
+            text-align: right;
+            opacity: 0.6;
+        }
+
+        .message-action-btn {
+            background: none;
+            border: none;
+            color: #999; /* Warna ikon aksi lebih soft */
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 10px;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+
+        .message-wrapper:hover .message-action-btn {
+            opacity: 1;
+        }
+
+        .message-action-btn:hover {
+            color: #ff4d4d;
+            transform: scale(1.1);
+        }
+
+        /* Input Area - Hitam (Aksen Footer) */
+        .input-area {
+            height: 80px;
+            background-color: #1e1e1e; /* AKSEN HITAM */
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .message-input-wrapper {
+            flex: 1;
+            background-color: #333; /* Input field gelap */
+            border-radius: 30px;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white; /* Text input putih */
+            font-size: 1rem;
+            outline: none;
+        }
+        
+        .message-input::placeholder {
+            color: #aaa;
+        }
+
+        .send-btn {
+            color: #ffd700;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 10px;
+            border: none;
+            background: none;
+        }
+
+        /* Responsive Mobile */
+        @media (max-width: 768px) {
+            .app-container {
+                position: relative;
+            }
+            .sidebar {
+                width: 100%;
+                position: absolute;
+                height: 100%;
+                z-index: 20;
+                transition: transform 0.3s ease;
+                border-right: none;
+            }
+            
+            .main-content {
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                z-index: 10;
+            }
+
+            .sidebar.hidden-mobile {
+                transform: translateX(-100%);
+            }
+        }

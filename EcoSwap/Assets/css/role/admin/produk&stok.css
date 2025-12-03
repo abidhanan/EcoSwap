@@ -1,0 +1,554 @@
+/* Import styles.css untuk variabel warna dan layout dasar (asumsi variabel warna ada di file global) */
+
+/* --- FILTER CONTROLS & TOP ACTION BAR --- */
+.top-controls {
+    display: flex;
+    justify-content: flex-start; /* UBAH: Agar filter mengambil sisa ruang ke kiri */
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    background-color: #FFD700;
+    color: #000000ff;
+    border-radius: 12px;
+    flex-grow: 1; 
+    max-width: 100%;
+}
+
+.search-input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background-color: #fff2a8ff;
+    color: #000000ff;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.search-input:focus {
+    border-color: var(--color-primary);
+    outline: none;
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background-color: #fff2a8ff;
+    color: #000000ff;
+    font-size: 14px;
+    appearance: none; 
+    cursor: pointer;
+}
+
+/* Gaya Tombol Aksi Kustom di Header */
+.action-btn.primary-btn {
+    background-color: var(--color-info);
+}
+.action-btn.primary-btn:hover {
+    background-color: #0b5ed7;
+}
+.action-btn.success-btn {
+    background-color: var(--color-success);
+}
+.action-btn.success-btn:hover {
+    background-color: #388e3c;
+}
+
+/* --- PRODUCT TABLE ENHANCEMENTS & ACTIONS --- */
+.data-table tr th {
+    background-color: #000000ff;
+    color: #fff;
+}
+
+.data-table tr:hover {
+    background-color: #fff2a8ff;
+}
+
+.data-table td {
+    color: var(--color-text-dark);
+}
+/* Thumbnail Gambar di dalam tabel */
+.img-thumbnail {
+    width: 80px;
+    height: 80px;
+    background-color: #555; 
+    border-radius: 4px;
+    display: block;
+    border: 1px solid #444;
+    overflow: hidden;
+    margin-bottom: 5px; 
+}
+
+.product-img-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Perbaikan alignment konten di baris tabel */
+.product-table td {
+    vertical-align: top;
+    padding-top: 15px;
+    /* PASTIKAN INI HALUS */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1); 
+}
+
+/* Status Colors */
+.status-info { background-color: var(--color-info); color: #fff; } 
+.status-danger { background-color: var(--color-danger); color: #fff; } /* Status Ditolak (Merah) */
+.status-warning { background-color: var(--color-info); color: #000; } /* Status Menunggu (Kuning) */
+.status-success { background-color: var(--color-success); color: #fff; } /* Status Aktif (Hijau) */
+
+
+/* --- TOMBOL AKSI DI BARIS TABEL --- */
+.product-table td:last-child {
+    display: flex;
+    flex-direction: row; /* PERBAIKAN: Mengatur tombol agar bersebelahan (horizontal) */
+    align-items: center; /* Sejajarkan tombol di tengah secara vertikal */
+    gap: 8px; /* Jarak antar tombol */
+    flex-wrap: nowrap;
+    vertical-align: top;
+    padding-top: 15px;
+}
+
+/* Mengatur tampilan label status agar menjadi inline-block dan memiliki lebar minimum */
+.product-table .status {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    
+    /* Perbaikan KRUSIAL untuk merapikan */
+    display: inline-block;
+    min-width: 85px; /* Memberikan lebar minimum agar teks yang pendek terlihat konsisten */
+    text-align: center; /* Memastikan teks di tengah label */
+}
+
+.action-btn {
+    padding: 6px 10px;
+    margin-right: 0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color 0.3s, opacity 0.3s;
+}
+
+.action-btn i {
+    margin-right: 5px;
+}
+
+/* Tombol Lihat */
+.action-btn.view-detail-btn { 
+    background-color: var(--color-info);
+    color: #fff;
+}
+.action-btn.view-detail-btn:hover {
+    background-color: #0b5ed7;
+}
+
+/* Tombol Edit */
+.action-btn.edit-btn {
+    background-color: var(--color-primary);
+    color: var(--color-text-light);
+}
+.action-btn.edit-btn:hover {
+    background-color: var(--color-primary-dark);
+}
+
+/* Tombol Hapus / Danger */
+.action-btn.danger-btn, .action-btn.delete-btn {
+    background-color: var(--color-danger);
+    color: #fff;
+}
+.action-btn.danger-btn:hover, .action-btn.delete-btn:hover {
+    background-color: #c92c2cff;
+}
+
+/* --- Tambahkan ini di products_styles.css --- */
+
+.modal-content.add-admin-size {
+    width: 450px;
+    max-width: 90%;
+}
+
+.modal-title-center {
+    text-align: center;
+    margin-bottom: 5px; 
+    font-size: 20px;
+}
+
+.danger-text {
+    color: var(--color-danger); /* Warna Merah untuk Peringatan */
+}
+
+.modal-text-center {
+    text-align: center;
+    margin-bottom: 25px; 
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.modal-action-footer {
+    display: flex;
+    justify-content: center; /* Tombol di tengah */
+    gap: 15px;
+    padding-top: 15px;
+}
+
+.confirm-action-btn {
+    width: 150px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.action-btn.view-btn {
+    background-color: #6c757d; /* Abu-abu Sekunder agar seragam dengan tombol Batal */
+    color: var(--color-text-light);
+    font-weight: 500;
+}
+.action-btn.view-btn:hover {
+    background-color: #5a6268;
+}
+
+/* Tombol Lihat/Detail */
+.action-btn.view-btn {
+    background-color: #444;
+    color: var(--color-text-light);
+}
+.action-btn.view-btn:hover {
+    background-color: #555;
+}
+
+#deleteConfirmationModal .modal-content {
+    background-color: var(--color-bg-card);
+    padding: 30px;
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.modal-title-center {
+    color: var(--color-danger);
+    text-align: center;
+}
+
+.modal-action-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #444; 
+}
+
+.confirm-action-btn {
+    width: 50%;
+    padding: 10px 15px;
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+/* Tombol Ya, Hapus (Danger) */
+.danger-btn {
+    background-color: var(--color-danger);
+    color: var(--color-text-light);
+}
+
+/* Tombol Batal (Secondary) */
+.secondary-btn {
+    background-color: #6c757d;
+    color: var(--color-text-light);
+}
+
+
+/* --- PAGINATION --- */
+.pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+}
+
+.page-btn {
+    background: none;
+    border: 1px solid #444;
+    color: var(--color-text-light);
+    padding: 8px 12px;
+    margin: 0 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.page-btn:hover {
+    background-color: #000000ff;
+    color: #fff;
+}
+
+.page-number {
+    padding: 8px 12px;
+    margin: 0 2px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.page-number.active {
+    background-color: #000000ff;
+    color: #fff;
+}
+
+/* --- MODAL DETAIL (Revisi untuk Verifikasi) --- */
+
+.modal-body-detail {
+    padding: 20px;
+}
+
+.product-info-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr; /* Foto 200px, Detail 1fr */
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.modal-product-img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.product-details {
+    /* Kontainer Teks Kanan */
+    padding-top: 5px; /* Sedikit padding agar sejajar dengan bagian atas gambar */
+}
+
+.product-details h3 {
+    font-size: 1.6em; /* Sedikit perkecil judul */
+    color: #fff;
+    margin-bottom: 5px;
+    line-height: 1.2;
+}
+
+.product-details p {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #FFD700;
+}
+
+.product-details strong {
+    /* REVISI: Nilai harus menggunakan warna teks paling terang */
+    color: var(--color-text-light); /* Putih/Light Grey */
+}
+
+.description-text {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #444;
+    font-size: 14px;
+   color: var(--color-text-light); /* Deskripsi lebih redup */
+    line-height: 1.5;
+}
+
+.modal-footer-actions {
+    /* Pisahkan tombol aksi dari deskripsi */
+    padding-top: 20px;
+    border-top: 1px solid #444; 
+    margin-top: 20px; 
+    /* ... (Gaya flexbox tetap sama) ... */
+}
+
+/* --- Tambahkan Gaya Baru/Modifikasi di products_styles.css --- */
+
+/* Style untuk membuat modal konfirmasi muncul di tengah */
+#confirmDeleteModal {
+    display: none; 
+    justify-content: center; /* Memastikan modal di tengah layar */
+    align-items: center; /* Memastikan modal di tengah layar */
+    padding: 20px;
+    position: fixed;
+    z-index: 10000; /* Z-index sangat tinggi agar pasti di atas */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); 
+    overflow: auto;
+}
+
+/* Container Modal Konfirmasi */
+#confirmDeleteModal .modal-content {
+    background-color: #000000ff;
+    padding: 30px;
+    border-radius: 12px;
+    width: 400px; /* Lebar yang fokus */
+    max-width: 90%;
+    position: relative;
+}
+
+/* Judul Peringatan */
+.modal-title-center {
+    text-align: center;
+    margin-bottom: 5px; 
+    font-size: 20px;
+    color: var(--color-danger); /* Warna Merah untuk Peringatan */
+    padding-bottom: 10px;
+    border-bottom: 1px solid #444;
+}
+
+/* Teks Konfirmasi (Pertanyaan) */
+#confirmDeleteModal p {
+    color: #fff;
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 30px; /* Jarak yang bagus dari tombol */
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+/* Teks yang di bold (Nama Produk) */
+#confirmDeleteModal p strong {
+    color: var(--color-text-light);
+}
+
+/* --- TATA LETAK TOMBOL --- */
+
+.modal-action-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px; /* Jarak antar tombol */
+    padding-top: 15px;
+    border-top: 1px solid #444; /* Garis pemisah */
+}
+
+/* Style untuk semua tombol di footer modal konfirmasi */
+.confirm-action-btn {
+    width: 100%; /* Memastikan kedua tombol memiliki lebar yang sama */
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 8px; /* Lebih membulat */
+}
+
+/* Tombol Batal (Abu-abu Sekunder) */
+#confirmDeleteModal .action-btn.secondary-btn {
+    background-color: var(--color-success); 
+    color: #fff;
+}
+
+/* Tombol Ya, Hapus (Merah - Danger) */
+#confirmDeleteModal .action-btn.danger-btn {
+    background-color: var(--color-danger);
+    color: #fff;
+}
+
+/* --- CSS Penting untuk Modal dan Tombol Aksi --- */
+
+.custom-modal { /* pastikan ID #deleteProductModal memiliki style ini */
+    display: none; 
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); 
+}
+
+
+.modal-content {
+    /* Ini seharusnya sudah di-set di dashboard.css, tapi kita perkuat */
+    background-color: #000000ff; /* Biru Muda Sedang */
+    padding: 30px;
+    border-radius: 12px;
+    position: relative;
+    z-index: 1000;
+}
+
+.modal-content .detail-img-area {
+    background-color: var(--color-bg-dark); /* Latar Belakang Terang */
+}
+
+.modal-title-center {
+    text-align: center;
+    margin-bottom: 5px; 
+    font-size: 20px;
+    color: #dc3545; /* Warna Merah untuk Peringatan */
+    padding-bottom: 10px;
+    border-bottom: 1px solid #444;
+}
+
+.modal-action-footer {
+    display: flex;
+    justify-content: space-between; /* Menjaga jarak antara kedua tombol */
+    gap: 15px; 
+    padding-top: 15px;
+    border-top: 1px solid #444; 
+}
+
+.confirm-action-btn {
+    width: 100%; /* Memastikan kedua tombol memiliki lebar yang sama */
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    transition: background-color 0.3s;
+}
+
+/* Tombol Batal */
+.secondary-btn {
+    background-color: #6c757d; 
+    color: #fff; /* Pastikan teks putih */
+}
+
+/* Tombol Hapus Permanen */
+.danger-btn {
+    background-color: var(--color-danger); 
+    color: #fff; /* Pastikan teks putih */
+}
+
+/* --- GAYA KHUSUS MODAL DETAIL --- */
+
+.modal-content.detail-modal-size {
+    width: 600px; 
+    max-width: 90%;
+}
+
+.product-info-grid {
+    display: grid; /* KRUSIAL: Gunakan Grid untuk tata letak 2 kolom */
+    grid-template-columns: 220px 1fr; /* Kolom 1 (Gambar): 220px, Kolom 2 (Detail): sisa ruang */
+    gap: 20px; /* Jarak antara gambar dan teks */
+    align-items: flex-start; /* Sejajarkan konten di atas */
+    padding-bottom: 20px;
+    margin-top: 10px;
+}
+
+/* Container Foto (Harus memotong gambar besar) */
+.detail-img-area {
+    /* Hapus gaya ini dari HTML dan pindahkan ke sini jika perlu, 
+       atau pastikan modal-product-img memiliki style yang benar */
+}
+
+.modal-product-img {
+    width: 100%; /* Ambil lebar 220px dari grid */
+    height: auto;
+    max-height: 250px; /* Batasi tinggi gambar */
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+}
