@@ -1,0 +1,395 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* LAYOUT CONTAINER */
+        .app-layout {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ===========================
+           SIDEBAR STYLE (SAMA PERSIS DENGAN ALAMAT)
+           =========================== */
+        .sidebar {
+            width: 280px;
+            background-color: #000000;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--dark);
+            letter-spacing: -0.5px;
+        }
+        
+        .logo span { color: var(--primary); }
+
+        .sidebar-menu {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .menu-item { width: 100%; }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .menu-link:hover {
+            background-color: #1a1a1a;
+            border-left-color: #ffd700;
+        }
+
+        /* State Active */
+        .menu-item.active .menu-link {
+            background-color: #ffd700;
+            color: #000000;
+            font-weight: bold;
+            border-left-color: #ffd700;
+        }
+
+        /* ===========================
+           MAIN CONTENT AREA
+           =========================== */
+        .main-content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            height: 70px;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .page-title {
+            color: #1e1e1e;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* SCROLLABLE CONTENT */
+        .content {
+            padding: 40px;
+            flex: 1;
+            overflow-y: auto;
+            background-color: #f9f9f9; /* Sedikit abu agar kartu putih kontras */
+        }
+
+        /* ===========================
+           PROFILE CARD STYLES
+           =========================== */
+        .profile-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .profile-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            display: flex;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+            min-height: 500px;
+        }
+
+        /* Bagian Kiri (Foto & Aksi) */
+        .profile-left {
+            width: 320px;
+            padding: 40px;
+            background-color: #fff;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .photo-area {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%; /* Membuat foto bulat modern */
+            background-color: #f0f0f0;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .photo-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-placeholder-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* Tombol di Profil Kiri */
+        .btn-select-photo {
+            background-color: #ffd700;
+            color: #1e1e1e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn-select-photo:hover {
+            transform: scale(1.05);
+        }
+
+        .action-buttons {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 12px;
+            background-color: #fff;
+            color: #1e1e1e;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn-action:hover {
+            background-color: #1e1e1e;
+            color: #ffd700;
+            border-color: #1e1e1e;
+        }
+
+        /* Bagian Kanan (Biodata) */
+        .profile-right {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ffd700; /* Judul Section Kuning Emas */
+            background-color: #1e1e1e; /* Background Hitam agar kontras */
+            padding: 8px 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .data-row {
+            display: flex;
+            margin-bottom: 20px;
+            align-items: baseline;
+            border-bottom: 1px solid #f5f5f5;
+            padding-bottom: 10px;
+        }
+
+        .data-label {
+            width: 160px;
+            color: #666;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .data-value {
+            font-weight: 600;
+            color: #1e1e1e;
+            font-size: 1.05rem;
+            flex-grow: 1;
+        }
+
+        .verification-status {
+            background-color: #e8f5e9; /* Hijau muda soft */
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .verification-status i {
+            font-size: 0.8rem;
+        }
+
+        .biodata-section { margin-bottom: 30px; }
+
+        /* ===========================
+           MODAL STYLES (Sama dengan Alamat)
+           =========================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-container {
+            background-color: #fff;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 12px;
+            padding: 30px;
+            animation: fadeIn 0.3s ease-out;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #1e1e1e;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close-modal:hover { color: #d63031; }
+
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+            font-size: 0.9rem;
+        }
+
+        .form-input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.2s;
+            background-color: #fff;
+        }
+
+        .form-input:focus, select:focus {
+            border-color: #ffd700;
+            box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+        }
+
+        .password-input-container { position: relative; }
+        .password-input-container input { padding-right: 40px; }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888;
+        }
+
+        .btn-save-changes {
+            width: 100%;
+            padding: 15px;
+            background-color: #ffd700;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-save-changes:hover { opacity: 0.9; }

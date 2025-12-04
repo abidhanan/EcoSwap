@@ -1,0 +1,234 @@
+<?php
+echo '
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Manajemen Transaksi</title>
+    <link rel="stylesheet" href="../dashboard/dashboard.css"> 
+    <link rel="stylesheet" href="../transaksi/transaksi.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">Admin Ecoswap</div>
+        <nav>
+            <a href="../dashboard/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="../produk&stok/produk&stok.html"><i class="fas fa-box"></i> Produk & Stok</a>
+            <a href="../pengguna/pengguna.html"><i class="fas fa-users"></i> Pengguna</a>
+            <a href="../transaksi/transaksi.html" class="active"><i class="fas fa-exchange-alt"></i> Transaksi</a>
+            <a href="../support/support.html"><i class="fas fa-comments"></i> Laporan & Support</a>
+            <a href="../pengaturan/pengaturan.html"><i class="fas fa-cog"></i> Pengaturan</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1>Status Logistik Pengiriman</h1>
+            <div class="user-info">
+                <i class="fas fa-bell notification-icon open-modal-btn"></i>
+                <a href="../pengaturan/pengaturan.html" class="profile-btn-header">
+                    <img src="../gambar/dimas.jpg" alt="Profil" class="profile-img-header">
+                </a>
+            </div>
+        </header>
+        
+        <section class="filter-controls transaction-filter">
+            <input type="text" placeholder="Cari berdasarkan ID Transaksi atau Nama Item..." class="search-input">
+            <select class="filter-select">
+                <option value="all">Semua Status Logistik</option>
+                <option value="dikemas">Dikemas</option>
+                <option value="dikirim">Dikirim</option>
+                <option value="diterima">Diterima</option>
+            </select>
+        </section>
+
+        <section class="table-section">
+            <div class="card transaction-list-card">
+                <h3>Daftar Barang dalam Pengiriman</h3>
+                <table class="data-table transaction-table">
+                    <thead>
+                        <tr>
+                            <th>ID Transaksi</th>
+                            <th>Nama Item</th>
+                            <th>Penjual</th>
+                            <th>Pembeli</th>
+                            <th>Status Logistik</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-id="#TRX2201" data-item="Meja Kantor Bekas" data-resi="JNE123456789" data-kurir="JNE Express" 
+                            data-deskripsi="Meja kantor kokoh, kondisi 9/10, sudah dibersihkan." 
+                            data-foto="../gambar/meja_kantor.jpg" data-penerima="Ani S.">
+                            <td>#TRX2201</td>
+                            <td>Meja Kantor Bekas</td>
+                            <td>Furni Store</td>
+                            <td>Ani S.</td>
+                            <td><span class="status status-warning">Dikemas</span></td>
+                            <td>
+                                <button class="action-btn view-btn open-logistic-modal"><i class="fas fa-eye"></i> Detail</button>
+                            </td>
+                        </tr>
+                        <tr data-id="#TRX2202" data-item="Jam Tangan Vintage" data-resi="TIKI987654321" data-kurir="TIKI"
+                            data-deskripsi="Jam tangan kulit asli, ada sedikit goresan di kaca." 
+                            data-foto="../gambar/jam_tangan_vintage.jpg" data-penerima="Budi W.">
+                            <td>#TRX2202</td>
+                            <td>Jam Tangan Vintage</td>
+                            <td>Kolektor Jam</td>
+                            <td>Budi W.</td>
+                            <td><span class="status status-primary">Dikirim</span></td>
+                            <td>
+                                <button class="action-btn view-btn open-logistic-modal"><i class="fas fa-eye"></i> Detail</button>
+                            </td>
+                        </tr>
+                        <tr data-id="#TRX2203" data-item="Kamera DSLR Bekas" data-resi="POS0011223344" data-kurir="POS Indonesia"
+                            data-deskripsi="Kamera Canon dengan lensa 50mm, berfungsi normal." 
+                            data-foto="../gambar/kamera_dslr.jpg" data-penerima="Citra M.">
+                            <td>#TRX2203</td>
+                            <td>Kamera DSLR Bekas</td>
+                            <td>Toko Gadget</td>
+                            <td>Citra M.</td>
+                            <td><span class="status status-success">Diterima</span></td>
+                            <td>
+                                <button class="action-btn view-btn open-logistic-modal"><i class="fas fa-eye"></i> Detail</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div id="logisticDetailModal" class="modal">
+            <div class="modal-content logistic-modal-size">
+                <span class="close-btn logistic-close-btn">&times;</span>
+                <h2>Detail Transaksi Logistik</h2>
+                
+                <div class="logistic-detail-grid">
+                    
+                    <div class="detail-photo-column">
+                        <img id="modal-item-photo" src="" alt="Foto Barang" class="modal-item-img">
+                        <p class="photo-caption">Penjual: <strong id="modal-seller-name"></strong></p>
+                    </div>
+
+                    <div class="detail-info-column">
+                        
+                        <h3 id="modal-item-name" class="item-name-heading"></h3>
+                        <p><strong>ID Transaksi:</strong> <span id="modal-trx-id">#TRXxxxx</span></p>
+                        <p><strong>Penerima:</strong> <span id="modal-penerima"></span></p>
+                        
+                        <hr>
+                        
+                        <h4>Spesifikasi Barang:</h4>
+                        <p class="item-description-text"><span id="modal-item-description"></span></p>
+                        
+                        <hr>
+                        
+                        <h4>Status Logistik:</h4>
+                        <p><strong>Nomor Resi:</strong> <span id="modal-resi">Loading...</span></p>
+                        <p><strong>Kurir Pengantar:</strong> <span id="modal-kurir">Loading...</span></p>
+
+                        </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="notificationModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn notif-close-btn">&times;</span>
+                <h2>Notifikasi Transaksi</h2>
+                <p>Terdapat transaksi yang memerlukan persetujuan payout atau pengecekan resi.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener(\'DOMContentLoaded\', function() {
+            const logisticModal = document.getElementById("logisticDetailModal");
+            const notificationModal = document.getElementById("notificationModal");
+            const notificationBtn = document.querySelector(".notification-icon");
+            const logisticButtons = document.querySelectorAll(".open-logistic-modal");
+
+            // Elemen Modal Logistik
+            const modalTrxId = document.getElementById("modal-trx-id");
+            const modalItemName = document.getElementById("modal-item-name");
+            const modalSellerName = document.getElementById("modal-seller-name");
+            const modalPenerima = document.getElementById("modal-penerima");
+            const modalResi = document.getElementById("modal-resi");
+            const modalKurir = document.getElementById("modal-kurir");
+            const modalItemPhoto = document.getElementById("modal-item-photo"); 
+            const modalItemDescription = document.getElementById("modal-item-description"); 
+            
+            // Tutup Buttons
+            const logisticCloseBtn = logisticModal ? logisticModal.querySelector(".logistic-close-btn") : null;
+            const notifCloseBtn = notificationModal ? notificationModal.querySelector(".close-btn") : null;
+
+
+            // --- LOGIC BUKA MODAL LOGISTIK ---
+            logisticButtons.forEach(button => {
+                button.addEventListener(\'click\', function() {
+                    const row = this.closest(\'tr\');
+                    const data = row.dataset;
+
+                    // Ambil nama penjual dan penerima dari kolom
+                    const sellerName = row.cells[2].textContent.trim();
+                    const receiverName = row.cells[3].textContent.trim();
+
+                    // Isi Modal dengan Data Logistik dan Spesifikasi
+                    if (modalTrxId) modalTrxId.textContent = data.id;
+                    if (modalItemName) modalItemName.textContent = data.item;
+                    if (modalResi) modalResi.textContent = data.resi;
+                    if (modalKurir) modalKurir.textContent = data.kurir;
+                    
+                    // Spesifikasi Barang
+                    if (modalItemPhoto) modalItemPhoto.src = data.foto;
+                    if (modalItemDescription) modalItemDescription.textContent = data.deskripsi;
+                    if (modalSellerName) modalSellerName.textContent = sellerName; 
+                    if (modalPenerima) modalPenerima.textContent = receiverName;
+
+                    if (logisticModal) logisticModal.style.display = "block";
+                });
+            });
+
+            // --- LOGIC BUKA/TUTUP MODAL NOTIFIKASI ---
+            if (notificationBtn && notificationModal) {
+                notificationBtn.onclick = function() { notificationModal.style.display = "block"; }
+            }
+            if (notifCloseBtn) {
+                notifCloseBtn.onclick = function() { notificationModal.style.display = "none"; }
+            }
+            
+            // Logik Tutup Modal X
+            if (logisticCloseBtn) {
+                logisticCloseBtn.onclick = function() { logisticModal.style.display = "none"; }
+            }
+
+            // Menutup Modal jika klik di luar area
+            window.onclick = function(event) {
+                if (event.target === logisticModal) {
+                    logisticModal.style.display = "none";
+                }
+                if (event.target === notificationModal) {
+                    notificationModal.style.display = "none";
+                }
+            };
+            
+            // Logika Simulasi Tombol Aksi (Anda akan mengisi ini di langkah berikutnya)
+            document.querySelectorAll(\'.action-btn\').forEach(button => {
+                button.addEventListener(\'click\', function() {
+                    const action = this.getAttribute(\'data-action\');
+                    if (action === \'payout\') {
+                        console.log(\'Simulasi: Memproses Pencairan Dana.\');
+                    } else if (action === \'verify-ship\') {
+                        console.log(\'Simulasi: Membuka Modal untuk Cek Resi.\');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+';
+?>
