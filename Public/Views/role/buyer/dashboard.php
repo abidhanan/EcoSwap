@@ -194,7 +194,7 @@
             const card = document.createElement('div');
             card.className = 'product-card';
             card.onclick = () => openModal(p);
-            card.innerHTML =
+            card.innerHTML = `
                 <div class="product-img-wrapper">
                     <img src="${p.img}" alt="${p.title}">
                 </div>
@@ -205,7 +205,7 @@
                         <i class="fas fa-map-marker-alt"></i> ${p.loc}
                     </div>
                 </div>
-            
+            `;
             productGrid.appendChild(card);
         });
 
@@ -266,7 +266,7 @@
         
         setInterval(() => {
             index = (index + 1) % 2; // 2 slides
-            track.style.transform = translateX(-${index * 100}%);
+            track.style.transform = `translateX(-${index * 100}%)`;
         }, 5000);
 
     </script>

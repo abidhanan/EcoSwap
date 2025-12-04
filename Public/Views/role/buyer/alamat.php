@@ -260,7 +260,7 @@
                 const newCard = document.createElement('div');
                 newCard.className = 'address-card';
                 newCard.onclick = function() { pilihAlamat(this) };
-                newCard.innerHTML =
+                newCard.innerHTML = `
                     <div class="check-icon"><i class="fas fa-check"></i></div>
                     <div class="card-header">
                         <span class="address-label">${label}</span>
@@ -274,6 +274,7 @@
                             <i class="fas fa-map-marker-alt"></i> ${landmarkText}
                         </div>
                     </div>
+                `;
                 list.prepend(newCard);
                 pilihAlamat(newCard);
                 alert("Alamat baru berhasil ditambahkan!");
