@@ -152,7 +152,7 @@
                 // Pastikan p.price dikonversi ke angka dulu sebelum toLocaleString
                 const priceFormatted = parseInt(p.price).toLocaleString('id-ID');
 
-                card.innerHTML =
+                card.innerHTML = `
                     <div class="product-img-wrapper">
                         <img src="${p.img}" alt="${p.title}" onerror="this.src='../../Assets/img/default.jpg'">
                     </div>
@@ -163,6 +163,7 @@
                             <i class="fas fa-map-marker-alt"></i> ${p.loc}
                         </div>
                     </div>
+                `;
                 
                 productGrid.appendChild(card);
             });

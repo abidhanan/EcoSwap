@@ -1,12 +1,13 @@
 <?php
-echo '
+?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Penjual - Ecoswap</title>
-    <link rel="stylesheet" href="../newDashboard/chat.css">
+    <link rel="stylesheet" href="../../../Assets/css/role/buyer/chat.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 
@@ -52,43 +53,43 @@ echo '
 
     <script>
         // 1. Setup Data Penjual (Simulasi dari LocalStorage atau Default)
-        document.addEventListener(\'DOMContentLoaded\', () => {
-            const storedSeller = localStorage.getItem(\'currentChatSeller\') || \'Penjual Ecoswap\';
-            document.getElementById(\'sellerName\').textContent = storedSeller;
-            document.getElementById(\'sellerAvatar\').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${storedSeller}`;
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedSeller = localStorage.getItem('currentChatSeller') || 'Penjual Ecoswap';
+            document.getElementById('sellerName').textContent = storedSeller;
+            document.getElementById('sellerAvatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${storedSeller}`;
             
             renderMessages();
         });
 
-        const chatArea = document.getElementById(\'chatArea\');
+        const chatArea = document.getElementById('chatArea');
         
         // Data Dummy Awal
         let messages = [
-            { id: 1, type: \'incoming\', text: \'Halo kak, selamat datang di toko kami. Ada yang bisa dibantu?\', time: \'09:00\' },
-            { id: 2, type: \'outgoing\', text: \'Halo gan, barang ini apakah masih ready stoknya?\', time: \'09:05\' },
-            { id: 3, type: \'incoming\', text: \'Masih kak, silakan diorder ya sebelum kehabisan.\', time: \'09:06\' }
+            { id: 1, type: 'incoming', text: 'Halo kak, selamat datang di toko kami. Ada yang bisa dibantu?', time: '09:00' },
+            { id: 2, type: 'outgoing', text: 'Halo gan, barang ini apakah masih ready stoknya?', time: '09:05' },
+            { id: 3, type: 'incoming', text: 'Masih kak, silakan diorder ya sebelum kehabisan.', time: '09:06' }
         ];
 
         // 2. Render Pesan
         function renderMessages() {
-            chatArea.innerHTML = \'\';
+            chatArea.innerHTML = '';
             
             // Tambahkan penanda hari (opsional)
-            const dateSeparator = document.createElement(\'div\');
-            dateSeparator.style.textAlign = \'center\';
-            dateSeparator.style.fontSize = \'0.75rem\';
-            dateSeparator.style.color = \'#888\';
-            dateSeparator.style.margin = \'10px 0\';
-            dateSeparator.textContent = \'Hari Ini\';
+            const dateSeparator = document.createElement('div');
+            dateSeparator.style.textAlign = 'center';
+            dateSeparator.style.fontSize = '0.75rem';
+            dateSeparator.style.color = '#888';
+            dateSeparator.style.margin = '10px 0';
+            dateSeparator.textContent = 'Hari Ini';
             chatArea.appendChild(dateSeparator);
 
             messages.forEach(msg => {
-                const wrapper = document.createElement(\'div\');
+                const wrapper = document.createElement('div');
                 wrapper.className = `message-wrapper ${msg.type}`;
                 
                 // Tombol Aksi (Lapor untuk incoming, Hapus untuk outgoing)
-                let actionButton = \'\';
-                if (msg.type === \'incoming\') {
+                let actionButton = '';
+                if (msg.type === 'incoming') {
                     actionButton = `
                         <div class="message-actions">
                             <button class="action-icon-btn report" title="Laporkan Chat Ini" onclick="reportMessage(${msg.id})">
@@ -122,30 +123,30 @@ echo '
 
         // 3. Kirim Pesan
         function sendMessage() {
-            const input = document.getElementById(\'messageInput\');
+            const input = document.getElementById('messageInput');
             const text = input.value.trim();
             
             if (text) {
                 const now = new Date();
-                const timeString = now.getHours().toString().padStart(2, \'0\') + \':\' + now.getMinutes().toString().padStart(2, \'0\');
+                const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
                 
                 const newMsg = {
                     id: Date.now(),
-                    type: \'outgoing\',
+                    type: 'outgoing',
                     text: text,
                     time: timeString
                 };
                 
                 messages.push(newMsg);
                 renderMessages();
-                input.value = \'\';
+                input.value = '';
 
                 // Simulasi Balasan Otomatis
                 setTimeout(() => {
                     const replyMsg = {
                         id: Date.now() + 1,
-                        type: \'incoming\',
-                        text: \'Terima kasih pesannya kak, kami akan segera membalas.\',
+                        type: 'incoming',
+                        text: 'Terima kasih pesannya kak, kami akan segera membalas.',
                         time: timeString
                     };
                     messages.push(replyMsg);
@@ -155,12 +156,12 @@ echo '
         }
 
         function handleEnter(e) {
-            if (e.key === \'Enter\') sendMessage();
+            if (e.key === 'Enter') sendMessage();
         }
 
         // 4. Fitur Batal Kirim (Hapus)
         function deleteMessage(id) {
-            if (confirm(\'Batalkan kirim pesan ini? (Hapus untuk saya)\')) {
+            if (confirm('Batalkan kirim pesan ini? (Hapus untuk saya)')) {
                 messages = messages.filter(m => m.id !== id);
                 renderMessages();
             }
@@ -168,14 +169,14 @@ echo '
 
         // 5. Fitur Laporkan
         function reportMessage(id) {
-            if (confirm(\'Laporkan pesan ini sebagai spam atau penipuan?\')) {
-                alert(\'Laporan diterima. Tim Ecoswap akan meninjau percakapan ini.\');
+            if (confirm('Laporkan pesan ini sebagai spam atau penipuan?')) {
+                alert('Laporan diterima. Tim Ecoswap akan meninjau percakapan ini.');
             }
         }
 
         // 6. Navigasi Kembali
         function kembaliKeDashboard() {
-            window.location.href = \'../newDashboard/dashboard.html\';
+            window.location.href = 'dashboard.php';
         }
 
         function scrollToBottom() {
@@ -185,5 +186,3 @@ echo '
     </script>
 </body>
 </html>
-';
-?>

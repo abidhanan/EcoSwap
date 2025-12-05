@@ -219,7 +219,7 @@
                 }
 
                 // 3. Render HTML ke dalam modal
-                modalContent.innerHTML =
+                modalContent.innerHTML = `
                     <div class="detail-row">
                         <span class="detail-label">Tipe Transaksi</span>
                         <span class="detail-value" style="text-transform:uppercase;">${typeText}</span>
@@ -246,6 +246,7 @@
                         <span>Total Harga</span>
                         <span>${data.price}</span>
                     </div>
+                `;
                 
 
                 // 4. Tampilkan Modal
