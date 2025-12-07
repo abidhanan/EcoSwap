@@ -32,7 +32,7 @@
                     <a href="histori.php" class="menu-link">Histori</a>
                 </li>
                 <li class="menu-item">
-                    <a href="#" class="menu-link">Toko Saya</a>
+                    <a href="../seller/dashboard.php" class="menu-link">Toko Saya</a>
                 </li>
             </ul>
         </aside>

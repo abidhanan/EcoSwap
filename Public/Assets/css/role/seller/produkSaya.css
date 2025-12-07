@@ -1,0 +1,221 @@
+:root {
+            --primary: #ffd700;       
+            --dark: #1e1e1e;          
+            --light: #ffffff;         
+            --bg-body: #f5f5f5;       
+            --border: #e0e0e0;
+            --success: #2ecc71;
+            --danger: #ff4757;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--dark); min-height: 100vh; display: flex; }
+        a { text-decoration: none; color: inherit; }
+
+        /* LAYOUT */
+        .app-layout { display: flex; width: 100%; height: 100vh; overflow: hidden; }
+
+        /* SIDEBAR (Sama dengan Toko Saya) */
+        .sidebar { width: 280px; background-color: #000; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { padding: 20px; height: 70px; display: flex; align-items: center; }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--dark);
+            letter-spacing: -0.5px;
+        }
+        
+        .logo span { color: var(--primary); }
+        .sidebar-menu { list-style: none; margin-top: 10px; }
+        .menu-item { width: 100%; }
+        .menu-link { display: flex; align-items: center; padding: 15px 25px; color: #fff; font-weight: 500; border-left: 4px solid transparent; transition: 0.2s; }
+        .menu-link:hover { background-color: #1a1a1a; border-left-color: var(--primary); }
+        .menu-item.active .menu-link { background-color: var(--primary); color: #000; font-weight: bold; border-left-color: var(--primary); }
+
+        /* MAIN CONTENT */
+        .main-content-wrapper { flex: 1; display: flex; flex-direction: column; background-color: #fff; overflow: hidden; }
+        .header { height: 70px; background-color: #fff; display: flex; align-items: center; padding: 0 40px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .page-title { font-size: 1.5rem; font-weight: bold; }
+        .content { padding: 40px; flex: 1; overflow-y: auto; background-color: var(--bg-body); }
+        .product-container { max-width: 1000px; margin: 0 auto; }
+
+        /* --- HALAMAN PRODUK SAYA --- */
+        
+        /* 1. Tombol Tambah & Header Section */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .btn-add-product {
+            background-color: var(--dark);
+            color: var(--primary);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn-add-product:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+
+        /* 2. Tabs Kategori */
+        .tabs-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #888;
+            cursor: pointer;
+            position: relative;
+            top: 2px; /* Overlap border bottom */
+            transition: color 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--dark);
+            border-bottom: 3px solid var(--primary);
+        }
+
+        /* 3. Product Grid (Card Style) */
+        .my-product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
+        }
+
+        .my-product-card {
+            background-color: var(--light);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+            position: relative;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .my-product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+
+        .card-img-wrapper {
+            height: 180px;
+            background-color: #f0f0f0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Overlay untuk barang terjual */
+        .sold-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            transform: rotate(-15deg);
+            border: 4px solid var(--primary);
+            border-radius: 12px; 
+            display: none;
+        }
+
+        .my-product-card.sold .sold-overlay { display: flex; }
+        .my-product-card.sold { opacity: 0.8; }
+
+        .card-body { padding: 15px; }
+        .card-title { font-weight: 600; font-size: 1rem; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-price { font-weight: 800; color: var(--dark); font-size: 1.1rem; margin-bottom: 10px; }
+        
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #666;
+            border-top: 1px dashed #eee;
+            padding-top: 8px;
+        }
+
+        /* MODAL COMMON STYLES */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 200;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        
+        .modal-container {
+            background: #fff; padding: 30px; border-radius: 12px;
+            width: 100%; max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease-out;
+            max-height: 90vh; overflow-y: auto;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 20px; color: var(--dark); border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: inline-block; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+        .form-input:focus, .form-textarea:focus { border-color: var(--primary); outline: none; }
+
+        .upload-box {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 5px;
+        }
+        .upload-box:hover { border-color: var(--primary); background-color: #fffef0; }
+        .upload-icon { font-size: 2rem; color: #ccc; margin-bottom: 10px; }
+        .preview-img { max-width: 100%; max-height: 150px; margin-top: 10px; border-radius: 6px; display: none; }
+
+        .btn-submit { 
+            width: 100%; padding: 12px; background: var(--primary); border: none; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; color: var(--dark);
+        }
+        .btn-submit:hover { opacity: 0.9; }
+        
+        /* Tombol Delete (Merah) */
+        .btn-danger {
+            background: var(--danger); color: white; margin-top: 10px;
+        }
+        .btn-danger:hover { background: #e84118; }
+
+        /* Tombol Edit (Hitam) */
+        .btn-edit {
+            background: var(--dark); color: var(--primary); 
+        }
+        .btn-edit:hover { background: #333; }
+
+        .close-modal { float: right; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+        .close-modal:hover { color: var(--danger); }
+
+        /* Detail Modal Specifics */
+        .detail-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; }
+        .detail-price { font-size: 1.5rem; font-weight: bold; color: var(--primary); margin-bottom: 15px; text-shadow: 0 0 1px black; }
+        .detail-desc-box { background: #f9f9f9; padding: 15px; border-radius: 8px; font-size: 0.95rem; line-height: 1.6; color: #555; margin-bottom: 20px; }
+        .detail-actions { display: flex; gap: 10px; }
+        .detail-actions button { flex: 1; }

@@ -1,0 +1,257 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* LAYOUT CONTAINER */
+        .app-layout {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ===========================
+           SIDEBAR STYLE (KONSISTEN)
+           =========================== */
+        .sidebar {
+            width: 280px;
+            background-color: #000000;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--dark);
+            letter-spacing: -0.5px;
+        }
+        
+        .logo span { color: var(--primary); }
+
+        .sidebar-menu {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .menu-item { width: 100%; }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .menu-link:hover {
+            background-color: #1a1a1a;
+            border-left-color: #ffd700;
+        }
+
+        /* State Active */
+        .menu-item.active .menu-link {
+            background-color: #ffd700;
+            color: #000000;
+            font-weight: bold;
+            border-left-color: #ffd700;
+        }
+
+        /* ===========================
+           MAIN CONTENT AREA
+           =========================== */
+        .main-content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            height: 70px;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .page-title {
+            color: #1e1e1e;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* SCROLLABLE CONTENT */
+        .content {
+            padding: 40px;
+            flex: 1;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+
+        /* ===========================
+           SHOP DASHBOARD STYLES
+           =========================== */
+        .shop-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 1. Shop Profile Header (Top Left Icon) */
+        .shop-header-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        .shop-avatar-container {
+            position: relative;
+        }
+
+        .shop-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #ffd700; /* Ring Kuning */
+        }
+
+        .shop-status-dot {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 18px;
+            height: 18px;
+            background-color: #2ecc71;
+            border: 2px solid #fff;
+            border-radius: 50%;
+        }
+
+        .shop-info h2 {
+            font-size: 1.5rem;
+            color: #1e1e1e;
+            margin-bottom: 5px;
+        }
+
+        .shop-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .shop-rating i { color: #ffd700; }
+
+        .btn-visit-shop {
+            margin-left: auto;
+            padding: 10px 20px;
+            background-color: #1e1e1e;
+            color: #ffd700;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn-visit-shop:hover {
+            background-color: #333;
+        }
+
+        /* 2. Shop Menu Grid */
+        .shop-menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .shop-menu-item {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .shop-menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+            border-color: #ffd700;
+        }
+
+        .menu-icon-circle {
+            width: 70px;
+            height: 70px;
+            background-color: #f5f5f5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            color: #1e1e1e;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .shop-menu-item:hover .menu-icon-circle {
+            background-color: #1e1e1e;
+            color: #ffd700;
+        }
+
+        .menu-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Specific Icons Adjustments */
+        .icon-products { color: #e67e22; }
+        .icon-orders { color: #3498db; }
+        .icon-finance { color: #2ecc71; }
+        .icon-performance { color: #9b59b6; }
+        .icon-live { color: #e74c3c; }
