@@ -12,13 +12,12 @@
 </head>
 
 <body>
-
     <div class="app-layout">
         
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo" onclick="window.location.href='dashboard.php'" style="cursor: pointer;">ECO<span>SWAP</span></div>
+                <div class="logo" onclick="goToDashboard()" style="cursor: pointer;">ECO<span>SWAP</span></div>
             </div>
             <ul class="sidebar-menu">
                 <li class="menu-item active"> <!-- Aktif di halaman Profil -->
@@ -109,7 +108,6 @@
                                     <span class="verification-status"><i class="fas fa-check-circle"></i> Terverifikasi</span>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -190,12 +188,9 @@
     <script>
         // FUNGSI NAVIGASI
         function goToDashboard() {
-            alert("Navigasi ke halaman Dashboard");
             window.location.href = 'dashboard.php';
         }
-
         function goToChat() {
-            alert("Navigasi ke halaman Chat");
             window.location.href = 'pesan.php';
         }
 
@@ -217,7 +212,6 @@
         function showModal(modalId) {
             document.getElementById(modalId).classList.add('open');
         }
-
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('open');
         }
@@ -251,12 +245,10 @@
             e.preventDefault();
             const newPass = document.getElementById('new-password').value;
             const confPass = document.getElementById('confirm-password').value;
-
             if (newPass !== confPass) {
                 alert("Konfirmasi password baru tidak cocok!");
                 return;
             }
-
             alert(`Password berhasil diubah. (Simulasi)`);
             closeModal('ubah-password-modal');
             this.reset();
