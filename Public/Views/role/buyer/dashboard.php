@@ -9,6 +9,35 @@
     <title>Dashboard - Ecoswap</title>
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .message-wrapper {
+            /* position: relative; */ /* Tidak lagi menggunakan position:absolute */
+            align-items: center; /* Vertikalkan bubble, waktu, dan aksi */
+            gap: 8px; /* Beri jarak antar elemen */
+        }
+        .message-actions {
+            display: none; /* Sembunyikan menu aksi secara default */
+            /* position: absolute; */ /* Kembali ke alur normal (flex item) */
+            background-color: #f0f0f0;
+            border-radius: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 2px 5px;
+            gap: 5px;
+            flex-shrink: 0; /* Mencegah tombol menyusut saat ruang sempit */
+        }
+        .message-wrapper.outgoing .message-actions {
+            order: -1; /* Pindahkan ke paling kiri untuk pesan keluar */
+        }
+        .message-wrapper.incoming .message-actions {
+            /* Biarkan di posisi default (paling kanan) untuk pesan masuk */
+        }
+        .message-wrapper.actions-visible .message-actions {
+            display: flex; /* Tampilkan menu aksi saat wrapper memiliki kelas ini */
+        }
+        .action-icon-btn { background: none; border: none; cursor: pointer; font-size: 0.8rem; color: #555; padding: 4px; }
+        .action-icon-btn.report:hover { color: #f39c12; }
+        .action-icon-btn.delete:hover { color: #e74c3c; }
+    </style>
 </head>
 
 <body>
@@ -562,17 +591,27 @@
                 const wrapper = document.createElement('div');
                 wrapper.className = `message-wrapper ${msg.type}`;
 
-                // Tombol Aksi untuk semua pesan (Lapor dan Hapus)
-                const actionButton = `
-                    <div class="message-actions">
-                        <button class="action-icon-btn report" title="Laporkan Chat Ini" onclick="reportMessage(${msg.id})">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </button>
-                        <button class="action-icon-btn delete" title="Batal Kirim / Hapus" onclick="deleteMessage(${msg.id})">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                `;
+                // Tombol Aksi (Lapor atau Hapus) dibuat secara kondisional
+                let actionButton = '';
+                if (msg.type === 'incoming') {
+                    // Pesan orang lain: bisa dilaporkan
+                    actionButton = `
+                        <div class="message-actions">
+                            <button class="action-icon-btn report" title="Laporkan Chat Ini" onclick="reportMessage(${msg.id})">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </button>
+                        </div>
+                    `;
+                } else if (msg.type === 'outgoing') {
+                    // Pesan sendiri: bisa dihapus
+                    actionButton = `
+                        <div class="message-actions">
+                            <button class="action-icon-btn delete" title="Batal Kirim / Hapus" onclick="deleteMessage(${msg.id})">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                }
 
                 wrapper.innerHTML = `
                     <div class="message-bubble" onclick="toggleMessageActions(this)">
@@ -630,7 +669,7 @@
         function deleteMessage(id) {
             if (confirm('Batalkan kirim pesan ini? (Hapus untuk saya)')) {
                 messages = messages.filter(m => m.id !== id);
-                renderMessages();
+                renderMessagesSidebar();
             }
         }
 
@@ -732,6 +771,22 @@
         function scrollToBottomSidebar() {
             const chatMessagesSidebar = document.getElementById('chatMessagesSidebar');
             chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
+        }
+
+        // Fungsi untuk menampilkan/menyembunyikan menu aksi pada pesan
+        function toggleMessageActions(bubbleElement) {
+            const wrapper = bubbleElement.closest('.message-wrapper');
+            if (!wrapper) return;
+
+            // Tutup semua menu aksi lain yang mungkin terbuka
+            document.querySelectorAll('.message-wrapper.actions-visible').forEach(openWrapper => {
+                if (openWrapper !== wrapper) {
+                    openWrapper.classList.remove('actions-visible');
+                }
+            });
+
+            // Toggle (buka/tutup) menu aksi untuk pesan yang diklik
+            wrapper.classList.toggle('actions-visible');
         }
 
     </script>

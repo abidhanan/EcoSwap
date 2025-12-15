@@ -15,25 +15,47 @@
 
     <div class="app-layout">
         
-        <!-- SIDEBAR -->
+        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo" onclick="window.location.href='dashboard.php'" style="cursor: pointer;">ECO<span>SWAP</span></div>
+                <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
+                    ECO<span>SWAP</span>
+                </div>
             </div>
+
             <ul class="sidebar-menu">
                 <li class="menu-item">
-                    <a href="profil.php" class="menu-link">Biodata Diri</a>
+                    <a href="profil.php" class="menu-link">
+                        <i class="fas fa-user"></i>
+                        <span>Biodata Diri</span>
+                    </a>
                 </li>
                 <li class="menu-item">
-                    <a href="alamat.php" class="menu-link">Alamat</a>
+                    <a href="alamat.php" class="menu-link">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Alamat</span>
+                    </a>
                 </li>
-                <li class="menu-item active"> <!-- Aktif di halaman Histori -->
-                    <a href="histori.php" class="menu-link">Histori</a>
+                <li class="menu-item active">
+                    <a href="histori.php" class="menu-link">
+                        <i class="fas fa-history"></i>
+                        <span>Histori</span>
+                    </a>
                 </li>
                 <li class="menu-item">
-                    <a href="../seller/dashboard.php" class="menu-link">Toko Saya</a>
+                    <a href="../seller/dashboard.php" class="menu-link">
+                        <i class="fas fa-store"></i>
+                        <span>Toko Saya</span>
+                    </a>
                 </li>
             </ul>
+
+            <div class="sidebar-footer">
+                <a href="../../guest/login.php" class="logout-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
         </aside>
 
         <!-- MAIN CONTENT WRAPPER -->

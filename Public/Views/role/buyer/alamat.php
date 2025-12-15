@@ -14,38 +14,58 @@
 <body>
     <div class="app-layout">
         
-        <!-- SIDEBAR (Baru) -->
+        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo" onclick="window.location.href='dashboard.php'" style="cursor: pointer;">ECO<span>SWAP</span></div>
+                <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
+                    ECO<span>SWAP</span>
+                </div>
             </div>
+
             <ul class="sidebar-menu">
                 <li class="menu-item">
-                    <a href="profil.php" class="menu-link">Biodata Diri</a>
+                    <a href="profil.php" class="menu-link">
+                        <i class="fas fa-user"></i>
+                        <span>Biodata Diri</span>
+                    </a>
                 </li>
-                <li class="menu-item active"> <!-- Aktif di halaman Alamat -->
-                    <a href="alamat.php" class="menu-link">Alamat</a>
+                <li class="menu-item active">
+                    <a href="alamat.php" class="menu-link">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Alamat</span>
+                    </a>
                 </li>
                 <li class="menu-item">
-                    <a href="histori.php" class="menu-link">Histori</a>
+                    <a href="histori.php" class="menu-link">
+                        <i class="fas fa-history"></i>
+                        <span>Histori</span>
+                    </a>
                 </li>
                 <li class="menu-item">
-                    <a href="../seller/dashboard.php" class="menu-link">Toko Saya</a>
+                    <a href="../seller/dashboard.php" class="menu-link">
+                        <i class="fas fa-store"></i>
+                        <span>Toko Saya</span>
+                    </a>
                 </li>
             </ul>
+
+            <div class="sidebar-footer">
+                <a href="../../guest/login.php" class="logout-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
         </aside>
 
         <!-- MAIN CONTENT WRAPPER -->
         <main class="main-content-wrapper">
-            <!-- HEADER KONTEN -->
-            <div class="header">
-                <div class="page-title">Alamat</div>
-                <!-- Spacer atau User Profile Icon bisa ditaruh di sini -->
-                <div style="width: 20px;"></div> 
-            </div>
+            <!-- HEADER -->
+            <header class="header">
+                <h1 class="page-title">Alamat</h1>
+            </header>
 
-            <!-- SCROLLABLE CONTENT -->
-            <div class="content">
+            <!-- CONTENT -->
+            <section class="content">
                 <!-- Tombol Tambah -->
                 <button class="add-btn" onclick="tambahAlamatBaru()">
                     <i class="fas fa-plus"></i> Tambah Alamat Baru
@@ -106,7 +126,7 @@
                     </div>
 
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
@@ -170,10 +190,8 @@
     <script>
         let editingCard = null;
 
-        function kembaliKeProfil() {
-            // Simulasi navigasi
-            alert("Kembali ke Dashboard/Profil");
-        }
+        /* Navigasi */
+        const goToDashboard = () => window.location.href = 'dashboard.php';
 
         function pilihAlamat(element) {
             const cards = document.querySelectorAll('.address-card');

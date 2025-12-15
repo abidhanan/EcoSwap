@@ -1,351 +1,560 @@
+/* ===========================
+   GLOBAL RESET
+   =========================== */
 * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
-        body {
-            background-color: #f5f5f5;
-            color: #333;
-            min-height: 100vh;
-            display: flex;
-            /* Hapus justify-content center agar layout bisa full width */
-        }
+body {
+    min-height: 100vh;
+    display: flex;
+    background-color: #f5f5f5;
+    color: #333;
+}
 
-        /* LAYOUT CONTAINER: SIDEBAR + CONTENT */
-        .app-layout {
-            display: flex;
-            width: 100%;
-            height: 100vh; /* Full height viewport */
-            overflow: hidden; /* Mencegah scroll body ganda */
-        }
+/* ===========================
+   APP LAYOUT
+   =========================== */
+.app-layout {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
 
-        /* ===========================
-           SIDEBAR STYLE (Sesuai Gambar)
-           =========================== */
-        .sidebar {
-            width: 280px; /* Lebar sidebar */
-            background-color: #000000; /* Hitam pekat sesuai gambar */
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
+/* ===========================
+   SIDEBAR
+   =========================== */
+.sidebar {
+    width: 280px;
+    background-color: #000;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+}
 
-        .sidebar-header {
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            height: 70px; /* Samakan tinggi dengan header konten */
-        }
+.sidebar-header {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid #1a1a1a;
+}
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--dark);
-            letter-spacing: -0.5px;
-        }
-        
-        .logo span { color: var(--primary); }
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+}
 
-        .sidebar-menu {
-            list-style: none;
-            margin-top: 10px;
-        }
+.logo span { color: #ffd700; }
 
-        .menu-item {
-            width: 100%;
-        }
+.sidebar-menu {
+    list-style: none;
+    margin-top: 10px;
+    flex: 1;
+}
 
-        .menu-link {
-            display: flex;
-            align-items: center;
-            padding: 15px 25px;
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            border-left: 4px solid transparent; /* Indikator hover */
-        }
+.menu-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 25px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    border-left: 4px solid transparent;
+    transition: 0.2s;
+}
 
-        .menu-link:hover {
-            background-color: #1a1a1a;
-            border-left-color: #ffd700;
-        }
+.menu-link:hover {
+    background-color: #1a1a1a;
+    border-left-color: #ffd700;
+}
 
-        /* State Active (Kuning) */
-        .menu-item.active .menu-link {
-            background-color: #ffd700;
-            color: #000000; /* Teks hitam pada background kuning */
-            font-weight: bold;
-            border-left-color: #ffd700;
-        }
+.menu-link i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+}
 
-        /* ===========================
-           MAIN CONTENT AREA
-           =========================== */
-        .main-content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: #ffffff;
-            position: relative;
-            overflow: hidden; /* Agar scroll ada di dalam content */
-        }
+.menu-item.active .menu-link {
+    background-color: #ffd700;
+    color: #000;
+    font-weight: bold;
+}
 
-        /* HEADER KONTEN (Diubah sedikit agar menyatu) */
-        .header {
-            height: 70px;
-            background-color: #ffffff; /* Ubah jadi putih agar bersih, atau tetap hitam jika mau */
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 40px;
-            border-bottom: 1px solid #e0e0e0;
-            flex-shrink: 0;
-        }
+/* Sidebar Footer - Logout */
+.sidebar-footer {
+    margin-top: auto;
+    padding: 20px;
+    border-top: 1px solid #333;
+}
 
-        .page-title {
-            color: #1e1e1e; /* Judul gelap */
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
+.logout-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: all 0.3s ease;
+}
 
-        /* CONTENT SCROLLABLE AREA */
-        .content {
-            padding: 40px; /* Padding lebih besar untuk desktop */
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
+.logout-link:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
 
-        /* Tombol Tambah Alamat */
-        .add-btn {
-            width: fit-content;
-            padding: 12px 24px;
-            background-color: #1e1e1e;
-            color: #ffd700;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 30px;
-            transition: background 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            align-self: flex-start;
-        }
+.logout-link i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+}
 
-        .add-btn:hover {
-            background-color: #333;
-        }
+/* ===========================
+   MAIN CONTENT
+   =========================== */
+.main-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+}
 
-        /* Kartu Alamat - Grid System */
-        .address-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px; /* Jarak antar kartu lebih lega */
-        }
+.header {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    border-bottom: 1px solid #e0e0e0;
+}
 
-        .address-card {
-            background-color: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            padding: 25px; /* Padding kartu lebih besar */
-            position: relative;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+.page-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
 
-        .address-card .card-body {
-            flex: 1;
-        }
+.content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+}
 
-        .address-card.active {
-            border: 2px solid #ffd700;
-            background-color: #fffae6;
-        }
+/* ===========================
+   MAIN CONTENT
+   =========================== */
+.main-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+}
 
-        .address-card:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-            transform: translateY(-3px);
-        }
+.header {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    border-bottom: 1px solid #e0e0e0;
+}
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+.page-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
 
-        .address-label {
-            font-weight: bold;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            background-color: #eee;
-            padding: 4px 10px;
-            border-radius: 6px;
-            color: #555;
-        }
+.content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+}
 
-        .address-card.active .address-label {
-            background-color: #ffd700;
-            color: #1e1e1e;
-        }
+/* ===========================
+   ADDRESS PAGE SPECIFIC
+   =========================== */
 
-        .edit-btn {
-            color: #aaa;
-            cursor: pointer;
-            font-size: 1.1rem;
-            padding: 8px;
-            border-radius: 50%;
-            transition: all 0.2s;
-        }
+/* Tombol Tambah Alamat */
+.add-btn {
+    width: fit-content;
+    padding: 14px 28px;
+    background-color: #1e1e1e;
+    color: #ffd700;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
 
-        .edit-btn:hover {
-            color: #1e1e1e;
-            background-color: #eee;
-        }
+.add-btn:hover {
+    background-color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
 
-        .receiver-name {
-            font-weight: 700;
-            font-size: 1.2rem; /* Nama lebih besar */
-            color: #1e1e1e;
-            margin-bottom: 5px;
-        }
+/* Kartu Alamat - Grid System */
+.address-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
 
-        .receiver-phone {
-            color: #666;
-            font-size: 1rem;
-            margin-bottom: 12px;
-            display: block;
-        }
+.address-card {
+    background-color: #fff;
+    border: 2px solid #e0e0e0;
+    border-radius: 14px;
+    padding: 25px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
 
-        .address-detail {
-            color: #444;
-            line-height: 1.6;
-            font-size: 1rem;
-            margin-bottom: 15px;
-        }
+.address-card .card-body {
+    flex: 1;
+}
 
-        .address-landmark {
-            margin-top: auto;
-            padding-top: 12px;
-            border-top: 1px dashed #eee;
-            font-size: 0.9rem;
-            color: #1e1e1e;
-            font-style: italic;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+.address-card.active {
+    border: 2px solid #ffd700;
+    background-color: #fffdf0;
+    box-shadow: 0 6px 16px rgba(255, 215, 0, 0.25);
+    transform: scale(1.02);
+}
 
-        .address-landmark i {
-            color: #d63031;
-        }
+.address-card:hover:not(.active) {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+    border-color: #ccc;
+}
 
-        /* Checkmark Icon */
-        .check-icon {
-            position: absolute;
-            top: -12px;
-            right: -12px;
-            background-color: #1e1e1e;
-            color: #ffd700;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            opacity: 0;
-            transform: scale(0);
-            transition: all 0.2s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
+.address-card:active {
+    transform: scale(0.98);
+    transition: all 0.1s ease;
+}
 
-        .address-card.active .check-icon {
-            opacity: 1;
-            transform: scale(1);
-        }
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
 
-        /* MODAL STYLES (Tetap sama) */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 200;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
+.address-label {
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background-color: #f0f0f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: #555;
+}
 
-        .modal-overlay.open {
-            display: flex;
-        }
+.address-card.active .address-label {
+    background-color: #ffd700;
+    color: #1e1e1e;
+}
 
-        .modal-container {
-            background-color: #fff;
-            width: 100%;
-            max-width: 500px;
-            border-radius: 12px;
-            padding: 30px;
-            animation: fadeIn 0.3s ease-out;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
+.edit-btn {
+    color: #aaa;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
+.edit-btn:hover {
+    color: #1e1e1e;
+    background-color: #f0f0f0;
+}
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+.receiver-name {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #1e1e1e;
+    margin-bottom: 5px;
+}
 
-        .modal-title {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: #1e1e1e;
-        }
+.receiver-phone {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    display: block;
+}
 
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #888;
-            cursor: pointer;
-        }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
-        .form-input, .form-textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; outline: none; }
-        .form-input:focus, .form-textarea:focus { border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2); }
-        
-        .label-options { display: flex; gap: 10px; }
-        .label-option-input { display: none; }
-        .label-option-pill { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
-        .label-option-input:checked + .label-option-pill { background-color: #1e1e1e; color: #ffd700; border-color: #1e1e1e; }
-        
-        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
-        .submit-btn { flex: 1; padding: 15px; background-color: #ffd700; color: #1e1e1e; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .delete-btn { flex: 1; padding: 15px; background-color: #ff4757; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; display: none; }
+.address-detail {
+    color: #444;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+}
+
+.address-landmark {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+    font-size: 0.9rem;
+    color: #1e1e1e;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.address-landmark i {
+    color: #d63031;
+}
+
+/* Checkmark Icon */
+.check-icon {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background-color: #1e1e1e;
+    color: #ffd700;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.address-card.active .check-icon {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ===========================
+   MODAL
+   =========================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 200;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal-container {
+    width: 100%;
+    max-width: 520px;
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 35px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@keyframes modalSlideIn {
+    from { 
+        opacity: 0; 
+        transform: scale(0.9) translateY(-20px);
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.modal-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    cursor: pointer;
+    color: #888;
+    transition: color 0.2s;
+}
+
+.close-modal:hover {
+    color: #1e1e1e;
+}
+
+.form-group { 
+    margin-bottom: 20px; 
+}
+
+.form-label { 
+    display: block; 
+    margin-bottom: 8px; 
+    font-weight: 600;
+    color: #444;
+}
+
+.form-input, .form-textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+}
+
+.form-input:focus, .form-textarea:focus {
+    border-color: #ffd700;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255,215,0,0.2);
+}
+
+.label-options { 
+    display: flex; 
+    gap: 10px; 
+}
+
+.label-option-input { 
+    display: none; 
+}
+
+.label-option-pill { 
+    padding: 10px 18px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.label-option-pill:hover {
+    border-color: #ffd700;
+    background-color: #fffdf0;
+}
+
+.label-option-input:checked + .label-option-pill { 
+    background-color: #1e1e1e;
+    color: #ffd700;
+    border-color: #1e1e1e;
+    font-weight: 600;
+}
+
+.modal-actions { 
+    display: flex; 
+    gap: 12px; 
+    margin-top: 25px; 
+}
+
+.submit-btn { 
+    flex: 1;
+    padding: 16px;
+    background-color: #ffd700;
+    color: #1e1e1e;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.submit-btn:hover {
+    background-color: #ffed4e;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 215, 0, 0.4);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+.delete-btn { 
+    flex: 1;
+    padding: 16px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    display: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.delete-btn:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+}
+
+.delete-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+@media (max-width: 900px) {
+    .address-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .content {
+        padding: 20px;
+    }
+    
+    .add-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 240px;
+    }
+    
+    .header {
+        padding: 0 20px;
+    }
+    
+    .page-title {
+        font-size: 1.3rem;
+    }
+}

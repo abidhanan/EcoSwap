@@ -1,4 +1,39 @@
 <?php
+// Simulasi Data Produk Unggulan (Biasanya dari Database)
+$featured_products = [
+    [
+        "id" => 1,
+        "title" => "Kamera Canon DSLR 600D Lensa Kit",
+        "price" => 3100000,
+        "loc" => "Surabaya",
+        "img" => "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=400",
+        "category" => "Elektronik"
+    ],
+    [
+        "id" => 2,
+        "title" => "Sepeda Balap Polygon United",
+        "price" => 1800000,
+        "loc" => "Semarang",
+        "img" => "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&q=80&w=400",
+        "category" => "Hobi"
+    ],
+    [
+        "id" => 3,
+        "title" => "Headphone Sony WH-1000XM4",
+        "price" => 2500000,
+        "loc" => "Yogyakarta",
+        "img" => "https://images.unsplash.com/photo-1613040809024-b4ef7ba99bc3?auto=format&fit=crop&q=80&w=400",
+        "category" => "Elektronik"
+    ],
+    [
+        "id" => 4,
+        "title" => "Jaket Denim Vintage Levi's",
+        "price" => 450000,
+        "loc" => "Bandung",
+        "img" => "https://images.unsplash.com/photo-1576871337622-98d48d1cf531?auto=format&fit=crop&q=80&w=400",
+        "category" => "Fashion"
+    ]
+];
 ?>
 
 <!DOCTYPE html>
@@ -6,227 +41,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Ecoswap</title>
-    <link rel="stylesheet" href="../../Public/Assets/css/auth/dashboard.css">
+    <title>Ecoswap - Jual Beli Barang Bekas Berkualitas</title>
+    <link rel="stylesheet" href="index.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <nav class="navbar">
-        <div class="nav-left">
+
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
             <div class="logo">ECO<span>SWAP</span></div>
-            <div class="search-container">
-                <input type="text" class="search-input" placeholder="Cari barang bekas berkualitas...">
-                <i class="fas fa-search search-icon"></i>
+            
+            <div class="nav-links">
+                <a href="#home">Beranda</a>
+                <a href="#features">Keunggulan</a>
+                <a href="#products">Produk</a>
+                <a href="#contact">Kontak</a>
             </div>
-        </div>
-        <div class="nav-right">
-            <button class="login-btn" onclick="window.location.href='../../Public/Views/guest/login.php'">Masuk</button>
-            <button class="register-btn" onclick="window.location.href='../../Public/Views/guest/register.php'">Daftar</button>
+
+            <div class="nav-auth">
+                <button class="btn-login" onclick="window.location.href='../../Public/Views/guest/login.php'">Masuk</button>
+                <button class="btn-register" onclick="window.location.href='../../Public/Views/guest/register.php'">Daftar</button>
+            </div>
+            
+            <div class="hamburger">
+                <i class="fas fa-bars"></i>
+            </div>
         </div>
     </nav>
 
-    <div class="container">
-        <div class="hero-section">
-            <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide">
-                    <img src="https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=1200" alt="Slide 1">
-                    <div class="hero-text">
-                        <h1>Barang Bekas <br><span>Berkualitas</span></h1>
-                        <p>Hemat uang dan selamatkan bumi.</p>
-                    </div>
-                </div>
-                <div class="carousel-slide">
-                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=1200" alt="Slide 2">
-                        <div class="hero-text">
-                        <h1>Elektronik <br><span>Murah</span></h1>
-                        <p>Upgrade gadget tanpa bikin kantong bolong.</p>
-                    </div>
-                </div>
+    <section class="hero" id="home">
+        <div class="hero-overlay"></div>
+        <div class="container hero-content">
+            <h1>Ubah Barang Bekas<br>Menjadi <span>Cuan & Berkelas</span></h1>
+            <p>Platform marketplace terpercaya untuk jual beli barang pre-loved. Hemat uang, kurangi limbah, dan temukan harta karun tersembunyi di sekitarmu.</p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary btn-lg" onclick="scrollToProducts()">Mulai Belanja <i class="fas fa-shopping-bag"></i></button>
+                <button class="btn btn-outline-light btn-lg" onclick="window.location.href='../../Public/Views/guest/register.php'">Jual Barang <i class="fas fa-arrow-right"></i></button>
             </div>
         </div>
+    </section>
 
-        <div class="section-header">
-            <h2 class="section-title">Kategori Pilihan</h2>
-            <a href="#" style="font-size: 0.9rem; color: var(--primary); font-weight: bold;">Lihat Semua</a>
-        </div>
-        <div class="category-pills">
-            <div class="category-pill active">Semua</div>
-            <div class="category-pill">Elektronik</div>
-            <div class="category-pill">Fashion</div>
-            <div class="category-pill">Hobi</div>
-            <div class="category-pill">Rumah Tangga</div>
-            <div class="category-pill">Buku</div>
-            <div class="category-pill">Otomotif</div>
-        </div>
-
-        <div class="product-grid" id="productGrid">
+    <section class="stats-section">
+        <div class="container stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">10k+</div>
+                <div class="stat-label">Pengguna Aktif</div>
             </div>
-
-    </div>
-
-    <div class="modal-overlay" id="productModal">
-        <div class="product-modal">
-            <button class="close-modal-btn" onclick="closeModal()">
-                <i class="fas fa-times"></i>
-            </button>
-            
-            <div class="modal-left">
-                <img id="modalImg" src="" alt="Product Image">
+            <div class="stat-item">
+                <div class="stat-number">50k+</div>
+                <div class="stat-label">Barang Terjual</div>
             </div>
-            
-            <div class="modal-right">
-                <h2 class="modal-title" id="modalTitle">Judul Produk</h2>
-                <div class="modal-price" id="modalPrice">Rp 0</div>
-                
-                <div class="modal-meta-row">
-                    <span><i class="fas fa-map-marker-alt"></i> <span id="modalLoc">Lokasi</span></span>
-                    <span><i class="fas fa-star"></i> <span id="modalCond">Kondisi</span></span>
-                </div>
+            <div class="stat-item">
+                <div class="stat-number">4.8</div>
+                <div class="stat-label">Rating Rata-rata</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Aman & Terpercaya</div>
+            </div>
+        </div>
+    </section>
 
-                <div class="modal-desc" id="modalDesc">
-                    Deskripsi produk akan muncul di sini...
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header center">
+                <h2>Kenapa Ecoswap?</h2>
+                <p>Solusi cerdas untuk gaya hidup hemat dan ramah lingkungan.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>Transaksi Aman</h3>
+                    <p>Sistem Rekber (Rekening Bersama) menjamin keamanan uang pembeli dan barang penjual.</p>
                 </div>
-
-                <div class="modal-actions">
-                    <button class="btn btn-outline" onclick="goToChat()"><i class="fas fa-comment"></i> Chat</button>
-                    <button class="btn btn-dark" onclick="addToCart()"><i class="fas fa-cart-plus"></i> Tambah</button>
-                    <button class="btn btn-primary">Beli Sekarang</button>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-leaf"></i></div>
+                    <h3>Ramah Lingkungan</h3>
+                    <p>Dengan membeli barang bekas, kamu berkontribusi mengurangi limbah elektronik dan fashion.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-wallet"></i></div>
+                    <h3>Harga Terjangkau</h3>
+                    <p>Dapatkan barang bermerek berkualitas dengan harga miring, jauh di bawah harga toko.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Proses Cepat</h3>
+                    <p>Posting barang dalam hitungan detik. Chat langsung dengan penjual tanpa perantara ribet.</p>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div class="cart-overlay-bg" id="cartOverlay" onclick="toggleCart()"></div>
-    <div class="cart-sidebar" id="cartSidebar">
-        <div class="cart-header">
-            <h3><i class="fas fa-shopping-bag"></i> Keranjang Saya</h3>
-            <button class="close-cart-btn" onclick="toggleCart()"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <div class="cart-items">
-            <div class="cart-item">
-                <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=200" class="cart-item-img" alt="Item">
-                <div class="cart-item-info">
-                    <div class="cart-item-title">Sepatu Nike Bekas</div>
-                    <div class="cart-item-price">Rp 450.000</div>
-                    <div class="cart-qty-ctrl">
-                        <button class="qty-btn">-</button>
-                        <span>1</span>
-                        <button class="qty-btn">+</button>
-                    </div>
-                </div>
+    <section class="products-section" id="products">
+        <div class="container">
+            <div class="section-header">
+                <h2>Baru Diupload</h2>
+                <a href="#" class="view-all">Lihat Semua <i class="fas fa-arrow-right"></i></a>
             </div>
-        </div>
 
-        <div class="cart-footer">
-            <div class="cart-total">
-                <span>Total</span>
-                <span style="color: var(--primary);">Rp 450.000</span>
-            </div>
-            <button class="btn btn-primary" style="width: 100%;">Checkout</button>
-        </div>
-    </div>
-
-    <script>
-        // --- PERUBAHAN PENTING DI SINI ---
-        // Mengambil data Array PHP dan mengubahnya menjadi Array JavaScript (JSON)
-        const products = <?php echo json_encode($data_produk); ?>;
-
-        // Note: Pastikan kolom database kamu namanya sama dengan yang dipanggil di bawah ini:
-        // img, title, price, loc, cond, desc
-        // Jika nama kolom di database beda (misal: 'nama_produk'), ubah di bagian render bawah (p.nama_produk)
-
-        // RENDER PRODUK
-        const productGrid = document.getElementById('productGrid');
-        
-        // Cek jika tidak ada produk
-        if (products.length === 0) {
-            productGrid.innerHTML = '<p style="text-align:center; width:100%;">Belum ada produk yang dijual.</p>';
-        } else {
-            products.forEach(p => {
-                const card = document.createElement('div');
-                card.className = 'product-card';
-                card.onclick = () => openModal(p);
-                
-                // Pastikan p.price dikonversi ke angka dulu sebelum toLocaleString
-                const priceFormatted = parseInt(p.price).toLocaleString('id-ID');
-
-                card.innerHTML = `
+            <div class="product-grid">
+                <?php foreach ($featured_products as $p): ?>
+                <div class="product-card" onclick="promptLogin()">
+                    <div class="product-badge"><?= $p['category'] ?></div>
                     <div class="product-img-wrapper">
-                        <img src="${p.img}" alt="${p.title}" onerror="this.src='../../Assets/img/default.jpg'">
+                        <img src="<?= $p['img'] ?>" alt="<?= $p['title'] ?>">
                     </div>
                     <div class="product-info">
-                        <div class="product-title">${p.title}</div>
-                        <div class="product-price">Rp ${priceFormatted}</div>
+                        <div class="product-title"><?= $p['title'] ?></div>
+                        <div class="product-price">Rp <?= number_format($p['price'], 0, ',', '.') ?></div>
                         <div class="product-meta">
-                            <i class="fas fa-map-marker-alt"></i> ${p.loc}
+                            <span><i class="fas fa-map-marker-alt"></i> <?= $p['loc'] ?></span>
                         </div>
                     </div>
-                `;
-                
-                productGrid.appendChild(card);
-            });
-        }
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
 
-        // MODAL LOGIC
-        const modalOverlay = document.getElementById('productModal');
-        
-        function openModal(product) {
-            document.getElementById('modalImg').src = product.img;
-            document.getElementById('modalTitle').textContent = product.title;
-            document.getElementById('modalPrice').textContent = 'Rp ' + parseInt(product.price).toLocaleString('id-ID');
-            document.getElementById('modalLoc').textContent = product.loc;
-            document.getElementById('modalCond').textContent = product.cond;
-            document.getElementById('modalDesc').textContent = product.desc;
-            
-            modalOverlay.classList.add('open');
-            document.body.style.overflow = 'hidden'; // Stop scroll
-        }
+    <section class="cta-banner">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Punya Barang Tak Terpakai?</h2>
+                <p>Jangan biarkan menumpuk berdebu. Jual sekarang di Ecoswap dan dapatkan uang tunai dengan cepat!</p>
+                <button class="btn btn-dark btn-lg" onclick="window.location.href='../../Public/Views/guest/register.php'">Mulai Jual Sekarang</button>
+            </div>
+            <div class="cta-img">
+                <img src="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&q=80&w=600" alt="Selling">
+            </div>
+        </div>
+    </section>
 
-        function closeModal() {
-            modalOverlay.classList.remove('open');
-            document.body.style.overflow = 'auto'; // Resume scroll
-        }
+    <footer id="contact">
+        <div class="container footer-content">
+            <div class="footer-col brand-col">
+                <div class="logo footer-logo">ECO<span>SWAP</span></div>
+                <p>Platform jual beli barang bekas terpercaya. Wujudkan gaya hidup berkelanjutan bersama kami.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>Navigasi</h4>
+                <ul>
+                    <li><a href="#home">Beranda</a></li>
+                    <li><a href="#features">Tentang Kami</a></li>
+                    <li><a href="#products">Belanja</a></li>
+                    <li><a href="#">Blog</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Hubungi Kami</h4>
+                <ul class="contact-info">
+                    <li><i class="fas fa-envelope"></i> support@ecoswap.id</li>
+                    <li><i class="fas fa-phone"></i> +62 812 3456 7890</li>
+                    <li><i class="fas fa-map-marker-alt"></i> Jakarta, Indonesia</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container">
+                <p>&copy; 2024 Ecoswap Indonesia. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
 
-        // Close modal when clicking outside
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModal();
+    <script>
+        // Sticky Navbar Effect
+        window.addEventListener('scroll', function() {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
         });
 
-        // CART LOGIC
-        const cartSidebar = document.getElementById('cartSidebar');
-        const cartOverlay = document.getElementById('cartOverlay');
+        // Scroll to Products
+        function scrollToProducts() {
+            document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
+        }
 
-        function toggleCart() {
-            cartSidebar.classList.toggle('open');
-            cartOverlay.classList.toggle('open');
-            
-            if(cartSidebar.classList.contains('open')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = 'auto';
+        // Prompt Login for Interaction
+        function promptLogin() {
+            if(confirm("Anda harus masuk untuk melihat detail produk atau membeli. Ingin masuk sekarang?")) {
+                window.location.href = '../../Public/Views/guest/login.php';
             }
-        }
-        
-        function goToChat() {
-            window.location.href = '../newDashboard/chat.html';
-        }
-
-        function addToCart() {
-            closeModal();
-            setTimeout(toggleCart, 300); 
-            alert("Barang berhasil ditambahkan ke keranjang!");
-        }
-
-        // CAROUSEL LOGIC
-        const track = document.getElementById('carouselTrack');
-        if(track) {
-            let index = 0;
-            setInterval(() => {
-                index = (index + 1) % 2; 
-                track.style.transform = `translateX(-${index * 100}%)`;
-            }, 5000);
         }
     </script>
 </body>
