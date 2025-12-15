@@ -44,7 +44,9 @@
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="nav-left">
-            <div class="logo">ECO<span>SWAP</span></div>
+            <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
+                ECO<span>SWAP</span>
+        </div>
             <div class="search-container">
                 <input type="text" class="search-input" placeholder="Cari barang bekas berkualitas...">
                 <i class="fas fa-search search-icon"></i>
@@ -338,6 +340,8 @@
 
 
     <script>
+        const goToDashboard = () => window.location.href = 'dashboard.php';
+        
         // DATA PRODUK
         const products = [
             { id: 1, title: "Sepatu Kalcer Adidas Bekas Size 42", price: 450000, loc: "Bandung", img: "../../../Assets/img/role/buyer/sepatu_adidas.jpg", cond: "Bekas Baik", desc: "Sepatu masih sangat nyaman, sol tebal. Ada sedikit lecet pemakaian wajar." },

@@ -50,7 +50,7 @@
             </ul>
 
             <div class="sidebar-footer">
-                <a href="../../guest/login.php" class="logout-link">
+                <a href="../../../../index.php" class="logout-link">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>

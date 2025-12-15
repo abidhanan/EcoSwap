@@ -15,17 +15,47 @@
 
     <div class="app-layout">
         
-        <!-- SIDEBAR -->
+        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo" onclick="window.location.href='../buyer/dashboard.php'" style="cursor: pointer;">ECO<span>SWAP</span></div>
+                <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
+                    ECO<span>SWAP</span>
+                </div>
             </div>
+
             <ul class="sidebar-menu">
-                <li class="menu-item"><a href="../buyer/profil.php" onclick="safeNavigate('../buyer/profil.php')" class="menu-link">Biodata Diri</a></li>
-                <li class="menu-item"><a href="../buyer/alamat.php" onclick="safeNavigate('../buyer/alamat.php')" class="menu-link">Alamat</a></li>
-                <li class="menu-item"><a href="../buyer/histori.php" onclick="safeNavigate('../buyer/histori.php')" class="menu-link">Histori</a></li>
-                <li class="menu-item active"><a href="dashboard.php" onclick="safeNavigate('dashboard.php')" class="menu-link">Toko Saya</a></li>
+                <li class="menu-item">
+                    <a href="../buyer/profil.php" class="menu-link">
+                        <i class="fas fa-user"></i>
+                        <span>Biodata Diri</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="../buyer/alamat.php" class="menu-link">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Alamat</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="../buyer/histori.php" class="menu-link">
+                        <i class="fas fa-history"></i>
+                        <span>Histori</span>
+                    </a>
+                </li>
+                <li class="menu-item active">
+                    <a href="dashboard.php" class="menu-link">
+                        <i class="fas fa-store"></i>
+                        <span>Toko Saya</span>
+                    </a>
+                </li>
             </ul>
+
+            <div class="sidebar-footer">
+                <a href="../../../../index.php" class="logout-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
         </aside>
 
         <!-- MAIN CONTENT -->
@@ -207,6 +237,11 @@
     </div>
 
     <script>
+        function goToDashboard() {
+            // Sesuaikan path ini dengan struktur folder Anda sebenarnya
+            window.location.href = '../buyer/dashboard.php';
+        }
+        
         function safeNavigate(url) {
             try {
                 window.location.href = url;
