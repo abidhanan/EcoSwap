@@ -69,27 +69,6 @@
             <div class="content">
                 <div class="history-list">
                     
-                    <!-- ITEM 1: JUAL -->
-                    <div class="history-card">
-                        <div class="card-left">
-                            <div class="item-icon">
-                                <i class="fas fa-bicycle"></i>
-                            </div>
-                            <div class="item-info">
-                                <div class="badge-container">
-                                    <span class="type-badge type-jual">Jual</span>
-                                    <span class="status-badge status-selesai">Selesai</span>
-                                </div>
-                                <div class="item-title">Sepeda Fixie Bekas</div>
-                                <div class="item-date">24 Nov 2024</div>
-                            </div>
-                        </div>
-                        <div class="card-right">
-                            <div class="item-price">Rp 1.200.000</div>
-                            <button class="btn-detail" onclick="openDetail(1)">Detail</button>
-                        </div>
-                    </div>
-
                     <!-- ITEM 2: BELI -->
                     <div class="history-card">
                         <div class="card-left">
@@ -98,7 +77,6 @@
                             </div>
                             <div class="item-info">
                                 <div class="badge-container">
-                                    <span class="type-badge type-beli">Beli</span>
                                     <span class="status-badge status-proses">Sedang Dikirim</span>
                                 </div>
                                 <div class="item-title">Laptop Asus ROG</div>
@@ -111,27 +89,6 @@
                         </div>
                     </div>
 
-                    <!-- ITEM 3: JUAL -->
-                    <div class="history-card">
-                        <div class="card-left">
-                            <div class="item-icon">
-                                <i class="fas fa-camera"></i>
-                            </div>
-                            <div class="item-info">
-                                <div class="badge-container">
-                                    <span class="type-badge type-jual">Jual</span>
-                                    <span class="status-badge status-selesai">Selesai</span>
-                                </div>
-                                <div class="item-title">Kamera Canon DSLR</div>
-                                <div class="item-date">10 Nov 2024</div>
-                            </div>
-                        </div>
-                        <div class="card-right">
-                            <div class="item-price">Rp 3.100.000</div>
-                            <button class="btn-detail" onclick="openDetail(3)">Detail</button>
-                        </div>
-                    </div>
-
                     <!-- ITEM 4: BELI -->
                     <div class="history-card">
                         <div class="card-left">
@@ -140,7 +97,6 @@
                             </div>
                             <div class="item-info">
                                 <div class="badge-container">
-                                    <span class="type-badge type-beli">Beli</span>
                                     <span class="status-badge status-selesai">Selesai</span>
                                 </div>
                                 <div class="item-title">Novel Harry Potter</div>
@@ -242,10 +198,6 @@
 
                 // 3. Render HTML ke dalam modal
                 modalContent.innerHTML = `
-                    <div class="detail-row">
-                        <span class="detail-label">Tipe Transaksi</span>
-                        <span class="detail-value" style="text-transform:uppercase;">${typeText}</span>
-                    </div>
                     <div class="detail-row">
                         <span class="detail-label">Nama Barang</span>
                         <span class="detail-value">${data.item}</span>

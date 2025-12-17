@@ -174,13 +174,11 @@
         .btn-manage:hover { background-color: #f0f0f0; transform: translateY(-2px); }
 
         /* 2. History Section */
-        .history-section {
+        .history {
             background-color: #fff;
             border-radius: 12px;
             border: 1px solid var(--border);
             padding: 25px;
-            display: none; /* Hidden by default */
-            animation: slideDown 0.3s ease-out;
         }
 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }

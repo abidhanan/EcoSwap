@@ -1,4 +1,42 @@
 <?php
+session_start();
+
+// PERBAIKAN: Menggunakan ../../../ (3 level) bukan 4 level
+include '../../../Auth/koneksi.php';
+
+// Cek apakah file koneksi berhasil di-load
+if (!isset($koneksi)) {
+    die("Error: Gagal memuat koneksi database. Pastikan path file benar.");
+}
+
+// Ambil semua produk aktif dari semua toko
+$all_products = [];
+$query = mysqli_query($koneksi, "SELECT p.*, s.shop_name, a.full_address 
+                                 FROM products p 
+                                 JOIN shops s ON p.shop_id = s.shop_id 
+                                 LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
+                                 WHERE p.status = 'active' 
+                                 ORDER BY p.created_at DESC");
+
+// Cek jika query error
+if (!$query) {
+    die("Query Error: " . mysqli_error($koneksi));
+}
+
+while($row = mysqli_fetch_assoc($query)) {
+    // Ambil kota dari alamat (simple extract) atau gunakan default
+    $loc = !empty($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia';
+    
+    $all_products[] = [
+        'id' => $row['product_id'],
+        'title' => $row['name'],
+        'price' => (int)$row['price'],
+        'loc' => $loc, 
+        'img' => $row['image'], // Pastikan path gambar di database benar
+        'cond' => $row['condition'],
+        'desc' => $row['description']
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -142,7 +180,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button class="btn btn-outline" onclick="goToHubungi()"><i class="fas fa-comment"></i> Chat</button>
+                    <button class="btn btn-outline" onclick="toggleChat()"><i class="fas fa-comment"></i> Chat</button>
                     <button class="btn btn-dark" onclick="addToCart()"><i class="fas fa-cart-plus"></i> Tambah</button>
                     <button class="btn btn-primary" onclick="buyNow()">Beli Sekarang</button>
                 </div>
@@ -342,17 +380,9 @@
     <script>
         const goToDashboard = () => window.location.href = 'dashboard.php';
         
-        // DATA PRODUK
-        const products = [
-            { id: 1, title: "Sepatu Kalcer Adidas Bekas Size 42", price: 450000, loc: "Bandung", img: "../../../Assets/img/role/buyer/sepatu_adidas.jpg", cond: "Bekas Baik", desc: "Sepatu masih sangat nyaman, sol tebal. Ada sedikit lecet pemakaian wajar." },
-            { id: 2, title: "Laptop Asus ROG Bekas Gaming Murah", price: 8500000, loc: "Jakarta", img: "../../../Assets/img/role/buyer/laptop-rog.jpeg", cond: "Mulus", desc: "RAM 16GB, SSD 512GB. Kelengkapan fullset dus dan charger." },
-            { id: 3, title: "Kamera Canon DSLR 600D Lensa Kit", price: 3100000, loc: "Surabaya", img: "../../../Assets/img/role/buyer/camera-canon.jpeg", cond: "Lecet Pemakaian", desc: "Fungsi normal 100%, bonus tas kamera dan memory card." },
-            { id: 4, title: "Headphone Sony WH-1000XM4", price: 2500000, loc: "Yogyakarta", img: "../../../Assets/img/role/buyer/headphone-sony.jpeg", cond: "Like New", desc: "Baru dipakai 2 bulan, garansi masih aktif. Suara jernih noice cancelling mantap." },
-            { id: 5, title: "Sepeda Lipat Polygon United", price: 1800000, loc: "Semarang", img: "../../../Assets/img/role/buyer/sepeda-lipat.jpeg", cond: "Bekas", desc: "Lipatan aman, rem pakem, siap gowes santai." },
-            { id: 6, title: "Meja Belajar Kayu Jati Minimalis", price: 350000, loc: "Jepara", img: "../../../Assets/img/role/buyer/meja-belajar.jpeg", cond: "Kokoh", desc: "Kayu jati asli, finishing varnish ulang biar kinclong." },
-            { id: 7, title: "Jam Tangan Fossil Leather Original", price: 900000, loc: "Jakarta", img: "../../../Assets/img/role/buyer/jam-tangan.jpeg", cond: "Strap Aus", desc: "Mesin original normal, strap kulit agak aus perlu ganti." },
-            { id: 8, title: "Koleksi Komik One Piece Vol 1-50", price: 500000, loc: "Malang", img: "../../../Assets/img/role/buyer/komik-onePiece.jpeg", cond: "Terawat", desc: "Koleksi pribadi, kertas sedikit menguning karena usia tapi tidak sobek." },
-        ];
+        // DATA PRODUK DARI DATABASE
+        const products = <?php echo json_encode($all_products); ?>;
+        // -------------------------------
 
         // RENDER PRODUK GRID
         const productGrid = document.getElementById('productGrid');

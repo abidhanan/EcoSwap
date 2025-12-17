@@ -69,14 +69,11 @@
                     
                     <!-- SALDO CARD -->
                     <div class="balance-card">
-                        <div class="balance-label">Total Pendapatan Bersih</div>
+                        <div class="balance-label">Total Pendapatan</div>
                         <div class="balance-amount">Rp 5.450.000</div>
                         <div class="balance-actions">
                             <button class="btn-action btn-withdraw" onclick="openWithdrawModal()">
                                 <i class="fas fa-money-bill-wave"></i> Tarik Tunai
-                            </button>
-                            <button class="btn-action btn-history" onclick="toggleHistory()">
-                                <i class="fas fa-history"></i> Lihat Histori
                             </button>
                             <!-- TOMBOL KELOLA KEUANGAN -->
                             <button class="btn-action btn-manage" onclick="safeNavigate('kelolaKeuangan.php')">
@@ -86,10 +83,9 @@
                     </div>
 
                     <!-- HISTORY SECTION (Toggleable) -->
-                    <div class="history-section" id="historySection">
+                    <div class="history">
                         <div class="section-header">
                             <h3 class="section-title">Riwayat Transaksi</h3>
-                            <button style="background:none; border:none; color:#888; cursor:pointer;" onclick="toggleHistory()"><i class="fas fa-times"></i></button>
                         </div>
                         
                         <div class="transaction-list">

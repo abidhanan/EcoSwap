@@ -1,6 +1,54 @@
 <?php
-// Profil Pengguna - Ecoswap
+session_start();
+
+// PERBAIKAN: Gunakan ../../../ (3 langkah naik)
+// Dari: buyer -> role -> Views -> Public -> Auth -> koneksi.php
+include '../../../Auth/koneksi.php';
+
+// Cek koneksi agar tidak error 'mysqli_query... null given'
+if (!isset($koneksi)) {
+    die("Error: Koneksi database gagal ditemukan. Cek path file.");
+}
+
+// Dummy session jika belum login (untuk testing)
+if (!isset($_SESSION['user_id'])) { $_SESSION['user_id'] = 1; }
+$user_id = $_SESSION['user_id'];
+
+// --- LOGIKA UPDATE PROFIL ---
+if (isset($_POST['update_profile'])) {
+    $email = $_POST['email'];
+    $phone = $_POST['phone_number'];
+    
+    // Update data user
+    $update = mysqli_query($koneksi, "UPDATE users SET email='$email', phone_number='$phone' WHERE user_id='$user_id'");
+    if($update) {
+        echo "<script>alert('Profil berhasil diupdate!');</script>";
+    }
+}
+
+// --- AMBIL DATA USER ---
+$query = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
+
+// Cek jika query berhasil
+if (!$query) {
+    die("Query Error: " . mysqli_error($koneksi));
+}
+
+$user = mysqli_fetch_assoc($query);
+
+// TAMBAHAN: Cek apakah user ditemukan
+if (!$user) {
+    // Jika tidak ada di database, buat array kosong atau dummy agar tidak error
+    $user = [
+        'name' => 'User Belum Terdaftar',
+        'email' => '-',
+        'phone_number' => '-',
+        'user_id' => 0
+    ];
+    // Atau bisa die("User dengan ID $user_id tidak ditemukan di database.");
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -100,29 +148,19 @@
                             <div class="biodata-section">
 
                                 <div class="data-row">
-                                    <span class="data-label">Nama Lengkap</span>
-                                    <span class="data-value" id="nama-lengkap-display">Dimas Sudarmono</span>
-                                </div>
+    <span class="data-label">Nama Lengkap</span>
+    <span class="data-value" id="nama-lengkap-display"><?php echo isset($user['name']) ? $user['name'] : 'User Ecoswap'; ?></span>
+</div>
 
-                                <div class="data-row">
-                                    <span class="data-label">Tanggal Lahir</span>
-                                    <span class="data-value" id="tgl-lahir-display">01 Januari 2001</span>
-                                </div>
+<div class="data-row">
+    <span class="data-label">Nomor Hp</span>
+    <span class="data-value" id="nomor-hp-display"><?php echo $user['phone_number']; ?></span>
+</div>
 
-                                <div class="data-row">
-                                    <span class="data-label">Jenis Kelamin</span>
-                                    <span class="data-value" id="jenis-kelamin-display">Laki - Laki</span>
-                                </div>
-
-                                <div class="data-row">
-                                    <span class="data-label">Nomor Hp</span>
-                                    <span class="data-value" id="nomor-hp-display">+62 877 5931 5863</span>
-                                </div>
-
-                                <div class="data-row">
-                                    <span class="data-label">Email</span>
-                                    <span class="data-value" id="email-display">monotxploit@gmail.com</span>
-                                </div>
+<div class="data-row">
+    <span class="data-label">Email</span>
+    <span class="data-value" id="email-display"><?php echo $user['email']; ?></span>
+</div>
 
                                 <div class="action-buttons">
                                     <button class="btn-action" onclick="showModal('ubah-biodata-modal')">

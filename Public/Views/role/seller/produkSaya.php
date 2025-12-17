@@ -1,4 +1,93 @@
 <?php
+session_start();
+
+// PERBAIKAN: Gunakan ../../../ (3 level) agar ketemu file koneksinya
+include '../../../Auth/koneksi.php';
+
+// Validasi jika koneksi gagal (agar tidak muncul error fatal)
+if (!isset($koneksi)) {
+    die("Error: File koneksi.php tidak ditemukan. Cek path include.");
+}
+
+// Cek sesi login (Simulasi user_id = 1 jika belum login)
+if (!isset($_SESSION['user_id'])) { $_SESSION['user_id'] = 1; }
+$user_id = $_SESSION['user_id'];
+
+// Cek apakah user sudah punya toko
+$cek_toko = mysqli_query($koneksi, "SELECT shop_id FROM shops WHERE user_id = '$user_id'");
+
+// Validasi query
+if (!$cek_toko) {
+    die("Query Error: " . mysqli_error($koneksi));
+}
+
+$data_toko = mysqli_fetch_assoc($cek_toko);
+
+// Jika belum punya toko, buat dummy toko otomatis (opsional)
+if(!$data_toko){
+    mysqli_query($koneksi, "INSERT INTO shops (user_id, shop_name) VALUES ('$user_id', 'Toko Saya')");
+    $shop_id = mysqli_insert_id($koneksi);
+} else {
+    $shop_id = $data_toko['shop_id'];
+}
+
+// --- LOGIKA TAMBAH PRODUK ---
+if (isset($_POST['action']) && $_POST['action'] == 'add') {
+    $name = mysqli_real_escape_string($koneksi, $_POST['name']);
+    $price = $_POST['price'];
+    $cond = $_POST['condition'];
+    $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
+    
+    // Upload Gambar
+    $target_dir = "../../../Assets/img/products/"; // Pastikan folder ini ada
+    if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
+    
+    $img_name = time() . "_" . basename($_FILES["image"]["name"]);
+    $target_file = $target_dir . $img_name;
+    
+    // Default image jika upload gagal
+    $db_img_path = "https://placehold.co/300";
+
+    if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+        // Simpan path relatif untuk database
+        $db_img_path = $target_file; 
+    }
+    
+    $query = "INSERT INTO products (shop_id, name, price, `condition`, description, image, status) 
+              VALUES ('$shop_id', '$name', '$price', '$cond', '$desc', '$db_img_path', 'active')";
+    
+    if(mysqli_query($koneksi, $query)){
+        echo "<script>alert('Produk berhasil ditambahkan!'); window.location.href='produkSaya.php';</script>";
+        exit();
+    } else {
+        echo "Error: " . mysqli_error($koneksi);
+    }
+}
+
+// --- LOGIKA HAPUS PRODUK ---
+if (isset($_GET['delete_id'])) {
+    $pid = $_GET['delete_id'];
+    mysqli_query($koneksi, "UPDATE products SET status = 'deleted' WHERE product_id = '$pid' AND shop_id = '$shop_id'");
+    header("Location: produkSaya.php");
+    exit();
+}
+
+// --- AMBIL DATA DARI DATABASE ---
+$products = [];
+$query_prod = mysqli_query($koneksi, "SELECT * FROM products WHERE shop_id = '$shop_id' AND status != 'deleted' ORDER BY created_at DESC");
+while($row = mysqli_fetch_assoc($query_prod)) {
+    // Sesuaikan format dengan struktur JS kamu
+    $products[] = [
+        'id' => $row['product_id'],
+        'name' => $row['name'],
+        'price' => (int)$row['price'],
+        'img' => $row['image'], // Path gambar
+        'views' => $row['views'],
+        'status' => $row['status'], // active / sold
+        'desc' => $row['description'],
+        'cond' => $row['condition']
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -77,7 +166,7 @@
 
                     <!-- TABS KATEGORI -->
                     <div class="tabs-container">
-                        <button class="tab-btn active" onclick="switchTab('active', this)">Belum Terjual (Active)</button>
+                        <button class="tab-btn active" onclick="switchTab('active', this)">Semua Produk</button>
                         <button class="tab-btn" onclick="switchTab('sold', this)">Terjual</button>
                     </div>
 
@@ -97,8 +186,9 @@
             <span class="close-modal" onclick="closeModal('addProductModal')">&times;</span>
             <div class="modal-title">Tambah Produk Baru</div>
             
-            <form onsubmit="addProduct(event)">
-                <!-- Upload Foto -->
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="add">
+
                 <div class="form-group">
                     <label class="form-label">Foto Produk</label>
                     <div class="upload-box" onclick="document.getElementById('prodImgInput').click()">
@@ -106,22 +196,22 @@
                         <p style="font-size:0.9rem; color:#666;">Klik untuk upload foto</p>
                         <img id="previewImgAdd" class="preview-img" src="" alt="Preview">
                     </div>
-                    <input type="file" id="prodImgInput" style="display: none;" accept="image/*" onchange="previewImage(this, 'previewImgAdd', 'addUploadIcon')">
+                    <input type="file" name="image" id="prodImgInput" style="display: none;" accept="image/*" onchange="previewImage(this, 'previewImgAdd', 'addUploadIcon')" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Nama Produk</label>
-                    <input type="text" id="prodName" class="form-input" placeholder="Contoh: Sepatu Adidas Bekas" required>
+                    <input type="text" name="name" id="prodName" class="form-input" placeholder="Contoh: Sepatu Adidas Bekas" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Harga (Rp)</label>
-                    <input type="number" id="prodPrice" class="form-input" placeholder="Contoh: 150000" required>
+                    <input type="number" name="price" id="prodPrice" class="form-input" placeholder="Contoh: 150000" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Kondisi</label>
-                    <select id="prodCond" class="form-select">
+                    <select name="condition" id="prodCond" class="form-select">
                         <option value="Bekas - Seperti Baru">Bekas - Seperti Baru</option>
                         <option value="Bekas - Baik">Bekas - Baik</option>
                         <option value="Bekas - Layak Pakai">Bekas - Layak Pakai</option>
@@ -130,7 +220,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Deskripsi</label>
-                    <textarea id="prodDesc" class="form-textarea" rows="3" placeholder="Jelaskan detail barang..."></textarea>
+                    <textarea name="description" id="prodDesc" class="form-textarea" rows="3" placeholder="Jelaskan detail barang..."></textarea>
                 </div>
 
                 <button type="submit" class="btn-submit">Upload Produk</button>
@@ -213,12 +303,12 @@
         }
         
         // DATA PRODUK DUMMY (State Awal)
-        let myProducts = [
-            { id: 1, name: "Keyboard Mekanikal Bekas", price: 350000, img: "https://images.unsplash.com/photo-1595225476474-87563907a212?w=300", views: 120, status: 'active', desc: "Switch blue, masih clicky. RGB normal semua.", cond: "Bekas - Baik" },
-            { id: 2, name: "Mouse Gaming Logitech", price: 150000, img: "https://images.unsplash.com/photo-1527814050087-3793815479db?w=300", views: 85, status: 'active', desc: "Sensor aman, double click jarang.", cond: "Bekas - Layak Pakai" },
-            { id: 3, name: "Monitor Samsung 24 Inch", price: 900000, img: "../../Ecoswap/gambar/monitor-samsung.jpg", views: 340, status: 'sold', desc: "No dead pixel, mulus.", cond: "Bekas - Seperti Baru" }, 
-            { id: 4, name: "Headset Razer Kraken", price: 400000, img: "https://images.unsplash.com/photo-1612444530582-fc66183b16f7?w=300", views: 210, status: 'active', desc: "Busa agak ngelupas dikit tapi suara mantap.", cond: "Bekas - Baik" }
-        ];
+        let myProducts = <?php echo json_encode($products); ?>;
+
+        // Jaga-jaga jika data kosong agar tidak error
+        if (!myProducts) {
+            myProducts = [];
+        }
 
         let currentTab = 'active';
         let currentSelectedId = null; // Menyimpan ID produk yang sedang dilihat/diedit
