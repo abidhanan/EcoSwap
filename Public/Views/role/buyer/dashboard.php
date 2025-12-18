@@ -48,14 +48,46 @@ while($row = mysqli_fetch_assoc($query)) {
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Inline untuk logika chat bubble yang spesifik */
-        .message-wrapper { align-items: center; gap: 8px; }
-        .message-actions { display: none; background-color: #f0f0f0; border-radius: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 2px 5px; gap: 5px; flex-shrink: 0; }
-        .message-wrapper.outgoing .message-actions { order: -1; }
-        .message-wrapper.actions-visible .message-actions { display: flex; }
-        .action-icon-btn { background: none; border: none; cursor: pointer; font-size: 0.8rem; color: #555; padding: 4px; }
-        .action-icon-btn.report:hover { color: #f39c12; }
-        .action-icon-btn.delete:hover { color: #e74c3c; }
+        /* CSS untuk logika chat bubble */
+.message-wrapper { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    margin-bottom: 15px; 
+    position: relative; 
+}
+.message-actions { 
+    display: none; 
+    background-color: #ffffff; 
+    border-radius: 15px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+    padding: 2px 8px; 
+    gap: 8px; 
+    flex-shrink: 0; 
+    border: 1px solid #ddd;
+}
+/* Munculkan aksi saat pesan diklik (class ditambahkan via JS) */
+.message-wrapper.actions-visible .message-actions { 
+    display: flex; 
+}
+.message-wrapper.outgoing .message-actions { order: -1; } /* Tombol di kiri untuk pesan kita */
+.message-wrapper.incoming .message-actions { order: 1; }  /* Tombol di kanan untuk pesan orang */
+
+.action-icon-btn { 
+    background: none; 
+    border: none; 
+    cursor: pointer; 
+    font-size: 0.85rem; 
+    color: #666; 
+    padding: 5px; 
+    transition: color 0.2s;
+}
+.action-icon-btn.report:hover { color: #f39c12; }
+.action-icon-btn.delete:hover { color: #e74c3c; }
+
+/* Mencegah bubble chat menutup aksi saat di klik */
+.message-bubble { cursor: pointer; transition: opacity 0.2s; }
+.message-bubble:active { opacity: 0.7; }
     </style>
 </head>
 
@@ -723,17 +755,65 @@ while($row = mysqli_fetch_assoc($query)) {
             document.getElementById('chatAreaSidebar').style.display = 'none';
         }
 
-        function renderMessagesSidebar() {
-            const chatMessagesSidebar = document.getElementById('chatMessagesSidebar');
-            chatMessagesSidebar.innerHTML = '';
-            messages.forEach(msg => {
-                const wrapper = document.createElement('div');
-                wrapper.className = `message-wrapper ${msg.type}`;
-                wrapper.innerHTML = `<div class="message-bubble">${msg.text}</div><span class="message-time">${msg.time}</span>`;
-                chatMessagesSidebar.appendChild(wrapper);
-            });
-            chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
+        // Ganti fungsi renderMessagesSidebar lama dengan ini
+function renderMessagesSidebar() {
+    const chatMessagesSidebar = document.getElementById('chatMessagesSidebar');
+    chatMessagesSidebar.innerHTML = '';
+    
+    messages.forEach((msg, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${msg.type}`;
+        wrapper.id = `msg-${index}`;
+        
+        // Logika Tombol Aksi
+        let actionButtons = '';
+        if (msg.type === 'outgoing') {
+            // Jika pesan sendiri -> Tombol Hapus
+            actionButtons = `<button class="action-icon-btn delete" onclick="deleteMessage(${index})"><i class="fas fa-trash-alt"></i></button>`;
+        } else {
+            // Jika pesan orang lain -> Tombol Lapor
+            actionButtons = `<button class="action-icon-btn report" onclick="reportMessage(${index})"><i class="fas fa-exclamation-triangle"></i></button>`;
         }
+
+        wrapper.innerHTML = `
+            <div class="message-actions">${actionButtons}</div>
+            <div class="message-bubble" onclick="toggleMessageActions(${index})">${msg.text}</div>
+            <span class="message-time">${msg.time}</span>
+        `;
+        chatMessagesSidebar.appendChild(wrapper);
+    });
+    chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
+}
+
+// FUNGSI BARU: Toggle munculnya tombol
+function toggleMessageActions(index) {
+    const allWrappers = document.querySelectorAll('.message-wrapper');
+    const target = document.getElementById(`msg-${index}`);
+    
+    // Sembunyikan aksi lain yang sedang terbuka
+    allWrappers.forEach(w => {
+        if (w !== target) w.classList.remove('actions-visible');
+    });
+    
+    // Toggle milik pesan yang diklik
+    target.classList.toggle('actions-visible');
+}
+
+// FUNGSI BARU: Hapus Pesan
+function deleteMessage(index) {
+    if (confirm("Hapus pesan ini?")) {
+        messages.splice(index, 1); // Hapus dari array
+        renderMessagesSidebar();   // Gambar ulang
+    }
+}
+
+// FUNGSI BARU: Lapor Pesan
+function reportMessage(index) {
+    const msgText = messages[index].text;
+    alert(`Pesan: "${msgText}" telah dilaporkan ke admin Ecoswap.`);
+    // Tutup aksi setelah lapor
+    document.getElementById(`msg-${index}`).classList.remove('actions-visible');
+}
 
         function sendMessageSidebar() {
             const input = document.getElementById('messageInputSidebar');
