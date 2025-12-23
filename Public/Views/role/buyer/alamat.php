@@ -1,4 +1,70 @@
 <?php
+session_start();
+
+// Koneksi Database
+include '../../../Auth/koneksi.php';
+
+// Cek Login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../../auth/login.php");
+    exit();
+}
+$user_id = $_SESSION['user_id'];
+
+// --- 1. LOGIKA TAMBAH ALAMAT ---
+if (isset($_POST['action']) && $_POST['action'] == 'add') {
+    $label = mysqli_real_escape_string($koneksi, $_POST['label']);
+    $name = mysqli_real_escape_string($koneksi, $_POST['recipient_name']);
+    $phone = mysqli_real_escape_string($koneksi, $_POST['phone_number']);
+    $addr = mysqli_real_escape_string($koneksi, $_POST['full_address']);
+    $landmark = mysqli_real_escape_string($koneksi, $_POST['landmark']);
+
+    // Cek apakah ini alamat pertama? Jika ya, set jadi primary
+    $cek_addr = mysqli_query($koneksi, "SELECT address_id FROM addresses WHERE user_id='$user_id'");
+    $is_primary = (mysqli_num_rows($cek_addr) == 0) ? 1 : 0;
+
+    $query = "INSERT INTO addresses (user_id, label, recipient_name, phone_number, full_address, landmark, is_primary) 
+              VALUES ('$user_id', '$label', '$name', '$phone', '$addr', '$landmark', '$is_primary')";
+    
+    if(mysqli_query($koneksi, $query)) {
+        echo "<script>alert('Alamat berhasil ditambahkan!'); window.location.href='alamat.php';</script>";
+    } else {
+        echo "<script>alert('Gagal menambah alamat.');</script>";
+    }
+}
+
+// --- 2. LOGIKA EDIT ALAMAT ---
+if (isset($_POST['action']) && $_POST['action'] == 'edit') {
+    $id = $_POST['address_id'];
+    $label = mysqli_real_escape_string($koneksi, $_POST['label']);
+    $name = mysqli_real_escape_string($koneksi, $_POST['recipient_name']);
+    $phone = mysqli_real_escape_string($koneksi, $_POST['phone_number']);
+    $addr = mysqli_real_escape_string($koneksi, $_POST['full_address']);
+    $landmark = mysqli_real_escape_string($koneksi, $_POST['landmark']);
+
+    $query = "UPDATE addresses SET label='$label', recipient_name='$name', phone_number='$phone', full_address='$addr', landmark='$landmark' 
+              WHERE address_id='$id' AND user_id='$user_id'";
+    
+    if(mysqli_query($koneksi, $query)) {
+        echo "<script>alert('Alamat berhasil diperbarui!'); window.location.href='alamat.php';</script>";
+    }
+}
+
+// --- 3. LOGIKA HAPUS ALAMAT ---
+if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
+    $id = $_GET['id'];
+    $del = mysqli_query($koneksi, "DELETE FROM addresses WHERE address_id='$id' AND user_id='$user_id'");
+    if($del) {
+        echo "<script>alert('Alamat berhasil dihapus!'); window.location.href='alamat.php';</script>";
+    }
+}
+
+// --- 4. AMBIL DATA ALAMAT ---
+$addresses = [];
+$q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE user_id='$user_id' ORDER BY is_primary DESC, address_id DESC");
+while($row = mysqli_fetch_assoc($q_addr)) {
+    $addresses[] = $row;
+}
 ?>
 
 <!DOCTYPE html>
@@ -14,7 +80,6 @@
 <body>
     <div class="app-layout">
         
-        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
@@ -57,80 +122,50 @@
             </div>
         </aside>
 
-        <!-- MAIN CONTENT WRAPPER -->
         <main class="main-content-wrapper">
-            <!-- HEADER -->
             <header class="header">
                 <h1 class="page-title">Alamat</h1>
             </header>
 
-            <!-- CONTENT -->
             <section class="content">
-                <!-- Tombol Tambah -->
                 <button class="add-btn" onclick="tambahAlamatBaru()">
                     <i class="fas fa-plus"></i> Tambah Alamat Baru
                 </button>
 
-                <!-- List Alamat -->
                 <div class="address-list" id="addressList">
                     
-                    <!-- DATA DUMMY 1 (Active) -->
-                    <div class="address-card active" onclick="pilihAlamat(this)">
-                        <div class="check-icon"><i class="fas fa-check"></i></div>
-                        <div class="card-header">
-                            <span class="address-label">Rumah</span>
-                            <i class="fas fa-pen edit-btn" onclick="editAlamat(event, this)"></i>
+                    <?php if (empty($addresses)): ?>
+                        <div style="text-align:center; padding:40px; color:#888;">
+                            <i class="fas fa-map-marked-alt" style="font-size:3rem; margin-bottom:10px;"></i><br>
+                            Belum ada alamat tersimpan.
                         </div>
-                        <div class="card-body">
-                            <div class="receiver-name">Sondy Naufal</div>
-                            <span class="receiver-phone">0812-3456-7890</span>
-                            <div class="address-detail">Jl. Merpati No. 45, RT 02 RW 05, Kelurahan Sukamaju, Kecamatan Sukajaya, Jakarta Selatan.</div>
-                            <div class="address-landmark">
-                                <i class="fas fa-map-marker-alt"></i> Pagar Hitam, Depan Indomaret.
+                    <?php else: ?>
+                        <?php foreach($addresses as $addr): ?>
+                            <div class="address-card <?php echo ($addr['is_primary'] == 1) ? 'active' : ''; ?>" onclick="pilihAlamat(this)">
+                                <div class="check-icon"><i class="fas fa-check"></i></div>
+                                <div class="card-header">
+                                    <span class="address-label"><?php echo $addr['label']; ?></span>
+                                    <i class="fas fa-pen edit-btn" 
+                                       onclick='editAlamat(event, <?php echo json_encode($addr); ?>)'></i>
+                                </div>
+                                <div class="card-body">
+                                    <div class="receiver-name"><?php echo $addr['recipient_name']; ?></div>
+                                    <span class="receiver-phone"><?php echo $addr['phone_number']; ?></span>
+                                    <div class="address-detail"><?php echo $addr['full_address']; ?></div>
+                                    <div class="address-landmark">
+                                        <i class="fas fa-map-marker-alt"></i> 
+                                        <?php echo !empty($addr['landmark']) ? $addr['landmark'] : 'Tidak ada patokan'; ?>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- DATA DUMMY 2 -->
-                    <div class="address-card" onclick="pilihAlamat(this)">
-                        <div class="check-icon"><i class="fas fa-check"></i></div>
-                        <div class="card-header">
-                            <span class="address-label">Kantor</span>
-                            <i class="fas fa-pen edit-btn" onclick="editAlamat(event, this)"></i>
-                        </div>
-                        <div class="card-body">
-                            <div class="receiver-name">Sondy Naufal (Kantor)</div>
-                            <span class="receiver-phone">0812-3456-7890</span>
-                            <div class="address-detail">Gedung Cyber 2, Lantai 15, Jl. HR Rasuna Said X5, Kuningan, Jakarta Selatan.</div>
-                            <div class="address-landmark">
-                                <i class="fas fa-map-marker-alt"></i> Titip di resepsionis lobi utama.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- DATA DUMMY 3 -->
-                    <div class="address-card" onclick="pilihAlamat(this)">
-                        <div class="check-icon"><i class="fas fa-check"></i></div>
-                        <div class="card-header">
-                            <span class="address-label">Lainnya</span>
-                            <i class="fas fa-pen edit-btn" onclick="editAlamat(event, this)"></i>
-                        </div>
-                        <div class="card-body">
-                            <div class="receiver-name">Ibu Kost</div>
-                            <span class="receiver-phone">0856-7890-1234</span>
-                            <div class="address-detail">Jl. Kenanga Gang 3 No. 10B (Kost Putri Melati), Depok, Jawa Barat.</div>
-                            <div class="address-landmark">
-                                <i class="fas fa-map-marker-alt"></i> Rumah cat hijau 2 lantai.
-                            </div>
-                        </div>
-                    </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
 
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- MODAL FORM -->
     <div class="modal-overlay" id="addressModal">
         <div class="modal-container">
             <div class="modal-header">
@@ -138,7 +173,10 @@
                 <button class="close-modal" onclick="tutupModal()">&times;</button>
             </div>
             
-            <form onsubmit="simpanAlamat(event)">
+            <form method="POST" action="">
+                <input type="hidden" name="action" id="formAction" value="add">
+                <input type="hidden" name="address_id" id="addressId" value="">
+
                 <div class="form-group">
                     <label class="form-label">Simpan Sebagai</label>
                     <div class="label-options">
@@ -159,26 +197,26 @@
 
                 <div class="form-group">
                     <label class="form-label">Nama Penerima</label>
-                    <input type="text" id="inputName" class="form-input" placeholder="Contoh: Sondy Naufal" required>
+                    <input type="text" name="recipient_name" id="inputName" class="form-input" placeholder="Contoh: Sondy Naufal" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Nomor HP</label>
-                    <input type="tel" id="inputPhone" class="form-input" placeholder="Contoh: 0812xxxxxxxx" required>
+                    <input type="tel" name="phone_number" id="inputPhone" class="form-input" placeholder="Contoh: 0812xxxxxxxx" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Alamat Lengkap</label>
-                    <textarea id="inputAddress" class="form-textarea" rows="3" placeholder="Jalan, No. Rumah, RT/RW, Kelurahan, Kecamatan..." required></textarea>
+                    <textarea name="full_address" id="inputAddress" class="form-textarea" rows="3" placeholder="Jalan, No. Rumah, RT/RW, Kelurahan, Kecamatan..." required></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Patokan (Opsional)</label>
-                    <input type="text" id="inputLandmark" class="form-input" placeholder="Contoh: Depan Masjid Al-Ikhlas">
+                    <input type="text" name="landmark" id="inputLandmark" class="form-input" placeholder="Contoh: Depan Masjid Al-Ikhlas">
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" id="deleteBtn" class="delete-btn" onclick="hapusAlamat()">
+                    <button type="button" id="deleteBtn" class="delete-btn" onclick="hapusAlamat()" style="display:none;">
                         <i class="fas fa-trash-alt"></i> Hapus
                     </button>
                     <button type="submit" id="submitBtn" class="submit-btn">Simpan Alamat</button>
@@ -188,11 +226,9 @@
     </div>
 
     <script>
-        let editingCard = null;
-
-        /* Navigasi */
         const goToDashboard = () => window.location.href = 'dashboard.php';
 
+        /* Navigasi Kartu (Visual Saja) */
         function pilihAlamat(element) {
             const cards = document.querySelectorAll('.address-card');
             cards.forEach(card => card.classList.remove('active'));
@@ -203,101 +239,69 @@
         const modalTitle = document.getElementById('modalTitle');
         const submitBtn = document.getElementById('submitBtn');
         const deleteBtn = document.getElementById('deleteBtn');
+        
+        // Element Form
+        const formAction = document.getElementById('formAction');
+        const addressId = document.getElementById('addressId');
+        const inputName = document.getElementById('inputName');
+        const inputPhone = document.getElementById('inputPhone');
+        const inputAddress = document.getElementById('inputAddress');
+        const inputLandmark = document.getElementById('inputLandmark');
 
         function bukaModal() { modal.classList.add('open'); }
-        function tutupModal() { modal.classList.remove('open'); editingCard = null; }
+        function tutupModal() { modal.classList.remove('open'); }
+        
+        // Klik di luar modal menutup modal
         modal.addEventListener('click', function(e) { if (e.target === modal) tutupModal(); });
 
         function tambahAlamatBaru() {
-            editingCard = null;
+            // Reset Form
             document.querySelector('form').reset();
-            // Default select Rumah
+            formAction.value = 'add';
+            addressId.value = '';
+            
+            // Set Default Radio
             const rumahRadio = document.querySelector('input[value="Rumah"]');
             if(rumahRadio) rumahRadio.checked = true;
 
             modalTitle.textContent = "Tambah Alamat";
             submitBtn.textContent = "Simpan Alamat";
-            deleteBtn.style.display = 'none';
+            deleteBtn.style.display = 'none'; // Sembunyikan tombol hapus
             bukaModal();
         }
 
-        function editAlamat(event, btnElement) {
-            event.stopPropagation();
-            editingCard = btnElement.closest('.address-card');
+        function editAlamat(event, data) {
+            event.stopPropagation(); // Mencegah trigger onclick card wrapper
 
-            const currentLabel = editingCard.querySelector('.address-label').textContent.trim();
-            const currentName = editingCard.querySelector('.receiver-name').textContent.trim();
-            const currentPhone = editingCard.querySelector('.receiver-phone').textContent.trim();
-            const currentAddress = editingCard.querySelector('.address-detail').textContent.trim();
-            const rawLandmark = editingCard.querySelector('.address-landmark').textContent.trim();
-            const currentLandmark = rawLandmark === 'Tidak ada patokan' ? '' : rawLandmark;
+            // Isi Form dengan Data dari Database (via JSON)
+            formAction.value = 'edit';
+            addressId.value = data.address_id;
+            inputName.value = data.recipient_name;
+            inputPhone.value = data.phone_number;
+            inputAddress.value = data.full_address;
+            inputLandmark.value = data.landmark;
 
-            document.getElementById('inputName').value = currentName;
-            document.getElementById('inputPhone').value = currentPhone;
-            document.getElementById('inputAddress').value = currentAddress;
-            document.getElementById('inputLandmark').value = currentLandmark;
-
+            // Set Radio Button
             const radios = document.getElementsByName('label');
             for(let r of radios) {
-                if(r.value === currentLabel) { r.checked = true; break; }
+                if(r.value === data.label) { r.checked = true; break; }
+                else if (data.label !== 'Rumah' && data.label !== 'Kantor') {
+                    // Fallback ke lainnya jika label custom (opsional)
+                    if(r.value === 'Lainnya') r.checked = true;
+                }
             }
 
             modalTitle.textContent = "Ubah Alamat";
             submitBtn.textContent = "Simpan Perubahan";
-            deleteBtn.style.display = 'block';
+            deleteBtn.style.display = 'block'; // Tampilkan tombol hapus
             bukaModal();
         }
 
         function hapusAlamat() {
-            if(editingCard && confirm("Apakah Anda yakin ingin menghapus alamat ini?")) {
-                editingCard.remove();
-                tutupModal();
-                alert("Alamat berhasil dihapus.");
+            const id = addressId.value;
+            if(id && confirm("Apakah Anda yakin ingin menghapus alamat ini?")) {
+                window.location.href = `alamat.php?action=delete&id=${id}`;
             }
-        }
-
-        function simpanAlamat(event) {
-            event.preventDefault();
-            
-            const label = document.querySelector('input[name="label"]:checked').value;
-            const name = document.getElementById('inputName').value;
-            const phone = document.getElementById('inputPhone').value;
-            const address = document.getElementById('inputAddress').value;
-            const landmarkVal = document.getElementById('inputLandmark').value;
-            const landmarkText = landmarkVal ? landmarkVal : 'Tidak ada patokan';
-
-            if (editingCard) {
-                editingCard.querySelector('.address-label').textContent = label;
-                editingCard.querySelector('.receiver-name').textContent = name;
-                editingCard.querySelector('.receiver-phone').textContent = phone;
-                editingCard.querySelector('.address-detail').textContent = address;
-                editingCard.querySelector('.address-landmark').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${landmarkText}`;
-                alert("Perubahan berhasil disimpan!");
-            } else {
-                const list = document.getElementById('addressList');
-                const newCard = document.createElement('div');
-                newCard.className = 'address-card';
-                newCard.onclick = function() { pilihAlamat(this) };
-                newCard.innerHTML = `
-                    <div class="check-icon"><i class="fas fa-check"></i></div>
-                    <div class="card-header">
-                        <span class="address-label">${label}</span>
-                        <i class="fas fa-pen edit-btn" onclick="editAlamat(event, this)"></i>
-                    </div>
-                    <div class="card-body">
-                        <div class="receiver-name">${name}</div>
-                        <span class="receiver-phone">${phone}</span>
-                        <div class="address-detail">${address}</div>
-                        <div class="address-landmark">
-                            <i class="fas fa-map-marker-alt"></i> ${landmarkText}
-                        </div>
-                    </div>
-                `;
-                list.prepend(newCard);
-                pilihAlamat(newCard);
-                alert("Alamat baru berhasil ditambahkan!");
-            }
-            tutupModal();
         }
     </script>
 </body>
