@@ -1,24 +1,28 @@
 <?php
 include '../koneksi.php';
+
 $email = $_POST['email'];
 $password = $_POST['password'];
 $phone_number = $_POST['phone_number'];
 $address = $_POST['address'];
 
-//Cek email sudah terdaftar atau belum
+// 1. Cek email sudah terdaftar atau belum
 $cek_email = mysqli_query($koneksi, "SELECT * FROM users WHERE email='$email'");
 if(mysqli_num_rows($cek_email) > 0){
-    echo "<script>alert('Email sudah terdaftar. Silakan gunakan email lain.'); window.location.href='../../Public/Views/guest/register.php';</script>";
+    echo "<script>alert('Email sudah terdaftar. Silakan gunakan email lain.'); window.location.href='../../Views/guest/register.php';</script>";
     exit();
 }
 
-//Hash password
+// 2. Hash password
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-//Simpan data user baru
-$simpan = mysqli_query($koneksi, "INSERT INTO users (email, password, phone_number, address, role) VALUES ('$email', '$hashed_password', '$phone_number', '$address', 'buyer')");
-if(mysqli_query($koneksi, $simpan)) {
-    echo "<script>alert('Registrasi berhasil. Silakan login.'); window.location.href='../../Public/Views/guest/login.php';</script>";
+// 3. Siapkan query insert
+$query_sql = "INSERT INTO users (email, password, phone_number, address, role) VALUES ('$email', '$hashed_password', '$phone_number', '$address', 'buyer')";
+
+// 4. Jalankan query sekali saja di dalam IF
+if(mysqli_query($koneksi, $query_sql)) {
+    echo "<script>alert('Registrasi berhasil. Silakan login.'); window.location.href='../../Views/guest/login.php';</script>";
 } else {
-    echo 'error: ' . mysqli_error($koneksi);}
+    echo 'error: ' . mysqli_error($koneksi);
+}
 ?>
