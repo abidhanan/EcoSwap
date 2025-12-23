@@ -1,34 +1,57 @@
+/* =========================================
+   GLOBAL RESET & VARIABLES
+   ========================================= */
 * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
-        body {
-            background-color: #f5f5f5;
-            color: #333;
-            min-height: 100vh;
-            display: flex;
-        }
+:root {
+    --primary: #ffd700;       /* Kuning Ecoswap */
+    --primary-hover: #e6c200;
+    --dark: #1a1a1a;
+    --light: #f5f5f5;
+    --white: #ffffff;
+    --text-dark: #333;
+    --text-muted: #666;
+    --danger: #dc3545;
+    --success: #2ecc71;
+    --border: #e0e0e0;
+    
+    /* Icon Colors */
+    --icon-prod: #e67e22;
+    --icon-order: #3498db;
+    --icon-finance: #2ecc71;
+    --icon-perf: #9b59b6;
+}
 
-        /* LAYOUT CONTAINER */
-        .app-layout {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-            overflow: hidden;
-        }
+body {
+    background-color: var(--light);
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+}
 
-        /* ===========================
-   SIDEBAR
-   =========================== */
+/* =========================================
+   APP LAYOUT & SIDEBAR
+   ========================================= */
+.app-layout {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Sidebar Styling */
 .sidebar {
     width: 280px;
     background-color: #000;
-    color: #fff;
+    color: var(--white);
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -36,259 +59,369 @@
     display: flex;
     align-items: center;
     padding: 0 40px;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--dark);
 }
 
 .logo {
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: -0.5px;
-    color: #fff;
+    color: var(--white);
 }
 
-.logo span { color: #ffd700; }
+.logo span { color: var(--primary); }
 
 .sidebar-menu {
     list-style: none;
-    margin-top: 10px;
+    margin-top: 20px;
     flex: 1;
 }
 
 .menu-link {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 15px 25px;
-    color: #fff;
+    gap: 15px;
+    padding: 15px 30px;
+    color: #bbb;
     text-decoration: none;
     font-weight: 500;
+    transition: 0.3s;
     border-left: 4px solid transparent;
-    transition: 0.2s;
 }
 
 .menu-link:hover {
-    background-color: #1a1a1a;
-    border-left-color: #ffd700;
-}
-
-.menu-link i {
-    width: 20px;
-    text-align: center;
-    font-size: 1.1rem;
+    background-color: var(--dark);
+    color: var(--white);
 }
 
 .menu-item.active .menu-link {
-    background-color: #ffd700;
-    color: #000;
-    font-weight: bold;
+    background-color: var(--dark);
+    color: var(--primary);
+    border-left-color: var(--primary);
 }
 
-/* Sidebar Footer - Logout */
 .sidebar-footer {
     margin-top: auto;
     padding: 20px;
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--dark);
 }
 
 .logout-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 15px 20px;
+    padding: 12px 20px;
     color: #fff;
     text-decoration: none;
     font-weight: 500;
-    background-color: #1a1a1a;
+    background-color: var(--dark);
     border-radius: 8px;
-    border: 1px solid #333;
-    transition: all 0.3s ease;
+    transition: all 0.3s;
 }
 
 .logout-link:hover {
-    background-color: #dc3545;
-    border-color: #dc3545;
+    background-color: var(--danger);
+}
+
+/* =========================================
+   MAIN CONTENT WRAPPER
+   ========================================= */
+.main-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--white);
+    position: relative;
+    overflow: hidden;
+}
+
+.header {
+    height: 70px;
+    background-color: var(--white);
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-dark);
+}
+
+.content {
+    padding: 40px;
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+}
+
+/* =========================================
+   SELLER DASHBOARD SPECIFIC
+   ========================================= */
+.shop-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* 1. Shop Header Card */
+.shop-header-card {
+    background-color: var(--white);
+    border-radius: 12px;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    margin-bottom: 30px;
+}
+
+.shop-avatar-container {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+}
+
+.shop-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary);
+}
+
+.shop-status-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    background-color: var(--success);
+    border: 3px solid var(--white);
+    border-radius: 50%;
+}
+
+.shop-info { flex: 1; }
+
+.shop-info h2 {
+    font-size: 1.6rem;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+.shop-rating {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.shop-rating i { color: var(--primary); }
+
+.btn-visit-shop {
+    padding: 10px 20px;
+    background-color: #000;
+    color: var(--primary);
+    text-decoration: none;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: transform 0.2s;
+}
+
+.btn-visit-shop:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    background-color: #333;
 }
 
-.logout-link i {
-    width: 20px;
+/* 2. Shop Menu Grid */
+.shop-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+}
+
+.shop-menu-item {
+    background-color: var(--white);
+    border-radius: 15px;
+    padding: 35px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    font-size: 1.1rem;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-        /* ===========================
-           MAIN CONTENT AREA
-           =========================== */
-        .main-content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: #ffffff;
-            position: relative;
-            overflow: hidden;
-        }
+.shop-menu-item:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+    border-color: var(--primary);
+}
 
-        /* HEADER */
-        .header {
-            height: 70px;
-            background-color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 40px;
-            border-bottom: 1px solid #e0e0e0;
-            flex-shrink: 0;
-        }
+/* Circle Icon Background */
+.menu-icon-circle {
+    width: 70px;
+    height: 70px;
+    background-color: #f8f9fa;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    transition: 0.3s;
+}
 
-        .page-title {
-            color: #1e1e1e;
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
+/* Icon Specific Colors */
+.icon-products { color: var(--icon-prod); }
+.icon-orders   { color: var(--icon-order); }
+.icon-finance  { color: var(--icon-finance); }
+.icon-performance { color: var(--icon-perf); }
 
-        /* SCROLLABLE CONTENT */
-        .content {
-            padding: 40px;
-            flex: 1;
-            overflow-y: auto;
-            background-color: #f9f9f9;
-        }
+/* Hover Effect: Invert Colors */
+.shop-menu-item:hover .menu-icon-circle {
+    background-color: #000;
+}
+.shop-menu-item:hover .icon-products,
+.shop-menu-item:hover .icon-orders,
+.shop-menu-item:hover .icon-finance,
+.shop-menu-item:hover .icon-performance {
+    color: var(--primary);
+}
 
-        /* ===========================
-           SHOP DASHBOARD STYLES
-           =========================== */
-        .shop-container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
+.menu-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
 
-        /* 1. Shop Profile Header (Top Left Icon) */
-        .shop-header-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 25px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-        }
+/* =========================================
+   MODAL STYLES (Create Shop)
+   ========================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
 
-        .shop-avatar-container {
-            position: relative;
-        }
+/* Force open state for Create Shop Modal */
+.modal-overlay.force-open {
+    display: flex;
+    opacity: 1;
+    background: rgba(0,0,0,0.85); /* Lebih gelap agar fokus */
+    backdrop-filter: blur(5px);
+}
 
-        .shop-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #ffd700; /* Ring Kuning */
-        }
+.modal-container {
+    background: var(--white);
+    width: 100%;
+    max-width: 500px;
+    border-radius: 12px;
+    padding: 30px;
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
 
-        .shop-status-dot {
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            width: 18px;
-            height: 18px;
-            background-color: #2ecc71;
-            border: 2px solid #fff;
-            border-radius: 50%;
-        }
+.modal-overlay.force-open .modal-container {
+    transform: translateY(0);
+}
 
-        .shop-info h2 {
-            font-size: 1.5rem;
-            color: #1e1e1e;
-            margin-bottom: 5px;
-        }
+.modal-header {
+    margin-bottom: 25px;
+    text-align: center;
+}
 
-        .shop-rating {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #666;
-            font-size: 0.95rem;
-        }
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-dark);
+}
 
-        .shop-rating i { color: #ffd700; }
+/* Form Styles inside Modal */
+.form-group { margin-bottom: 20px; }
 
-        .btn-visit-shop {
-            margin-left: auto;
-            padding: 10px 20px;
-            background-color: #1e1e1e;
-            color: #ffd700;
-            text-decoration: none;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            transition: background 0.2s;
-        }
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #444;
+    text-align: left;
+}
 
-        .btn-visit-shop:hover {
-            background-color: #333;
-        }
+.form-input, .form-textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: 0.3s;
+}
 
-        /* 2. Shop Menu Grid */
-        .shop-menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
+.form-input:focus, .form-textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+}
 
-        .shop-menu-item {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 30px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            cursor: pointer;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-        }
+/* File Upload Wrapper (Dashed Box) */
+.file-input-wrapper {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: #fafafa;
+    transition: 0.3s;
+}
 
-        .shop-menu-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-            border-color: #ffd700;
-        }
+.file-input-wrapper:hover {
+    border-color: var(--primary);
+    background-color: #fffdf0;
+}
 
-        .menu-icon-circle {
-            width: 70px;
-            height: 70px;
-            background-color: #f5f5f5;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 15px;
-            font-size: 1.8rem;
-            color: #1e1e1e;
-            transition: background 0.3s, color 0.3s;
-        }
+#preview-shop-img {
+    max-width: 100px;
+    max-height: 100px;
+    border-radius: 50%;
+    margin-top: 15px;
+    display: none;
+    object-fit: cover;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
 
-        .shop-menu-item:hover .menu-icon-circle {
-            background-color: #1e1e1e;
-            color: #ffd700;
-        }
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--primary);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
 
-        .menu-label {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #333;
-        }
-
-        /* Specific Icons Adjustments */
-        .icon-products { color: #e67e22; }
-        .icon-orders { color: #3498db; }
-        .icon-finance { color: #2ecc71; }
-        .icon-performance { color: #9b59b6; }
-        .icon-live { color: #e74c3c; }
+.btn-submit:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4);
+}
