@@ -18,7 +18,7 @@ $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 //Simpan data user baru
 $simpan = mysqli_query($koneksi, "INSERT INTO users (email, password, phone_number, address, role) VALUES ('$email', '$hashed_password', '$phone_number', '$address', 'buyer')");
 if(mysqli_query($koneksi, $simpan)) {
-    echo "<script>alert('Registrasi berhasil. Silakan login.'); window.location.href='../../Public/Views/auth/login.php';</script>";
+    echo "<script>alert('Registrasi berhasil. Silakan login.'); window.location.href='../../Public/Views/guest/login.php';</script>";
 } else {
     echo 'error: ' . mysqli_error($koneksi);}
 ?>

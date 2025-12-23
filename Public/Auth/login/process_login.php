@@ -26,12 +26,12 @@ if ($user) {
         exit();
     } else {
         //Password salah
-        echo "<script>alert('Password salah. Silakan coba lagi.'); window.location.href='../../Views/auth/login.php';</script>";
+        echo "<script>alert('Password salah. Silakan coba lagi.'); window.location.href='../../Views/guest/login.php';</script>";
         exit();
     }
 } else {
     //User tidak ditemukan
-    echo "<script>alert('Email tidak ditemukan. Silakan coba lagi.'); window.location.href='../../Views/auth/login.php';</script>";
+    echo "<script>alert('Email tidak ditemukan. Silakan coba lagi.'); window.location.href='../../Views/guest/login.php';</script>";
     exit();
 }
 
