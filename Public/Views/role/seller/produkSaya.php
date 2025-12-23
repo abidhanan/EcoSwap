@@ -1,37 +1,28 @@
 <?php
 session_start();
 
-// PERBAIKAN: Gunakan ../../../ (3 level) agar ketemu file koneksinya
+// Koneksi Database
 include '../../../Auth/koneksi.php';
 
-// Validasi jika koneksi gagal (agar tidak muncul error fatal)
-if (!isset($koneksi)) {
-    die("Error: File koneksi.php tidak ditemukan. Cek path include.");
+// Cek Login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../../auth/login.php");
+    exit();
 }
-
-// Cek sesi login (Simulasi user_id = 1 jika belum login)
-if (!isset($_SESSION['user_id'])) { $_SESSION['user_id'] = 1; }
 $user_id = $_SESSION['user_id'];
 
-// Cek apakah user sudah punya toko
-$cek_toko = mysqli_query($koneksi, "SELECT shop_id FROM shops WHERE user_id = '$user_id'");
-
-// Validasi query
-if (!$cek_toko) {
-    die("Query Error: " . mysqli_error($koneksi));
+// Cek Toko
+$q_shop = mysqli_query($koneksi, "SELECT shop_id FROM shops WHERE user_id = '$user_id'");
+if(mysqli_num_rows($q_shop) == 0){
+    header("Location: dashboard.php"); // Belum punya toko
+    exit();
 }
+$shop = mysqli_fetch_assoc($q_shop);
+$shop_id = $shop['shop_id'];
 
-$data_toko = mysqli_fetch_assoc($cek_toko);
-
-// Jika belum punya toko, buat dummy toko otomatis (opsional)
-if(!$data_toko){
-    mysqli_query($koneksi, "INSERT INTO shops (user_id, shop_name) VALUES ('$user_id', 'Toko Saya')");
-    $shop_id = mysqli_insert_id($koneksi);
-} else {
-    $shop_id = $data_toko['shop_id'];
-}
-
-// --- LOGIKA TAMBAH PRODUK ---
+// ==========================================
+// 1. LOGIKA TAMBAH PRODUK
+// ==========================================
 if (isset($_POST['action']) && $_POST['action'] == 'add') {
     $name = mysqli_real_escape_string($koneksi, $_POST['name']);
     $price = $_POST['price'];
@@ -39,51 +30,93 @@ if (isset($_POST['action']) && $_POST['action'] == 'add') {
     $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
     
     // Upload Gambar
-    $target_dir = "../../../Assets/img/products/"; // Pastikan folder ini ada
-    if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
+    $db_img_path = "https://placehold.co/300?text=No+Image"; // Default
     
-    $img_name = time() . "_" . basename($_FILES["image"]["name"]);
-    $target_file = $target_dir . $img_name;
-    
-    // Default image jika upload gagal
-    $db_img_path = "https://placehold.co/300";
-
-    if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        // Simpan path relatif untuk database
-        $db_img_path = $target_file; 
+    if (!empty($_FILES['image']['name'])) {
+        $target_dir = "../../../Assets/img/products/";
+        if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
+        
+        $file_name = time() . "_" . basename($_FILES["image"]["name"]);
+        $target_file = $target_dir . $file_name;
+        
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+            $db_img_path = $target_file; 
+        }
     }
     
-    $query = "INSERT INTO products (shop_id, name, price, `condition`, description, image, status) 
-              VALUES ('$shop_id', '$name', '$price', '$cond', '$desc', '$db_img_path', 'active')";
+    $query = "INSERT INTO products (shop_id, name, price, `condition`, description, image, status, created_at) 
+              VALUES ('$shop_id', '$name', '$price', '$cond', '$desc', '$db_img_path', 'active', NOW())";
     
     if(mysqli_query($koneksi, $query)){
         echo "<script>alert('Produk berhasil ditambahkan!'); window.location.href='produkSaya.php';</script>";
-        exit();
-    } else {
-        echo "Error: " . mysqli_error($koneksi);
     }
 }
 
-// --- LOGIKA HAPUS PRODUK ---
-if (isset($_GET['delete_id'])) {
-    $pid = $_GET['delete_id'];
-    mysqli_query($koneksi, "UPDATE products SET status = 'deleted' WHERE product_id = '$pid' AND shop_id = '$shop_id'");
-    header("Location: produkSaya.php");
-    exit();
+// ==========================================
+// 2. LOGIKA UPDATE PRODUK
+// ==========================================
+if (isset($_POST['action']) && $_POST['action'] == 'edit') {
+    $pid = $_POST['product_id'];
+    $name = mysqli_real_escape_string($koneksi, $_POST['name']);
+    $price = $_POST['price'];
+    $cond = $_POST['condition'];
+    $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
+    
+    // Update data teks
+    $query = "UPDATE products SET name='$name', price='$price', `condition`='$cond', description='$desc' 
+              WHERE product_id='$pid' AND shop_id='$shop_id'";
+    mysqli_query($koneksi, $query);
+
+    // Cek jika ada upload gambar baru
+    if (!empty($_FILES['image']['name'])) {
+        $target_dir = "../../../Assets/img/products/";
+        if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
+        
+        $file_name = time() . "_" . basename($_FILES["image"]["name"]);
+        $target_file = $target_dir . $file_name;
+        
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+            mysqli_query($koneksi, "UPDATE products SET image='$target_file' WHERE product_id='$pid'");
+        }
+    }
+
+    echo "<script>alert('Produk berhasil diperbarui!'); window.location.href='produkSaya.php';</script>";
 }
 
-// --- AMBIL DATA DARI DATABASE ---
+// ==========================================
+// 3. LOGIKA HAPUS PRODUK
+// ==========================================
+if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
+    $pid = $_GET['id'];
+    $query = "DELETE FROM products WHERE product_id='$pid' AND shop_id='$shop_id'";
+    
+    if(mysqli_query($koneksi, $query)){
+        echo "<script>alert('Produk berhasil dihapus!'); window.location.href='produkSaya.php';</script>";
+    }
+}
+
+// ==========================================
+// 4. AMBIL DATA PRODUK (READ) + HITUNG FAVORIT
+// ==========================================
 $products = [];
-$query_prod = mysqli_query($koneksi, "SELECT * FROM products WHERE shop_id = '$shop_id' AND status != 'deleted' ORDER BY created_at DESC");
+
+// Query: Hitung jumlah produk di tabel 'cart' sebagai indikator favorit
+$sql = "SELECT p.*, 
+        (SELECT COUNT(*) FROM cart c WHERE c.product_id = p.product_id) as total_favorites
+        FROM products p 
+        WHERE p.shop_id = '$shop_id' AND p.status != 'deleted' 
+        ORDER BY p.created_at DESC";
+
+$query_prod = mysqli_query($koneksi, $sql);
+
 while($row = mysqli_fetch_assoc($query_prod)) {
-    // Sesuaikan format dengan struktur JS kamu
     $products[] = [
         'id' => $row['product_id'],
         'name' => $row['name'],
         'price' => (int)$row['price'],
-        'img' => $row['image'], // Path gambar
-        'views' => $row['views'],
-        'status' => $row['status'], // active / sold
+        'img' => $row['image'],
+        'favorites' => $row['total_favorites'], // Jumlah favorit dari cart
+        'status' => $row['status'], // 'active' atau 'sold'
         'desc' => $row['description'],
         'cond' => $row['condition']
     ];
@@ -98,13 +131,30 @@ while($row = mysqli_fetch_assoc($query_prod)) {
     <title>Produk Saya - Ecoswap</title>
     <link rel="stylesheet" href="../../../Assets/css/role/seller/produkSaya.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* CSS Overwrite: Posisi Ikon Favorit di Kanan Bawah */
+        .card-stats {
+            display: flex;
+            justify-content: flex-end; /* Geser ke kanan */
+            margin-top: 10px;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        .card-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .card-stats i {
+            color: #e74c3c; /* Merah Hati */
+        }
+    </style>
 </head>
 
 <body>
 
     <div class="app-layout">
         
-        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
@@ -147,7 +197,6 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="main-content-wrapper">
             <div class="header">
                 <div class="page-title">Produk Saya</div>
@@ -156,7 +205,6 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             <div class="content">
                 <div class="product-container">
                     
-                    <!-- ACTION BAR -->
                     <div class="action-bar">
                         <h2 style="font-size:1.2rem; color:#666;">Kelola Katalog</h2>
                         <button class="btn-add-product" onclick="openAddModal()">
@@ -164,23 +212,19 @@ while($row = mysqli_fetch_assoc($query_prod)) {
                         </button>
                     </div>
 
-                    <!-- TABS KATEGORI -->
                     <div class="tabs-container">
                         <button class="tab-btn active" onclick="switchTab('active', this)">Semua Produk</button>
                         <button class="tab-btn" onclick="switchTab('sold', this)">Terjual</button>
                     </div>
 
-                    <!-- GRID PRODUK -->
                     <div class="my-product-grid" id="productGrid">
-                        <!-- Produk akan di-render lewat JS -->
-                    </div>
+                        </div>
 
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- MODAL 1: TAMBAH PRODUK -->
     <div class="modal-overlay" id="addProductModal">
         <div class="modal-container">
             <span class="close-modal" onclick="closeModal('addProductModal')">&times;</span>
@@ -228,7 +272,6 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         </div>
     </div>
 
-    <!-- MODAL 2: DETAIL PRODUK (VIEW) -->
     <div class="modal-overlay" id="detailModal">
         <div class="modal-container">
             <span class="close-modal" onclick="closeModal('detailModal')">&times;</span>
@@ -250,36 +293,37 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         </div>
     </div>
 
-    <!-- MODAL 3: EDIT PRODUK -->
     <div class="modal-overlay" id="editProductModal">
         <div class="modal-container">
             <span class="close-modal" onclick="closeModal('editProductModal')">&times;</span>
             <div class="modal-title">Edit Produk</div>
             
-            <form onsubmit="saveEditProduct(event)">
-                <!-- Upload Foto Edit -->
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="product_id" id="editProductId">
+
                 <div class="form-group">
                     <label class="form-label">Foto Produk</label>
                     <div class="upload-box" onclick="document.getElementById('editImgInput').click()">
                         <p style="font-size:0.8rem; color:#666; margin-bottom:5px;">Klik untuk ganti foto</p>
                         <img id="previewImgEdit" class="preview-img" src="" alt="Preview" style="display:block;">
                     </div>
-                    <input type="file" id="editImgInput" style="display: none;" accept="image/*" onchange="previewImage(this, 'previewImgEdit', null)">
+                    <input type="file" name="image" id="editImgInput" style="display: none;" accept="image/*" onchange="previewImage(this, 'previewImgEdit', null)">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Nama Produk</label>
-                    <input type="text" id="editName" class="form-input" required>
+                    <input type="text" name="name" id="editName" class="form-input" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Harga (Rp)</label>
-                    <input type="number" id="editPrice" class="form-input" required>
+                    <input type="number" name="price" id="editPrice" class="form-input" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Kondisi</label>
-                    <select id="editCond" class="form-select">
+                    <select name="condition" id="editCond" class="form-select">
                         <option value="Bekas - Seperti Baru">Bekas - Seperti Baru</option>
                         <option value="Bekas - Baik">Bekas - Baik</option>
                         <option value="Bekas - Layak Pakai">Bekas - Layak Pakai</option>
@@ -288,7 +332,7 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 
                 <div class="form-group">
                     <label class="form-label">Deskripsi</label>
-                    <textarea id="editDesc" class="form-textarea" rows="3"></textarea>
+                    <textarea name="description" id="editDesc" class="form-textarea" rows="3"></textarea>
                 </div>
 
                 <button type="submit" class="btn-submit">Simpan Perubahan</button>
@@ -298,20 +342,15 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 
     <script>
         function goToDashboard() {
-            // Sesuaikan path ini dengan struktur folder Anda sebenarnya
             window.location.href = '../buyer/dashboard.php';
         }
         
-        // DATA PRODUK DUMMY (State Awal)
+        // DATA PRODUK (Inject PHP ke JS)
         let myProducts = <?php echo json_encode($products); ?>;
-
-        // Jaga-jaga jika data kosong agar tidak error
-        if (!myProducts) {
-            myProducts = [];
-        }
+        if (!myProducts) { myProducts = []; }
 
         let currentTab = 'active';
-        let currentSelectedId = null; // Menyimpan ID produk yang sedang dilihat/diedit
+        let currentSelectedId = null;
 
         // --- RENDER PRODUK ---
         function renderProducts() {
@@ -328,13 +367,11 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             filtered.forEach(p => {
                 const isSold = p.status === 'sold';
                 const cardClass = isSold ? 'my-product-card sold' : 'my-product-card';
-                // Hanya tambahkan onclick jika produk Aktif (Belum Terjual)
-                const clickAction = (!isSold) ? `onclick="openDetail(${p.id})"` : '';
+                // Jika sold, tidak bisa diklik (opsional, di sini kita biarkan bisa diklik untuk lihat detail)
                 
                 const card = document.createElement('div');
                 card.className = cardClass;
-                // Inject onclick attribute manually
-                if(!isSold) card.setAttribute('onclick', `openDetail(${p.id})`);
+                card.onclick = () => openDetail(p.id);
 
                 card.innerHTML = `
                     <div class="card-img-wrapper">
@@ -345,8 +382,7 @@ while($row = mysqli_fetch_assoc($query_prod)) {
                         <div class="card-title">${p.name}</div>
                         <div class="card-price">Rp ${p.price.toLocaleString('id-ID')}</div>
                         <div class="card-stats">
-                            <span><i class="far fa-eye"></i> ${p.views} Dilihat</span>
-                            <span><i class="far fa-heart"></i> ${Math.floor(p.views / 10)} Suka</span>
+                            <span><i class="fas fa-heart"></i> ${p.favorites}</span>
                         </div>
                     </div>
                 `;
@@ -372,10 +408,10 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 
         // --- DETAIL PRODUCT LOGIC ---
         function openDetail(id) {
-            const product = myProducts.find(p => p.id === id);
+            const product = myProducts.find(p => p.id == id); 
             if (!product) return;
 
-            currentSelectedId = id; // Simpan ID untuk edit/hapus
+            currentSelectedId = id; 
 
             document.getElementById('detailImg').src = product.img;
             document.getElementById('detailName').textContent = product.name;
@@ -388,50 +424,25 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         // --- DELETE PRODUCT LOGIC ---
         function deleteCurrentProduct() {
             if (confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
-                myProducts = myProducts.filter(p => p.id !== currentSelectedId);
-                renderProducts();
-                closeModal('detailModal');
-                alert("Produk berhasil dihapus.");
+                window.location.href = `produkSaya.php?action=delete&id=${currentSelectedId}`;
             }
         }
 
         // --- EDIT PRODUCT LOGIC ---
         function openEditModalFromDetail() {
-            closeModal('detailModal'); // Tutup detail dulu
+            closeModal('detailModal'); 
             
-            const product = myProducts.find(p => p.id === currentSelectedId);
+            const product = myProducts.find(p => p.id == currentSelectedId);
             if (!product) return;
 
-            // Isi form edit dengan data lama
+            document.getElementById('editProductId').value = product.id;
             document.getElementById('editName').value = product.name;
             document.getElementById('editPrice').value = product.price;
-            document.getElementById('editCond').value = product.cond || "Bekas - Baik";
-            document.getElementById('editDesc').value = product.desc || "";
+            document.getElementById('editCond').value = product.cond;
+            document.getElementById('editDesc').value = product.desc;
             document.getElementById('previewImgEdit').src = product.img;
-            document.getElementById('editProductModal').classList.add('open');
-        }
-
-        function saveEditProduct(e) {
-            e.preventDefault();
             
-            const name = document.getElementById('editName').value;
-            const price = parseInt(document.getElementById('editPrice').value);
-            const cond = document.getElementById('editCond').value;
-            const desc = document.getElementById('editDesc').value;
-            const img = document.getElementById('previewImgEdit').src;
-            // Update array
-            const index = myProducts.findIndex(p => p.id === currentSelectedId);
-            if (index !== -1) {
-                myProducts[index].name = name;
-                myProducts[index].price = price;
-                myProducts[index].cond = cond;
-                myProducts[index].desc = desc;
-                myProducts[index].img = img;
-            }
-
-            renderProducts();
-            closeModal('editProductModal');
-            alert("Produk berhasil diperbarui!");
+            document.getElementById('editProductModal').classList.add('open');
         }
 
         // --- GENERAL IMAGE PREVIEW ---
@@ -448,47 +459,12 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             }
         }
 
-        // --- ADD PRODUCT LOGIC ---
-        function addProduct(e) {
-            e.preventDefault();
-            const name = document.getElementById('prodName').value;
-            const price = parseInt(document.getElementById('prodPrice').value);
-            const cond = document.getElementById('prodCond').value;
-            const desc = document.getElementById('prodDesc').value;
-            const img = document.getElementById('previewImgAdd').src || "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=300";
-            myProducts.unshift({
-                id: Date.now(),
-                name: name,
-                price: price,
-                img: img,
-                views: 0,
-                status: 'active',
-                desc: desc,
-                cond: cond
-            });
-
-            if (currentTab !== 'active') {
-                const activeBtn = document.querySelectorAll('.tab-btn')[0];
-                switchTab('active', activeBtn);
-            } else {
-                renderProducts();
-            }
-            
-            closeModal('addProductModal');
-            document.querySelector('form').reset();
-            document.getElementById('previewImgAdd').style.display = 'none';
-            document.getElementById('addUploadIcon').style.display = 'block';
-            alert("Produk berhasil ditambahkan!");
-        }
-
-        // Handle click outside modals
         window.onclick = function(e) {
             if (e.target.classList.contains('modal-overlay')) {
                 e.target.classList.remove('open');
             }
         }
 
-        // Init
         document.addEventListener('DOMContentLoaded', renderProducts);
 
     </script>
