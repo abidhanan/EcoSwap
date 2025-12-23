@@ -1,23 +1,23 @@
 <?php
 session_start();
-
 include '../koneksi.php';
+
 $email = $_POST['email'];
 $password = $_POST['password'];
 
-//Ambil user dari database
+// Ambil user dari database
 $query = mysqli_query($koneksi, "SELECT * FROM users WHERE email='$email' LIMIT 1");
 $user = mysqli_fetch_assoc($query);
 
 if ($user) {
-    //Cek password
+    // Cek password
     if (password_verify($password, $user['password'])) {
-        //Password benar, set session
-        $_SESSION['user_id'] = $user['id'];
+        // Password benar, set session
+        $_SESSION['user_id'] = $user['user_id']; // Pastikan sesuai nama kolom di DB (user_id)
         $_SESSION['email'] = $user['email'];
         $_SESSION['role'] = $user['role'];
 
-        //Redirect berdasarkan role
+        // Redirect berdasarkan role
         if ($user['role'] === 'admin') {
             header('Location: ../../Views/role/admin/dashboard.php');
         } else {
@@ -25,14 +25,13 @@ if ($user) {
         }
         exit();
     } else {
-        //Password salah
+        // Password salah -> Redirect ke guest/login.php
         echo "<script>alert('Password salah. Silakan coba lagi.'); window.location.href='../../Views/guest/login.php';</script>";
         exit();
     }
 } else {
-    //User tidak ditemukan
+    // User tidak ditemukan -> Redirect ke guest/login.php
     echo "<script>alert('Email tidak ditemukan. Silakan coba lagi.'); window.location.href='../../Views/guest/login.php';</script>";
     exit();
 }
-
 ?>

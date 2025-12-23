@@ -1,32 +1,33 @@
 <?php
 session_start();
 
-// Menggunakan path koneksi sesuai struktur folder Anda
+// Koneksi Database
 include '../../../Auth/koneksi.php';
 
-// Cek apakah file koneksi berhasil di-load
-if (!isset($koneksi)) {
-    die("Error: Gagal memuat koneksi database. Pastikan path file benar.");
+// Cek Login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../../auth/login.php");
+    exit();
 }
+$user_id = $_SESSION['user_id'];
 
-// Ambil semua produk aktif dari semua toko
+// 1. AMBIL DATA USER
+$q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
+$d_user = mysqli_fetch_assoc($q_user);
+$user_name = !empty($d_user['email']) ? explode('@', $d_user['email'])[0] : 'User'; // Fallback nama dari email
+// Gunakan avatar service generate berdasarkan nama user
+$user_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . $user_name;
+
+// 2. AMBIL PRODUK (FEED)
 $all_products = [];
-$query = mysqli_query($koneksi, "SELECT p.*, s.shop_name, a.full_address 
+$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, a.full_address 
                                  FROM products p 
                                  JOIN shops s ON p.shop_id = s.shop_id 
                                  LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
                                  WHERE p.status = 'active' 
                                  ORDER BY p.created_at DESC");
-
-// Cek jika query error
-if (!$query) {
-    die("Query Error: " . mysqli_error($koneksi));
-}
-
-while($row = mysqli_fetch_assoc($query)) {
-    // Ambil kota dari alamat (simple extract) atau gunakan default
+while($row = mysqli_fetch_assoc($query_prod)) {
     $loc = !empty($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia';
-    
     $all_products[] = [
         'id' => $row['product_id'],
         'title' => $row['name'],
@@ -37,6 +38,88 @@ while($row = mysqli_fetch_assoc($query)) {
         'desc' => $row['description']
     ];
 }
+
+// 3. AMBIL KERANJANG (CART)
+$cart_items = [];
+$cart_total = 0;
+$q_cart = mysqli_query($koneksi, "SELECT c.cart_id, p.product_id, p.name, p.price, p.image 
+                                  FROM cart c 
+                                  JOIN products p ON c.product_id = p.product_id 
+                                  WHERE c.user_id = '$user_id' ORDER BY c.created_at DESC");
+while($row = mysqli_fetch_assoc($q_cart)){
+    $cart_items[] = $row;
+    $cart_total += $row['price'];
+}
+$cart_count = count($cart_items);
+
+// 4. AMBIL NOTIFIKASI
+$notif_items = [];
+$q_notif = mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id = '$user_id' ORDER BY created_at DESC LIMIT 10");
+while($row = mysqli_fetch_assoc($q_notif)){
+    $notif_items[] = $row;
+}
+$notif_count = mysqli_num_rows(mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id='$user_id' AND is_read=0"));
+
+// 5. AMBIL ALAMAT (UNTUK CHECKOUT)
+$addresses = [];
+$q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE user_id = '$user_id' ORDER BY is_primary DESC");
+while($row = mysqli_fetch_assoc($q_addr)){
+    $addresses[] = $row;
+}
+// Set alamat default tampilan (primary atau index 0)
+$default_addr = !empty($addresses) ? $addresses[0] : null;
+
+// 6. LOGIKA CHAT (Grouping Pesan)
+// Kita perlu mengambil daftar orang yang pernah chat dengan user ini
+$chat_partners = [];
+$chat_messages_grouped = [];
+
+// Query ambil pesan masuk dan keluar
+$q_chat = mysqli_query($koneksi, "
+    SELECT c.*, 
+           sender.email as sender_name, 
+           receiver.email as receiver_name 
+    FROM chats c
+    JOIN users sender ON c.sender_id = sender.user_id
+    JOIN users receiver ON c.receiver_id = receiver.user_id
+    WHERE c.sender_id = '$user_id' OR c.receiver_id = '$user_id'
+    ORDER BY c.created_at ASC
+");
+
+while($row = mysqli_fetch_assoc($q_chat)){
+    // Tentukan siapa lawannya
+    if($row['sender_id'] == $user_id){
+        $partner_id = $row['receiver_id'];
+        $partner_name = explode('@', $row['receiver_name'])[0]; // Ambil nama depan email
+        $type = 'outgoing';
+    } else {
+        $partner_id = $row['sender_id'];
+        $partner_name = explode('@', $row['sender_name'])[0];
+        $type = 'incoming';
+    }
+
+    // Masukkan ke grouping messages
+    $chat_messages_grouped[$partner_name][] = [
+        'id' => $row['chat_id'],
+        'type' => $type,
+        'text' => $row['message'],
+        'time' => date('H:i', strtotime($row['created_at']))
+    ];
+
+    // Masukkan ke list sidebar (unique)
+    if(!isset($chat_partners[$partner_id])) {
+        $chat_partners[$partner_id] = [
+            'name' => $partner_name,
+            'last_msg' => $row['message'],
+            'time' => date('H:i', strtotime($row['created_at'])) // Ini akan tertimpa pesan terakhir krn ASC, nanti kita reverse di frontend/sorting
+        ];
+    } else {
+        // Update pesan terakhir
+        $chat_partners[$partner_id]['last_msg'] = $row['message'];
+        $chat_partners[$partner_id]['time'] = date('H:i', strtotime($row['created_at']));
+    }
+}
+$chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
 ?>
 
 <!DOCTYPE html>
@@ -48,46 +131,17 @@ while($row = mysqli_fetch_assoc($query)) {
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS untuk logika chat bubble */
-.message-wrapper { 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    margin-bottom: 15px; 
-    position: relative; 
-}
-.message-actions { 
-    display: none; 
-    background-color: #ffffff; 
-    border-radius: 15px; 
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-    padding: 2px 8px; 
-    gap: 8px; 
-    flex-shrink: 0; 
-    border: 1px solid #ddd;
-}
-/* Munculkan aksi saat pesan diklik (class ditambahkan via JS) */
-.message-wrapper.actions-visible .message-actions { 
-    display: flex; 
-}
-.message-wrapper.outgoing .message-actions { order: -1; } /* Tombol di kiri untuk pesan kita */
-.message-wrapper.incoming .message-actions { order: 1; }  /* Tombol di kanan untuk pesan orang */
-
-.action-icon-btn { 
-    background: none; 
-    border: none; 
-    cursor: pointer; 
-    font-size: 0.85rem; 
-    color: #666; 
-    padding: 5px; 
-    transition: color 0.2s;
-}
-.action-icon-btn.report:hover { color: #f39c12; }
-.action-icon-btn.delete:hover { color: #e74c3c; }
-
-/* Mencegah bubble chat menutup aksi saat di klik */
-.message-bubble { cursor: pointer; transition: opacity 0.2s; }
-.message-bubble:active { opacity: 0.7; }
+        /* CSS Logika Chat */
+        .message-wrapper { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; position: relative; }
+        .message-actions { display: none; background-color: #ffffff; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); padding: 2px 8px; gap: 8px; flex-shrink: 0; border: 1px solid #ddd; }
+        .message-wrapper.actions-visible .message-actions { display: flex; }
+        .message-wrapper.outgoing .message-actions { order: -1; }
+        .message-wrapper.incoming .message-actions { order: 1; }
+        .action-icon-btn { background: none; border: none; cursor: pointer; font-size: 0.85rem; color: #666; padding: 5px; transition: color 0.2s; }
+        .action-icon-btn.report:hover { color: #f39c12; }
+        .action-icon-btn.delete:hover { color: #e74c3c; }
+        .message-bubble { cursor: pointer; transition: opacity 0.2s; }
+        .message-bubble:active { opacity: 0.7; }
     </style>
 </head>
 
@@ -105,18 +159,24 @@ while($row = mysqli_fetch_assoc($query)) {
         <div class="nav-right">
             <button class="nav-icon-btn" onclick="toggleCart()">
                 <i class="fas fa-shopping-cart"></i>
-                <span class="cart-badge">3</span>
+                <?php if($cart_count > 0): ?>
+                    <span class="cart-badge"><?php echo $cart_count; ?></span>
+                <?php endif; ?>
             </button>
+            
             <button class="nav-icon-btn" onclick="toggleNotifications()">
                 <i class="fas fa-bell"></i>
-                <span class="notif-badge">5</span>
+                <?php if($notif_count > 0): ?>
+                    <span class="notif-badge"><?php echo $notif_count; ?></span>
+                <?php endif; ?>
             </button>
+            
             <button class="nav-icon-btn" onclick="toggleChat()">
                 <i class="fas fa-comment-dots"></i>
-                <span class="chat-badge">2</span>
-            </button>
+                </button>
+            
             <div class="user-avatar" onclick="window.location.href='profil.php'">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dimas" alt="User">
+                <img src="<?php echo $user_avatar; ?>" alt="User">
             </div>
         </div>
     </nav>
@@ -156,7 +216,6 @@ while($row = mysqli_fetch_assoc($query)) {
 
         <div class="product-grid" id="productGrid">
             </div>
-
     </div>
 
     <div class="modal-overlay" id="productModal">
@@ -207,15 +266,19 @@ while($row = mysqli_fetch_assoc($query)) {
                     </div>
                     <div class="address-box" onclick="openAddressModal()">
                         <div class="addr-change">Ubah</div>
-                        <div class="addr-name" id="displayAddrName">Dimas Sudarmono | 08123456789</div>
-                        <div class="addr-detail" id="displayAddrDetail">Jl. Merpati No. 45, RT 02 RW 05, Kelurahan Sukamaju, Kecamatan Sukajaya, Jakarta Selatan.</div>
+                        <?php if($default_addr): ?>
+                            <div class="addr-name" id="displayAddrName"><?php echo $default_addr['recipient_name']; ?> | <?php echo $default_addr['phone_number']; ?></div>
+                            <div class="addr-detail" id="displayAddrDetail"><?php echo $default_addr['full_address']; ?></div>
+                        <?php else: ?>
+                            <div class="addr-name" id="displayAddrName">Belum ada alamat</div>
+                            <div class="addr-detail" id="displayAddrDetail">Klik untuk menambahkan alamat</div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="section-card-checkout">
                     <div class="section-title-checkout">Produk Dipesan</div>
-                    <div class="product-list-container" id="checkoutProductList">
-                        </div>
+                    <div class="product-list-container" id="checkoutProductList"></div>
                 </div>
 
                 <div class="section-card-checkout">
@@ -303,16 +366,19 @@ while($row = mysqli_fetch_assoc($query)) {
                 <span>Pilih Alamat</span>
                 <i class="fas fa-times" onclick="closeAddressModal()" style="cursor:pointer;"></i>
             </div>
-            <div class="address-option selected" onclick="selectAddress(this, 'Dimas (Rumah)', 'Jl. Merpati No. 45, Jakarta Selatan')">
-                <div style="font-weight:bold;">Rumah</div>
-                <div style="font-size:0.85rem; color:#666;">Dimas Sudarmono | 08123456789</div>
-                <div style="font-size:0.85rem;">Jl. Merpati No. 45, Jakarta Selatan.</div>
+            <?php foreach($addresses as $addr): ?>
+            <div class="address-option <?php echo ($addr['is_primary']) ? 'selected' : ''; ?>" 
+                 onclick="selectAddress(this, '<?php echo $addr['recipient_name']; ?>', '<?php echo $addr['full_address']; ?>', '<?php echo $addr['phone_number']; ?>')">
+                <div style="font-weight:bold;"><?php echo $addr['label']; ?></div>
+                <div style="font-size:0.85rem; color:#666;"><?php echo $addr['recipient_name']; ?> | <?php echo $addr['phone_number']; ?></div>
+                <div style="font-size:0.85rem;"><?php echo $addr['full_address']; ?></div>
             </div>
-             <div class="address-option" onclick="selectAddress(this, 'Dimas (Kantor)', 'Gedung Cyber 2, Jakarta Selatan')">
-                <div style="font-weight:bold;">Kantor</div>
-                <div style="font-size:0.85rem; color:#666;">Dimas Sudarmono | 08123456789</div>
-                <div style="font-size:0.85rem;">Gedung Cyber 2, Kuningan, Jakarta Selatan.</div>
-            </div>
+            <?php endforeach; ?>
+            <?php if(empty($addresses)): ?>
+                <div style="padding:15px; text-align:center; color:#666;">
+                    Belum ada alamat. <a href="alamat.php" style="color:var(--primary);">Tambah Alamat</a>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -324,38 +390,22 @@ while($row = mysqli_fetch_assoc($query)) {
         </div>
         
         <div class="cart-items" id="cartItemsContainer">
-            <div class="cart-item" data-id="c1" data-price="450000" data-name="Sepatu Kalcer Adidas Bekas Size 42" data-img="../../../Assets/img/role/buyer/sepatu_adidas.jpg">
-                <div class="cart-check-wrapper">
-                    <input type="checkbox" class="cart-checkbox" onchange="updateCartTotal()">
+            <?php if(empty($cart_items)): ?>
+                <div style="text-align:center; padding:20px; color:#666;">Keranjang kosong</div>
+            <?php else: ?>
+                <?php foreach($cart_items as $item): ?>
+                <div class="cart-item" data-id="<?php echo $item['cart_id']; ?>" data-price="<?php echo $item['price']; ?>" data-name="<?php echo $item['name']; ?>" data-img="<?php echo $item['image']; ?>">
+                    <div class="cart-check-wrapper">
+                        <input type="checkbox" class="cart-checkbox" onchange="updateCartTotal()">
+                    </div>
+                    <img src="<?php echo $item['image']; ?>" class="cart-item-img" alt="Item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-title"><?php echo $item['name']; ?></div>
+                        <div class="cart-item-price">Rp <?php echo number_format($item['price'], 0, ',', '.'); ?></div>
+                    </div>
                 </div>
-                <img src="../../../Assets/img/role/buyer/sepatu_adidas.jpg" class="cart-item-img" alt="Item">
-                <div class="cart-item-info">
-                    <div class="cart-item-title">Sepatu Kalcer Adidas Bekas Size 42</div>
-                    <div class="cart-item-price">Rp 450.000</div>
-                </div>
-            </div>
-
-            <div class="cart-item" data-id="c2" data-price="8500000" data-name="Laptop Asus ROG Bekas Gaming Murah" data-img="../../../Assets/img/role/buyer/laptop-rog.jpeg">
-                <div class="cart-check-wrapper">
-                    <input type="checkbox" class="cart-checkbox" onchange="updateCartTotal()">
-                </div>
-                <img src="../../../Assets/img/role/buyer/laptop-rog.jpeg" class="cart-item-img" alt="Item">
-                <div class="cart-item-info">
-                    <div class="cart-item-title">Laptop Asus ROG Bekas Gaming Murah</div>
-                    <div class="cart-item-price">Rp 8.500.000</div>
-                </div>
-            </div>
-            
-            <div class="cart-item" data-id="c3" data-price="500000" data-name="Koleksi Komik One Piece Vol 1-50" data-img="../../../Assets/img/role/buyer/komik-onePiece.jpeg">
-                <div class="cart-check-wrapper">
-                    <input type="checkbox" class="cart-checkbox" onchange="updateCartTotal()">
-                </div>
-                <img src="../../../Assets/img/role/buyer/komik-onePiece.jpeg" class="cart-item-img" alt="Item">
-                <div class="cart-item-info">
-                    <div class="cart-item-title">Koleksi Komik One Piece Vol 1-50</div>
-                    <div class="cart-item-price">Rp 500.000</div>
-                </div>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
 
         <div class="cart-footer">
@@ -375,15 +425,21 @@ while($row = mysqli_fetch_assoc($query)) {
         </div>
 
         <div class="notif-items" id="notifItemsContainer">
-            <div class="notif-item">
-                <div class="notif-icon"><i class="fas fa-shopping-cart"></i></div>
-                <div class="notif-content">
-                    <div class="notif-title">Pesanan Baru</div>
-                    <div class="notif-message">Anda memiliki pesanan baru dari Dimas.</div>
-                    <div class="notif-time">2 jam yang lalu</div>
+            <?php if(empty($notif_items)): ?>
+                <div style="text-align:center; padding:20px; color:#666;">Tidak ada notifikasi</div>
+            <?php else: ?>
+                <?php foreach($notif_items as $notif): ?>
+                <div class="notif-item" style="<?php echo ($notif['is_read'] == 0) ? 'background:#f0f8ff;' : ''; ?>">
+                    <div class="notif-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="notif-content">
+                        <div class="notif-title"><?php echo $notif['title']; ?></div>
+                        <div class="notif-message"><?php echo $notif['message']; ?></div>
+                        <div class="notif-time"><?php echo date('d M H:i', strtotime($notif['created_at'])); ?></div>
+                    </div>
                 </div>
-            </div>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="chat-overlay-bg" id="chatOverlay" onclick="toggleChat()"></div>
@@ -394,15 +450,21 @@ while($row = mysqli_fetch_assoc($query)) {
         </div>
 
         <div class="chat-items" id="chatItemsContainer">
-            <div class="chat-item" onclick="selectChat('Dimas')">
-                <div class="chat-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dimas" alt="User"></div>
-                <div class="chat-content">
-                    <div class="chat-name">Dimas</div>
-                    <div class="chat-message">Halo, apakah barangnya masih ada?</div>
-                    <div class="chat-time">2 jam yang lalu</div>
+            <?php if(empty($chat_partners)): ?>
+                <div style="text-align:center; padding:20px; color:#666;">Belum ada percakapan</div>
+            <?php else: ?>
+                <?php foreach($chat_partners as $partner_name => $chat_info): ?>
+                <div class="chat-item" onclick="selectChat('<?php echo $chat_info['name']; ?>')">
+                    <div class="chat-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=<?php echo $chat_info['name']; ?>" alt="User"></div>
+                    <div class="chat-content">
+                        <div class="chat-name"><?php echo $chat_info['name']; ?></div>
+                        <div class="chat-message"><?php echo $chat_info['last_msg']; ?></div>
+                        <div class="chat-time"><?php echo $chat_info['time']; ?></div>
+                    </div>
                 </div>
-            </div>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
 
         <div class="chat-area-sidebar" id="chatAreaSidebar" style="display: none;">
             <div class="chat-header-sidebar">
@@ -428,8 +490,12 @@ while($row = mysqli_fetch_assoc($query)) {
     <script>
         const goToDashboard = () => window.location.href = 'dashboard.php';
         
-        // DATA PRODUK DARI DATABASE
+        // DATA PRODUK DARI DATABASE (Inject PHP ke JS)
         const products = <?php echo json_encode($all_products); ?>;
+
+        // DATA CHAT DARI DATABASE (Inject PHP ke JS)
+        // Format: {'NamaUser': [{msg}, {msg}]}
+        const chatData = <?php echo json_encode($chat_messages_grouped); ?>;
 
         // RENDER PRODUK GRID
         const productGrid = document.getElementById('productGrid');
@@ -698,9 +764,11 @@ while($row = mysqli_fetch_assoc($query)) {
         // Modal Alamat (Checkout)
         function openAddressModal() { document.getElementById('addressModal').classList.add('open'); }
         function closeAddressModal() { document.getElementById('addressModal').classList.remove('open'); }
-        function selectAddress(element, name, detail) {
+        
+        function selectAddress(element, name, detail, phone) {
             document.querySelectorAll('.address-option').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
+            document.getElementById('displayAddrName').innerText = name + ' | ' + phone;
             document.getElementById('displayAddrDetail').innerText = detail;
             closeAddressModal();
         }
@@ -732,20 +800,20 @@ while($row = mysqli_fetch_assoc($query)) {
             else document.body.style.overflow = 'auto';
         }
 
-        // Dummy Logic untuk Chat
-        const chatData = {
-            'Dimas': [{ id: 1, type: 'incoming', text: 'Halo kak, barang ready?', time: '09:00' }],
-            'Sari': [{ id: 1, type: 'incoming', text: 'Barangnya bagus!', time: '10:00' }]
-        };
+        // Logic Chat Dinamis
         let messages = [];
         let currentChatSeller = '';
 
         function selectChat(sellerName) {
             currentChatSeller = sellerName;
+            // Ambil pesan dari variabel PHP yang sudah diinject
             messages = chatData[sellerName] ? [...chatData[sellerName]] : [];
+            
             document.getElementById('chatSellerNameSidebar').textContent = sellerName;
             document.getElementById('chatSellerAvatarSidebar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${sellerName}`;
+            
             renderMessagesSidebar();
+            
             document.getElementById('chatItemsContainer').style.display = 'none';
             document.getElementById('chatAreaSidebar').style.display = 'flex';
         }
@@ -755,70 +823,69 @@ while($row = mysqli_fetch_assoc($query)) {
             document.getElementById('chatAreaSidebar').style.display = 'none';
         }
 
-        // Ganti fungsi renderMessagesSidebar lama dengan ini
-function renderMessagesSidebar() {
-    const chatMessagesSidebar = document.getElementById('chatMessagesSidebar');
-    chatMessagesSidebar.innerHTML = '';
-    
-    messages.forEach((msg, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${msg.type}`;
-        wrapper.id = `msg-${index}`;
-        
-        // Logika Tombol Aksi
-        let actionButtons = '';
-        if (msg.type === 'outgoing') {
-            // Jika pesan sendiri -> Tombol Hapus
-            actionButtons = `<button class="action-icon-btn delete" onclick="deleteMessage(${index})"><i class="fas fa-trash-alt"></i></button>`;
-        } else {
-            // Jika pesan orang lain -> Tombol Lapor
-            actionButtons = `<button class="action-icon-btn report" onclick="reportMessage(${index})"><i class="fas fa-exclamation-triangle"></i></button>`;
+        function renderMessagesSidebar() {
+            const chatMessagesSidebar = document.getElementById('chatMessagesSidebar');
+            chatMessagesSidebar.innerHTML = '';
+            
+            if(messages.length === 0){
+                chatMessagesSidebar.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Belum ada pesan.</div>';
+                return;
+            }
+
+            messages.forEach((msg, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = `message-wrapper ${msg.type}`;
+                wrapper.id = `msg-${index}`;
+                
+                // Logika Tombol Aksi
+                let actionButtons = '';
+                if (msg.type === 'outgoing') {
+                    actionButtons = `<button class="action-icon-btn delete" onclick="deleteMessage(${index})"><i class="fas fa-trash-alt"></i></button>`;
+                } else {
+                    actionButtons = `<button class="action-icon-btn report" onclick="reportMessage(${index})"><i class="fas fa-exclamation-triangle"></i></button>`;
+                }
+
+                wrapper.innerHTML = `
+                    <div class="message-actions">${actionButtons}</div>
+                    <div class="message-bubble" onclick="toggleMessageActions(${index})">${msg.text}</div>
+                    <span class="message-time">${msg.time}</span>
+                `;
+                chatMessagesSidebar.appendChild(wrapper);
+            });
+            chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
         }
 
-        wrapper.innerHTML = `
-            <div class="message-actions">${actionButtons}</div>
-            <div class="message-bubble" onclick="toggleMessageActions(${index})">${msg.text}</div>
-            <span class="message-time">${msg.time}</span>
-        `;
-        chatMessagesSidebar.appendChild(wrapper);
-    });
-    chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
-}
+        // Toggle munculnya tombol chat
+        function toggleMessageActions(index) {
+            const allWrappers = document.querySelectorAll('.message-wrapper');
+            const target = document.getElementById(`msg-${index}`);
+            allWrappers.forEach(w => {
+                if (w !== target) w.classList.remove('actions-visible');
+            });
+            target.classList.toggle('actions-visible');
+        }
 
-// FUNGSI BARU: Toggle munculnya tombol
-function toggleMessageActions(index) {
-    const allWrappers = document.querySelectorAll('.message-wrapper');
-    const target = document.getElementById(`msg-${index}`);
-    
-    // Sembunyikan aksi lain yang sedang terbuka
-    allWrappers.forEach(w => {
-        if (w !== target) w.classList.remove('actions-visible');
-    });
-    
-    // Toggle milik pesan yang diklik
-    target.classList.toggle('actions-visible');
-}
+        function deleteMessage(index) {
+            if (confirm("Hapus pesan ini?")) {
+                messages.splice(index, 1); 
+                renderMessagesSidebar();   
+            }
+        }
 
-// FUNGSI BARU: Hapus Pesan
-function deleteMessage(index) {
-    if (confirm("Hapus pesan ini?")) {
-        messages.splice(index, 1); // Hapus dari array
-        renderMessagesSidebar();   // Gambar ulang
-    }
-}
-
-// FUNGSI BARU: Lapor Pesan
-function reportMessage(index) {
-    const msgText = messages[index].text;
-    alert(`Pesan: "${msgText}" telah dilaporkan ke admin Ecoswap.`);
-    // Tutup aksi setelah lapor
-    document.getElementById(`msg-${index}`).classList.remove('actions-visible');
-}
+        function reportMessage(index) {
+            const msgText = messages[index].text;
+            alert(`Pesan: "${msgText}" telah dilaporkan ke admin Ecoswap.`);
+            document.getElementById(`msg-${index}`).classList.remove('actions-visible');
+        }
 
         function sendMessageSidebar() {
             const input = document.getElementById('messageInputSidebar');
             if(input.value.trim()) {
-                messages.push({id: Date.now(), type:'outgoing', text: input.value, time: 'Now'});
+                // Di sini harusnya AJAX ke database, tapi sementara simulasi UI dulu
+                const now = new Date();
+                const timeString = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+                
+                messages.push({id: Date.now(), type:'outgoing', text: input.value, time: timeString});
                 renderMessagesSidebar();
                 input.value = '';
             }
