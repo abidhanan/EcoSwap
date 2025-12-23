@@ -1,6 +1,7 @@
 <?php
 include '../koneksi.php';
 
+$name = $_POST['name'];
 $email = $_POST['email'];
 $password = $_POST['password'];
 $phone_number = $_POST['phone_number'];
@@ -17,7 +18,7 @@ if(mysqli_num_rows($cek_email) > 0){
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
 // 3. Siapkan query insert
-$query_sql = "INSERT INTO users (email, password, phone_number, address, role) VALUES ('$email', '$hashed_password', '$phone_number', '$address', 'buyer')";
+$query_sql = "INSERT INTO users (name, email, password, phone_number, address, role) VALUES ('$name', '$email', '$hashed_password', '$phone_number', '$address', 'buyer')";
 
 // 4. Jalankan query sekali saja di dalam IF
 if(mysqli_query($koneksi, $query_sql)) {

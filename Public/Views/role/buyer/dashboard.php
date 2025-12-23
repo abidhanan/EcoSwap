@@ -11,12 +11,21 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
-// 1. AMBIL DATA USER
+// 1. AMBIL DATA USER (Termasuk Foto Profil)
 $q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
 $d_user = mysqli_fetch_assoc($q_user);
-$user_name = !empty($d_user['email']) ? explode('@', $d_user['email'])[0] : 'User'; // Fallback nama dari email
-// Gunakan avatar service generate berdasarkan nama user
-$user_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . $user_name;
+
+// Nama user (prioritas nama asli, fallback ke email)
+$user_name = !empty($d_user['name']) ? $d_user['name'] : explode('@', $d_user['email'])[0];
+
+// LOGIKA FOTO PROFIL NAV BAR
+if (!empty($d_user['profile_picture'])) {
+    // Gunakan foto dari database
+    $user_avatar = $d_user['profile_picture'];
+} else {
+    // Gunakan avatar default jika belum upload
+    $user_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($user_name);
+}
 
 // 2. AMBIL PRODUK (FEED)
 $all_products = [];
@@ -78,7 +87,9 @@ $chat_messages_grouped = [];
 $q_chat = mysqli_query($koneksi, "
     SELECT c.*, 
            sender.email as sender_name, 
-           receiver.email as receiver_name 
+           sender.name as sender_real_name,
+           receiver.email as receiver_name,
+           receiver.name as receiver_real_name
     FROM chats c
     JOIN users sender ON c.sender_id = sender.user_id
     JOIN users receiver ON c.receiver_id = receiver.user_id
@@ -90,16 +101,17 @@ while($row = mysqli_fetch_assoc($q_chat)){
     // Tentukan siapa lawannya
     if($row['sender_id'] == $user_id){
         $partner_id = $row['receiver_id'];
-        $partner_name = explode('@', $row['receiver_name'])[0]; // Ambil nama depan email
+        // Prioritaskan nama asli, jika tidak ada pakai email
+        $partner_display = !empty($row['receiver_real_name']) ? $row['receiver_real_name'] : explode('@', $row['receiver_name'])[0];
         $type = 'outgoing';
     } else {
         $partner_id = $row['sender_id'];
-        $partner_name = explode('@', $row['sender_name'])[0];
+        $partner_display = !empty($row['sender_real_name']) ? $row['sender_real_name'] : explode('@', $row['sender_name'])[0];
         $type = 'incoming';
     }
 
     // Masukkan ke grouping messages
-    $chat_messages_grouped[$partner_name][] = [
+    $chat_messages_grouped[$partner_display][] = [
         'id' => $row['chat_id'],
         'type' => $type,
         'text' => $row['message'],
@@ -109,9 +121,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
     // Masukkan ke list sidebar (unique)
     if(!isset($chat_partners[$partner_id])) {
         $chat_partners[$partner_id] = [
-            'name' => $partner_name,
+            'name' => $partner_display,
             'last_msg' => $row['message'],
-            'time' => date('H:i', strtotime($row['created_at'])) // Ini akan tertimpa pesan terakhir krn ASC, nanti kita reverse di frontend/sorting
+            'time' => date('H:i', strtotime($row['created_at']))
         ];
     } else {
         // Update pesan terakhir
@@ -142,6 +154,14 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
         .action-icon-btn.delete:hover { color: #e74c3c; }
         .message-bubble { cursor: pointer; transition: opacity 0.2s; }
         .message-bubble:active { opacity: 0.7; }
+        
+        /* Tambahan style avatar navbar */
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
     </style>
 </head>
 

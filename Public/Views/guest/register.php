@@ -11,6 +11,10 @@
         <h2>Daftar Akun Baru</h2>
         <form action="../../Auth/login/process_register.php" method="POST">
             <div class="form-group">
+                <label for="name">Nama Lengkap</label>
+                <input type="text" id="name" name="name" placeholder="Contoh: Budi Santoso" required>
+            </div>
+            <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
             </div>
