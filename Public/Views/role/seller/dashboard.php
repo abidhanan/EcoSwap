@@ -47,10 +47,10 @@ if (isset($_POST['create_shop'])) {
     }
 }
 
-// --- 2. CEK DATA TOKO ---
+// --- 2. CEK DATA TOKO & RATING ---
 $has_shop = false;
 $shop_data = [];
-$rating_toko = 0;
+$rating_toko = "Baru"; // Default jika belum ada rating
 
 $query_shop = mysqli_query($koneksi, "SELECT * FROM shops WHERE user_id = '$user_id'");
 if (mysqli_num_rows($query_shop) > 0) {
@@ -58,16 +58,20 @@ if (mysqli_num_rows($query_shop) > 0) {
     $shop_data = mysqli_fetch_assoc($query_shop);
     $shop_id = $shop_data['shop_id'];
 
-    // Hitung Rata-rata Rating Toko
+    // --- LOGIKA HITUNG RATING DARI DATABASE ---
     $query_rating = mysqli_query($koneksi, "
         SELECT AVG(r.rating) as avg_rating 
         FROM reviews r 
         JOIN products p ON r.product_id = p.product_id 
         WHERE p.shop_id = '$shop_id'
     ");
+    
     $data_rating = mysqli_fetch_assoc($query_rating);
-    $rating_toko = number_format((float)$data_rating['avg_rating'], 1);
-    if($rating_toko == 0) $rating_toko = "Baru";
+    $rating_val = (float)$data_rating['avg_rating'];
+    
+    if($rating_val > 0) {
+        $rating_toko = number_format($rating_val, 1);
+    }
 }
 ?>
 
