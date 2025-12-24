@@ -1,4 +1,82 @@
 <?php
+session_start();
+
+// Koneksi Database
+include '../../../Auth/koneksi.php';
+
+// Cek Login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../../auth/login.php");
+    exit();
+}
+$user_id = $_SESSION['user_id'];
+
+// Cek Toko
+$q_shop = mysqli_query($koneksi, "SELECT shop_id FROM shops WHERE user_id = '$user_id'");
+if(mysqli_num_rows($q_shop) == 0){
+    header("Location: dashboard.php");
+    exit();
+}
+$shop = mysqli_fetch_assoc($q_shop);
+$shop_id = $shop['shop_id'];
+
+// --- 1. HITUNG STATISTIK ---
+// Total Terjual
+$q_sold = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE shop_id='$shop_id' AND status='completed'");
+$d_sold = mysqli_fetch_assoc($q_sold);
+$total_sold = $d_sold['total'];
+
+// Rata-rata Rating
+$q_rating = mysqli_query($koneksi, "
+    SELECT AVG(r.rating) as avg_rating 
+    FROM reviews r 
+    JOIN products p ON r.product_id = p.product_id 
+    WHERE p.shop_id = '$shop_id'
+");
+$d_rating = mysqli_fetch_assoc($q_rating);
+$rating_toko = number_format((float)$d_rating['avg_rating'], 1);
+
+// --- 2. AMBIL RIWAYAT PENJUALAN (SOLD ITEMS) ---
+$sold_items = [];
+$q_history = mysqli_query($koneksi, "
+    SELECT o.order_id, p.name as product_name, o.total_price, 
+           u.name as buyer_name, o.shipping_method,
+           (SELECT rating FROM reviews r WHERE r.order_id = o.order_id LIMIT 1) as review_rating
+    FROM orders o
+    JOIN products p ON o.product_id = p.product_id
+    JOIN users u ON o.buyer_id = u.user_id
+    WHERE o.shop_id = '$shop_id' AND o.status = 'completed'
+    ORDER BY o.created_at DESC LIMIT 10
+");
+
+while($row = mysqli_fetch_assoc($q_history)) {
+    $sold_items[] = $row;
+}
+
+// --- 3. AMBIL ULASAN PEMBELI (Query Diperbaiki) ---
+$reviews = [];
+// PERBAIKAN: Menghapus u.photo dari SELECT agar tidak error
+$q_rev = mysqli_query($koneksi, "
+    SELECT r.*, p.name as product_name, u.name as buyer_name
+    FROM reviews r
+    JOIN products p ON r.product_id = p.product_id
+    JOIN users u ON r.user_id = u.user_id
+    WHERE p.shop_id = '$shop_id'
+    ORDER BY r.created_at DESC
+");
+
+while($row = mysqli_fetch_assoc($q_rev)) {
+    $date = date('d M Y', strtotime($row['created_at']));
+    
+    $reviews[] = [
+        'name' => $row['buyer_name'],
+        'date' => $date,
+        'product' => $row['product_name'],
+        'rating' => (int)$row['rating'],
+        'text' => $row['comment'],
+        'img' => $row['buyer_name'] // Nama dipakai sebagai seed avatar otomatis
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -15,7 +93,6 @@
 
     <div class="app-layout">
         
-        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
@@ -58,7 +135,6 @@
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="main-content-wrapper">
             <div class="header">
                 <div class="page-title">Performa Toko</div>
@@ -67,29 +143,25 @@
             <div class="content">
                 <div class="performa-container">
                     
-                    <!-- 1. TOP STAT CARDS -->
                     <div class="stats-grid">
                         
-                        <!-- Card Barang Terjual -->
                         <div class="stat-card active" id="cardSold" onclick="showSection('sold')">
                             <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
                             <div class="stat-label">Barang Terjual</div>
-                            <div class="stat-value">128</div>
+                            <div class="stat-value"><?php echo $total_sold; ?></div>
                         </div>
 
-                        <!-- Card Rating -->
                         <div class="stat-card" id="cardRating" onclick="showSection('rating')">
                             <div class="stat-icon"><i class="fas fa-star"></i></div>
                             <div class="stat-label">Rating Toko</div>
-                            <div class="stat-value">4.8 <span style="font-size:1rem; color:#888; font-weight:normal;">/ 5.0</span></div>
+                            <div class="stat-value"><?php echo $rating_toko; ?> <span style="font-size:1rem; color:#888; font-weight:normal;">/ 5.0</span></div>
                         </div>
 
                     </div>
 
-                    <!-- 2. DATA SECTION: BARANG TERJUAL -->
                     <div id="sectionSold" class="data-section active">
                         <div class="section-header">
-                            <div><i class="fas fa-list-ul"></i> Riwayat Penjualan</div>
+                            <div><i class="fas fa-list-ul"></i> Riwayat Penjualan </div>
                         </div>
                         <div class="table-responsive">
                             <table class="data-table">
@@ -103,57 +175,49 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td><strong>Laptop Asus ROG Bekas</strong><br><small style="color:#888;">#ORD-001</small></td>
-                                        <td>Rp 8.500.000</td>
-                                        <td>Budi Santoso</td>
-                                        <td><span class="badge-shipping">JNE Reguler</span></td>
-                                        <td><div class="star-rating"><i class="fas fa-star"></i> 5.0</div></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Keyboard Mechanical</strong><br><small style="color:#888;">#ORD-002</small></td>
-                                        <td>Rp 350.000</td>
-                                        <td>Siti Aminah</td>
-                                        <td><span class="badge-shipping">GoSend</span></td>
-                                        <td><div class="star-rating"><i class="fas fa-star"></i> 4.0</div></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Mouse Logitech G102</strong><br><small style="color:#888;">#ORD-003</small></td>
-                                        <td>Rp 150.000</td>
-                                        <td>Rizky Febian</td>
-                                        <td><span class="badge-shipping">SiCepat</span></td>
-                                        <td><div class="star-rating"><i class="fas fa-star"></i> 5.0</div></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Monitor Samsung 24"</strong><br><small style="color:#888;">#ORD-004</small></td>
-                                        <td>Rp 900.000</td>
-                                        <td>Dewi Persik</td>
-                                        <td><span class="badge-shipping">GrabExpress</span></td>
-                                        <td><div class="star-rating"><i class="fas fa-star"></i> 4.5</div></td>
-                                    </tr>
+                                    <?php if(empty($sold_items)): ?>
+                                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">Belum ada penjualan.</td></tr>
+                                    <?php else: ?>
+                                        <?php foreach($sold_items as $item): ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?php echo $item['product_name']; ?></strong><br>
+                                                <small style="color:#888;">#ORD-<?php echo $item['order_id']; ?></small>
+                                            </td>
+                                            <td>Rp <?php echo number_format($item['total_price'], 0, ',', '.'); ?></td>
+                                            <td><?php echo $item['buyer_name']; ?></td>
+                                            <td><span class="badge-shipping"><?php echo $item['shipping_method']; ?></span></td>
+                                            <td>
+                                                <?php if($item['review_rating']): ?>
+                                                    <div class="star-rating"><i class="fas fa-star"></i> <?php echo number_format($item['review_rating'], 1); ?></div>
+                                                <?php else: ?>
+                                                    <span style="color:#ccc;">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    <!-- 3. DATA SECTION: DAFTAR RATING (DENGAN FILTER) -->
                     <div id="sectionRating" class="data-section">
                         <div class="section-header">
                             <div><i class="fas fa-comments"></i> Ulasan Pembeli</div>
                         </div>
                         
-                        <!-- FILTER RATING -->
                         <div class="rating-filters">
                             <button class="filter-pill active" onclick="filterReviews('all', this)">Semua</button>
                             <button class="filter-pill" onclick="filterReviews('5', this)">5 Bintang</button>
                             <button class="filter-pill" onclick="filterReviews('4', this)">4 Bintang</button>
                             <button class="filter-pill" onclick="filterReviews('3', this)">3 Bintang</button>
-                            <button class="filter-pill" onclick="filterReviews('1-2', this)">1-2 Bintang</button>
+                            <button class="filter-pill" onclick="filterReviews('2', this)">2 Bintang</button>
+                            <button class="filter-pill" onclick="filterReviews('1', this)">1 Bintang</button>
                         </div>
 
                         <div class="review-list" id="reviewListContainer">
-                            <!-- Review akan di-render oleh JS -->
-                        </div>
+                            </div>
                     </div>
 
                 </div>
@@ -163,19 +227,11 @@
 
     <script>
         function goToDashboard() {
-            // Sesuaikan path ini dengan struktur folder Anda sebenarnya
             window.location.href = '../buyer/dashboard.php';
         }
         
-        // Data Dummy Ulasan
-        const reviews = [
-            { name: "Budi Santoso", date: "2 hari yang lalu", product: "Laptop Asus ROG Bekas", rating: 5, text: "Barang mantap, sesuai deskripsi. Pengiriman cepat!", img: "Budi" },
-            { name: "Siti Aminah", date: "5 hari yang lalu", product: "Keyboard Mechanical", rating: 4, text: "Keyboard enak, cuma pengiriman agak lama.", img: "Siti" },
-            { name: "Dewi Persik", date: "1 minggu yang lalu", product: "Monitor Samsung 24", rating: 4.5, text: "Monitor bening, no dead pixel. Recommended!", img: "Dewi" },
-            { name: "Rizky Febian", date: "2 minggu yang lalu", product: "Mouse Logitech G102", rating: 5, text: "Mouse original, responsif banget buat gaming.", img: "Rizky" },
-            { name: "Andi Saputra", date: "3 minggu yang lalu", product: "Headset Razer", rating: 3, text: "Suara oke, tapi busa agak tipis dari ekspektasi.", img: "Andi" },
-            { name: "Joko Anwar", date: "1 bulan yang lalu", product: "Webcam Logitech", rating: 2, text: "Barang ada lecet parah yang tidak disebutkan di deskripsi.", img: "Joko" }
-        ];
+        // Data Ulasan dari Database (Inject PHP ke JS)
+        const reviews = <?php echo json_encode($reviews); ?>;
 
         // Fungsi Render Review
         function renderReviews(filterType) {
@@ -184,15 +240,11 @@
 
             const filteredReviews = reviews.filter(r => {
                 if (filterType === 'all') return true;
-                if (filterType === '5') return r.rating === 5;
-                if (filterType === '4') return r.rating >= 4 && r.rating < 5;
-                if (filterType === '3') return r.rating >= 3 && r.rating < 4;
-                if (filterType === '1-2') return r.rating < 3;
-                return true;
+                return r.rating == filterType; // Filter exact match (5, 4, 3, 2, 1)
             });
 
             if (filteredReviews.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:20px; color:#888;">Tidak ada ulasan dengan rating ini.</div>`;
+                container.innerHTML = `<div style="text-align:center; padding:20px; color:#888;">Tidak ada ulasan di kategori ini.</div>`;
                 return;
             }
 
@@ -200,10 +252,8 @@
                 // Generate Bintang
                 let starsHtml = '';
                 for (let i = 1; i <= 5; i++) {
-                    if (i <= Math.floor(r.rating)) {
+                    if (i <= r.rating) {
                         starsHtml += '<i class="fas fa-star"></i>';
-                    } else if (i === Math.ceil(r.rating) && !Number.isInteger(r.rating)) {
-                        starsHtml += '<i class="fas fa-star-half-alt"></i>';
                     } else {
                         starsHtml += '<i class="far fa-star"></i>';
                     }
@@ -229,14 +279,12 @@
 
         // Fungsi Filter
         function filterReviews(type, btn) {
-            // Update active state tombol
             document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
             renderReviews(type);
         }
 
-        // Fungsi Navigasi Tab Utama (Sold vs Rating)
+        // Fungsi Navigasi Tab Utama
         function showSection(type) {
             document.getElementById('cardSold').classList.remove('active');
             document.getElementById('cardRating').classList.remove('active');
@@ -249,13 +297,14 @@
             } else {
                 document.getElementById('cardRating').classList.add('active');
                 document.getElementById('sectionRating').classList.add('active');
-                renderReviews('all'); // Render ulang review saat tab dibuka
+                renderReviews('all'); 
             }
         }
 
         // Init load
         document.addEventListener('DOMContentLoaded', () => {
-            // Default load (bisa kosong atau render awal jika mau)
+            // Opsional: Render review awal
+            renderReviews('all');
         });
     </script>
 </body>
