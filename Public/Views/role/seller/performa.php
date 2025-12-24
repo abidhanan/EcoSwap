@@ -21,12 +21,10 @@ $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 
 // --- 1. HITUNG STATISTIK ---
-// Total Terjual
 $q_sold = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE shop_id='$shop_id' AND status='completed'");
 $d_sold = mysqli_fetch_assoc($q_sold);
 $total_sold = $d_sold['total'];
 
-// Rata-rata Rating
 $q_rating = mysqli_query($koneksi, "
     SELECT AVG(r.rating) as avg_rating 
     FROM reviews r 
@@ -36,7 +34,7 @@ $q_rating = mysqli_query($koneksi, "
 $d_rating = mysqli_fetch_assoc($q_rating);
 $rating_toko = number_format((float)$d_rating['avg_rating'], 1);
 
-// --- 2. AMBIL RIWAYAT PENJUALAN (SOLD ITEMS) ---
+// --- 2. AMBIL RIWAYAT PENJUALAN ---
 $sold_items = [];
 $q_history = mysqli_query($koneksi, "
     SELECT o.order_id, p.name as product_name, o.total_price, 
@@ -53,9 +51,8 @@ while($row = mysqli_fetch_assoc($q_history)) {
     $sold_items[] = $row;
 }
 
-// --- 3. AMBIL ULASAN PEMBELI (Query Diperbaiki) ---
+// --- 3. AMBIL ULASAN PEMBELI (Dengan Foto) ---
 $reviews = [];
-// PERBAIKAN: Menghapus u.photo dari SELECT agar tidak error
 $q_rev = mysqli_query($koneksi, "
     SELECT r.*, p.name as product_name, u.name as buyer_name
     FROM reviews r
@@ -74,7 +71,8 @@ while($row = mysqli_fetch_assoc($q_rev)) {
         'product' => $row['product_name'],
         'rating' => (int)$row['rating'],
         'text' => $row['comment'],
-        'img' => $row['buyer_name'] // Nama dipakai sebagai seed avatar otomatis
+        'review_photo' => $row['photo'], // Menambahkan Path Foto Review
+        'img' => $row['buyer_name']
     ];
 }
 ?>
@@ -87,6 +85,19 @@ while($row = mysqli_fetch_assoc($q_rev)) {
     <title>Performa Toko - Ecoswap</title>
     <link rel="stylesheet" href="../../../Assets/css/role/seller/performa.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* CSS untuk thumbnail foto review */
+        .review-img-thumb {
+            width: 80px; height: 80px; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            border: 1px solid #eee;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .review-img-thumb:hover { transform: scale(1.05); }
+    </style>
 </head>
 
 <body>
@@ -101,37 +112,14 @@ while($row = mysqli_fetch_assoc($q_rev)) {
             </div>
 
             <ul class="sidebar-menu">
-                <li class="menu-item">
-                    <a href="../buyer/profil.php" class="menu-link">
-                        <i class="fas fa-user"></i>
-                        <span>Biodata Diri</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="../buyer/alamat.php" class="menu-link">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>Alamat</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="../buyer/histori.php" class="menu-link">
-                        <i class="fas fa-history"></i>
-                        <span>Histori</span>
-                    </a>
-                </li>
-                <li class="menu-item active">
-                    <a href="dashboard.php" class="menu-link">
-                        <i class="fas fa-store"></i>
-                        <span>Toko Saya</span>
-                    </a>
-                </li>
+                <li class="menu-item"><a href="../buyer/profil.php" class="menu-link"><i class="fas fa-user"></i><span>Biodata Diri</span></a></li>
+                <li class="menu-item"><a href="../buyer/alamat.php" class="menu-link"><i class="fas fa-map-marker-alt"></i><span>Alamat</span></a></li>
+                <li class="menu-item"><a href="../buyer/histori.php" class="menu-link"><i class="fas fa-history"></i><span>Histori</span></a></li>
+                <li class="menu-item active"><a href="dashboard.php" class="menu-link"><i class="fas fa-store"></i><span>Toko Saya</span></a></li>
             </ul>
 
             <div class="sidebar-footer">
-                <a href="../../../../index.php" class="logout-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+                <a href="../../../../index.php" class="logout-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
             </div>
         </aside>
 
@@ -144,24 +132,21 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                 <div class="performa-container">
                     
                     <div class="stats-grid">
-                        
                         <div class="stat-card active" id="cardSold" onclick="showSection('sold')">
                             <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
                             <div class="stat-label">Barang Terjual</div>
                             <div class="stat-value"><?php echo $total_sold; ?></div>
                         </div>
-
                         <div class="stat-card" id="cardRating" onclick="showSection('rating')">
                             <div class="stat-icon"><i class="fas fa-star"></i></div>
                             <div class="stat-label">Rating Toko</div>
                             <div class="stat-value"><?php echo $rating_toko; ?> <span style="font-size:1rem; color:#888; font-weight:normal;">/ 5.0</span></div>
                         </div>
-
                     </div>
 
                     <div id="sectionSold" class="data-section active">
                         <div class="section-header">
-                            <div><i class="fas fa-list-ul"></i> Riwayat Penjualan </div>
+                            <div><i class="fas fa-list-ul"></i> Riwayat Penjualan (Selesai)</div>
                         </div>
                         <div class="table-responsive">
                             <table class="data-table">
@@ -176,7 +161,7 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                                 </thead>
                                 <tbody>
                                     <?php if(empty($sold_items)): ?>
-                                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">Belum ada penjualan.</td></tr>
+                                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">Belum ada penjualan selesai.</td></tr>
                                     <?php else: ?>
                                         <?php foreach($sold_items as $item): ?>
                                         <tr>
@@ -230,17 +215,16 @@ while($row = mysqli_fetch_assoc($q_rev)) {
             window.location.href = '../buyer/dashboard.php';
         }
         
-        // Data Ulasan dari Database (Inject PHP ke JS)
+        // Data Ulasan (JSON)
         const reviews = <?php echo json_encode($reviews); ?>;
 
-        // Fungsi Render Review
         function renderReviews(filterType) {
             const container = document.getElementById('reviewListContainer');
             container.innerHTML = '';
 
             const filteredReviews = reviews.filter(r => {
                 if (filterType === 'all') return true;
-                return r.rating == filterType; // Filter exact match (5, 4, 3, 2, 1)
+                return r.rating == filterType;
             });
 
             if (filteredReviews.length === 0) {
@@ -259,6 +243,12 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                     }
                 }
 
+                // Cek Foto
+                let photoHtml = '';
+                if(r.review_photo && r.review_photo !== "") {
+                    photoHtml = `<div onclick="window.open('${r.review_photo}', '_blank')"><img src="${r.review_photo}" class="review-img-thumb" alt="Foto Produk"></div>`;
+                }
+
                 const item = document.createElement('div');
                 item.className = 'review-item';
                 item.innerHTML = `
@@ -271,20 +261,19 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                         <span class="review-product"><i class="fas fa-box"></i> ${r.product}</span>
                         <div class="review-stars">${starsHtml}</div>
                         <p class="review-text">${r.text}</p>
+                        ${photoHtml}
                     </div>
                 `;
                 container.appendChild(item);
             });
         }
 
-        // Fungsi Filter
         function filterReviews(type, btn) {
             document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             renderReviews(type);
         }
 
-        // Fungsi Navigasi Tab Utama
         function showSection(type) {
             document.getElementById('cardSold').classList.remove('active');
             document.getElementById('cardRating').classList.remove('active');
@@ -301,9 +290,7 @@ while($row = mysqli_fetch_assoc($q_rev)) {
             }
         }
 
-        // Init load
         document.addEventListener('DOMContentLoaded', () => {
-            // Opsional: Render review awal
             renderReviews('all');
         });
     </script>
