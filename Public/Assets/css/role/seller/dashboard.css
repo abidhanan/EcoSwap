@@ -48,10 +48,9 @@ body {
 .sidebar {
     width: 280px;
     background-color: #000;
-    color: var(--white);
+    color: #fff;
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -59,68 +58,84 @@ body {
     display: flex;
     align-items: center;
     padding: 0 40px;
-    border-bottom: 1px solid var(--dark);
+    border-bottom: 1px solid #1a1a1a;
 }
 
 .logo {
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: -0.5px;
-    color: var(--white);
+    color: #fff;
 }
 
-.logo span { color: var(--primary); }
+.logo span { color: #ffd700; }
 
 .sidebar-menu {
     list-style: none;
-    margin-top: 20px;
+    margin-top: 10px;
     flex: 1;
 }
 
 .menu-link {
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 15px 30px;
-    color: #bbb;
+    gap: 12px;
+    padding: 15px 25px;
+    color: #fff;
     text-decoration: none;
     font-weight: 500;
-    transition: 0.3s;
     border-left: 4px solid transparent;
+    transition: 0.2s;
 }
 
 .menu-link:hover {
-    background-color: var(--dark);
-    color: var(--white);
+    background-color: #1a1a1a;
+    border-left-color: #ffd700;
+}
+
+.menu-link i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
 }
 
 .menu-item.active .menu-link {
-    background-color: var(--dark);
-    color: var(--primary);
-    border-left-color: var(--primary);
+    background-color: #ffd700;
+    color: #000;
+    font-weight: bold;
 }
 
 .sidebar-footer {
     margin-top: auto;
     padding: 20px;
-    border-top: 1px solid var(--dark);
+    border-top: 1px solid #333;
 }
 
 .logout-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 20px;
+    padding: 15px 20px;
     color: #fff;
     text-decoration: none;
     font-weight: 500;
-    background-color: var(--dark);
+    background-color: #1a1a1a;
     border-radius: 8px;
-    transition: all 0.3s;
+    border: 1px solid #333;
+    transition: all 0.3s ease;
 }
 
 .logout-link:hover {
-    background-color: var(--danger);
+    background-color: #dc3545;
+    border-color: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.logout-link i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
 }
 
 /* =========================================
