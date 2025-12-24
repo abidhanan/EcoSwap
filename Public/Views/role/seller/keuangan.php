@@ -1,4 +1,39 @@
 <?php
+session_start();
+
+// Koneksi Database
+include '../../../Auth/koneksi.php';
+
+// Cek Login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../../auth/login.php");
+    exit();
+}
+$user_id = $_SESSION['user_id'];
+
+// Cek Toko
+$q_shop = mysqli_query($koneksi, "SELECT shop_id, balance FROM shops WHERE user_id = '$user_id'");
+if(mysqli_num_rows($q_shop) == 0){
+    header("Location: dashboard.php");
+    exit();
+}
+$shop = mysqli_fetch_assoc($q_shop);
+$shop_id = $shop['shop_id'];
+$balance = $shop['balance'];
+
+// --- AMBIL RIWAYAT TRANSAKSI ---
+$transactions = [];
+$q_trans = mysqli_query($koneksi, "SELECT * FROM transactions WHERE shop_id = '$shop_id' ORDER BY created_at DESC LIMIT 20");
+
+while($row = mysqli_fetch_assoc($q_trans)) {
+    $transactions[] = [
+        'id' => $row['transaction_id'],
+        'type' => $row['type'], // 'in' (Pemasukan) atau 'out' (Penarikan)
+        'desc' => $row['description'],
+        'amount' => $row['amount'],
+        'date' => date('d M Y, H:i', strtotime($row['created_at']))
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -15,7 +50,6 @@
 
     <div class="app-layout">
         
-        <!-- ========== SIDEBAR ========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
@@ -58,7 +92,6 @@
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="main-content-wrapper">
             <div class="header">
                 <div class="page-title">Keuangan</div>
@@ -67,58 +100,51 @@
             <div class="content">
                 <div class="finance-container">
                     
-                    <!-- SALDO CARD -->
                     <div class="balance-card">
                         <div class="balance-label">Total Pendapatan</div>
-                        <div class="balance-amount">Rp 5.450.000</div>
+                        <div class="balance-amount">Rp <?php echo number_format($balance, 0, ',', '.'); ?></div>
                         <div class="balance-actions">
                             <button class="btn-action btn-withdraw" onclick="openWithdrawModal()">
                                 <i class="fas fa-money-bill-wave"></i> Tarik Tunai
                             </button>
-                            <!-- TOMBOL KELOLA KEUANGAN -->
                             <button class="btn-action btn-manage" onclick="safeNavigate('kelolaKeuangan.php')">
                                 <i class="fas fa-cog"></i> Kelola Keuangan
                             </button>
                         </div>
                     </div>
 
-                    <!-- HISTORY SECTION (Toggleable) -->
                     <div class="history">
                         <div class="section-header">
                             <h3 class="section-title">Riwayat Transaksi</h3>
                         </div>
                         
                         <div class="transaction-list">
-                            <div class="transaction-item">
-                                <div class="trans-left">
-                                    <div class="trans-icon icon-in"><i class="fas fa-arrow-down"></i></div>
-                                    <div class="trans-info">
-                                        <h4>Penjualan #ORD-2023001</h4>
-                                        <span class="trans-date">24 Nov 2024, 14:30</span>
+                            <?php if(empty($transactions)): ?>
+                                <div style="text-align:center; padding:30px; color:#888;">Belum ada riwayat transaksi.</div>
+                            <?php else: ?>
+                                <?php foreach($transactions as $trx): ?>
+                                    <div class="transaction-item">
+                                        <div class="trans-left">
+                                            <?php if($trx['type'] == 'in'): ?>
+                                                <div class="trans-icon icon-in"><i class="fas fa-arrow-down"></i></div>
+                                            <?php else: ?>
+                                                <div class="trans-icon icon-out"><i class="fas fa-arrow-up"></i></div>
+                                            <?php endif; ?>
+                                            
+                                            <div class="trans-info">
+                                                <h4><?php echo $trx['desc']; ?></h4>
+                                                <span class="trans-date"><?php echo $trx['date']; ?></span>
+                                            </div>
+                                        </div>
+                                        
+                                        <?php if($trx['type'] == 'in'): ?>
+                                            <div class="trans-amount amount-plus">+ Rp <?php echo number_format($trx['amount'], 0, ',', '.'); ?></div>
+                                        <?php else: ?>
+                                            <div class="trans-amount amount-minus">- Rp <?php echo number_format($trx['amount'], 0, ',', '.'); ?></div>
+                                        <?php endif; ?>
                                     </div>
-                                </div>
-                                <div class="trans-amount amount-plus">+ Rp 1.200.000</div>
-                            </div>
-                            <div class="transaction-item">
-                                <div class="trans-left">
-                                    <div class="trans-icon icon-out"><i class="fas fa-arrow-up"></i></div>
-                                    <div class="trans-info">
-                                        <h4>Penarikan ke BCA</h4>
-                                        <span class="trans-date">20 Nov 2024, 09:15</span>
-                                    </div>
-                                </div>
-                                <div class="trans-amount amount-minus">- Rp 500.000</div>
-                            </div>
-                            <div class="transaction-item">
-                                <div class="trans-left">
-                                    <div class="trans-icon icon-in"><i class="fas fa-arrow-down"></i></div>
-                                    <div class="trans-info">
-                                        <h4>Penjualan #ORD-2023005</h4>
-                                        <span class="trans-date">18 Nov 2024, 10:00</span>
-                                    </div>
-                                </div>
-                                <div class="trans-amount amount-plus">+ Rp 3.100.000</div>
-                            </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -127,7 +153,6 @@
         </main>
     </div>
 
-    <!-- MODAL TARIK TUNAI -->
     <div class="modal-overlay" id="withdrawModal">
         <div class="modal-container">
             <div class="modal-header">
@@ -234,7 +259,6 @@
 
     <script>
         function goToDashboard() {
-            // Sesuaikan path ini dengan struktur folder Anda sebenarnya
             window.location.href = '../buyer/dashboard.php';
         }
         
@@ -244,15 +268,6 @@
             } catch (e) {
                 console.warn("Navigasi simulasi:", url);
                 alert("Simulasi: Berpindah ke halaman " + url);
-            }
-        }
-
-        function toggleHistory() {
-            const historySec = document.getElementById('historySection');
-            if (historySec.style.display === 'none' || historySec.style.display === '') {
-                historySec.style.display = 'block';
-            } else {
-                historySec.style.display = 'none';
             }
         }
 
