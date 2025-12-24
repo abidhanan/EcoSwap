@@ -20,17 +20,18 @@ if(mysqli_num_rows($q_shop) == 0){
 $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 
-// --- 1. LOGIKA UPDATE STATUS PESANAN ---
+// ==========================================
+// 1. LOGIKA UPDATE STATUS PESANAN
+// ==========================================
 
 // A. Konfirmasi Pesanan (Pending -> Processed)
 if (isset($_POST['action']) && $_POST['action'] == 'confirm_order') {
     $oid = $_POST['order_id'];
-    // Ubah status jadi 'processed'
     mysqli_query($koneksi, "UPDATE orders SET status='processed' WHERE order_id='$oid' AND shop_id='$shop_id'");
-    echo "<script>alert('Pesanan dikonfirmasi dan sedang diproses!'); window.location.href='pesanan.php';</script>";
+    echo "<script>alert('Pesanan dikonfirmasi! Silakan siapkan barang.'); window.location.href='pesanan.php';</script>";
 }
 
-// B. Kirim Pesanan / Input Resi (Processed -> Shipping)
+// B. Input Resi (Processed -> Shipping)
 if (isset($_POST['action']) && $_POST['action'] == 'ship_order') {
     $oid = $_POST['order_id'];
     $resi = mysqli_real_escape_string($koneksi, $_POST['tracking_number']);
@@ -39,14 +40,23 @@ if (isset($_POST['action']) && $_POST['action'] == 'ship_order') {
         echo "<script>alert('Harap masukkan nomor resi!');</script>";
     } else {
         mysqli_query($koneksi, "UPDATE orders SET status='shipping', tracking_number='$resi' WHERE order_id='$oid' AND shop_id='$shop_id'");
-        echo "<script>alert('Pesanan telah dikirim! Resi berhasil disimpan.'); window.location.href='pesanan.php';</script>";
+        echo "<script>alert('Pesanan dikirim! Nomor resi berhasil disimpan.'); window.location.href='pesanan.php';</script>";
     }
 }
 
-// --- 2. AMBIL DATA PESANAN (READ) ---
+// C. Konfirmasi Sampai di Tujuan (Shipping -> Delivered)
+// Ini dilakukan Seller jika kurir menginfokan barang sudah sampai, tapi buyer belum konfirmasi
+if (isset($_POST['action']) && $_POST['action'] == 'mark_delivered') {
+    $oid = $_POST['order_id'];
+    mysqli_query($koneksi, "UPDATE orders SET status='delivered' WHERE order_id='$oid' AND shop_id='$shop_id'");
+    echo "<script>alert('Status diubah menjadi Sampai. Menunggu konfirmasi pembeli.'); window.location.href='pesanan.php';</script>";
+}
+
+// ==========================================
+// 2. AMBIL DATA PESANAN (READ)
+// ==========================================
 $orders = [];
 
-// PERBAIKAN QUERY: Menggunakan LEFT JOIN agar tidak error jika data alamat hilang
 $query_orders = "SELECT o.*, p.name as product_name, p.image as product_image, 
                  u.name as buyer_name, u.email as buyer_email,
                  a.full_address, a.phone_number as buyer_phone
@@ -59,28 +69,33 @@ $query_orders = "SELECT o.*, p.name as product_name, p.image as product_image,
 
 $res = mysqli_query($koneksi, $query_orders);
 
-// Cek apakah query berhasil
-if (!$res) {
-    die("Query Error: " . mysqli_error($koneksi));
-}
+if (!$res) { die("Query Error: " . mysqli_error($koneksi)); }
 
 while($row = mysqli_fetch_assoc($res)) {
-    // Mapping status DB ke Tab Frontend
+    // Mapping Database Status ke Tab Frontend
+    // Tab: pending, processed, shipping, completed
+    
     $tab_status = $row['status'];
-    // Gabungkan completed & reviewed ke tab 'completed'
-    if($row['status'] == 'reviewed') $tab_status = 'completed';
+    
+    // Status 'delivered' kita masukkan ke tab 'shipping' agar seller bisa memantau
+    if($row['status'] == 'delivered') {
+        $tab_status = 'shipping'; 
+    }
+    // Status 'reviewed' masuk ke tab 'completed'
+    if($row['status'] == 'reviewed') {
+        $tab_status = 'completed';
+    }
 
-    // Fallback jika alamat dihapus
     $alamat_fix = !empty($row['full_address']) ? $row['full_address'] . " (" . $row['buyer_phone'] . ")" : "Alamat tidak ditemukan";
 
     $orders[] = [
         'id' => $row['order_id'],
-        'status' => $tab_status,      // Untuk filter tab JS
-        'db_status' => $row['status'], // Status asli database
+        'status' => $tab_status,       // Logic Tab JS
+        'db_status' => $row['status'], // Status Asli DB (shipping/delivered/reviewed)
         'product' => $row['product_name'],
         'price' => (int)$row['total_price'],
         'img' => $row['product_image'],
-        'quantity' => isset($row['quantity']) ? $row['quantity'] : 1, // Pastikan kolom quantity ada di DB
+        'quantity' => isset($row['quantity']) ? $row['quantity'] : 1,
         'buyer' => !empty($row['buyer_name']) ? $row['buyer_name'] : $row['buyer_email'],
         'address' => $alamat_fix,
         'shipping' => $row['shipping_method'],
@@ -98,17 +113,10 @@ while($row = mysqli_fetch_assoc($res)) {
     <link rel="stylesheet" href="../../../Assets/css/role/seller/pesanan.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Tambahan untuk Tab Baru */
-        .tabs-container {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding-bottom: 5px;
-        }
+        .tabs-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
         .tab-btn { white-space: nowrap; }
-        
-        /* Warna Status Badge */
         .status-processed { background-color: #e2e6ea; color: #333; }
+        .status-delivered { background-color: #cff4fc; color: #055160; } /* Warna Biru Muda untuk Sampai */
         .status-reviewed { background-color: #d1e7dd; color: #0f5132; }
     </style>
 </head>
@@ -125,37 +133,14 @@ while($row = mysqli_fetch_assoc($res)) {
             </div>
 
             <ul class="sidebar-menu">
-                <li class="menu-item">
-                    <a href="../buyer/profil.php" class="menu-link">
-                        <i class="fas fa-user"></i>
-                        <span>Biodata Diri</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="../buyer/alamat.php" class="menu-link">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>Alamat</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="../buyer/histori.php" class="menu-link">
-                        <i class="fas fa-history"></i>
-                        <span>Histori</span>
-                    </a>
-                </li>
-                <li class="menu-item active">
-                    <a href="dashboard.php" class="menu-link">
-                        <i class="fas fa-store"></i>
-                        <span>Toko Saya</span>
-                    </a>
-                </li>
+                <li class="menu-item"><a href="../buyer/profil.php" class="menu-link"><i class="fas fa-user"></i><span>Biodata Diri</span></a></li>
+                <li class="menu-item"><a href="../buyer/alamat.php" class="menu-link"><i class="fas fa-map-marker-alt"></i><span>Alamat</span></a></li>
+                <li class="menu-item"><a href="../buyer/histori.php" class="menu-link"><i class="fas fa-history"></i><span>Histori</span></a></li>
+                <li class="menu-item active"><a href="dashboard.php" class="menu-link"><i class="fas fa-store"></i><span>Toko Saya</span></a></li>
             </ul>
 
             <div class="sidebar-footer">
-                <a href="../../../../index.php" class="logout-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+                <a href="../../../../index.php" class="logout-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
             </div>
         </aside>
 
@@ -234,23 +219,22 @@ while($row = mysqli_fetch_assoc($res)) {
                 <div class="modal-title">Detail Pesanan</div>
                 <span class="close-modal" onclick="closeModal('detailModal')">&times;</span>
             </div>
-            <div id="detailContent">
-                </div>
+            <div id="detailContent"></div>
             <button class="btn-submit" style="background:#333; color:white; margin-top:15px;" onclick="closeModal('detailModal')">Tutup</button>
         </div>
     </div>
 
-    <script>
-        function goToDashboard() {
-            window.location.href = '../buyer/dashboard.php';
-        }
-        
-        // DATA PESANAN DARI DATABASE (Inject PHP ke JS)
-        const orders = <?php echo json_encode($orders); ?>;
+    <form method="POST" id="formMarkDelivered" style="display:none;">
+        <input type="hidden" name="action" value="mark_delivered">
+        <input type="hidden" name="order_id" id="deliveredOrderId">
+    </form>
 
+    <script>
+        function goToDashboard() { window.location.href = '../buyer/dashboard.php'; }
+        
+        const orders = <?php echo json_encode($orders); ?>;
         let currentTab = 'pending';
 
-        // RENDER LIST
         function renderOrders() {
             const container = document.getElementById('orderList');
             container.innerHTML = '';
@@ -266,29 +250,44 @@ while($row = mysqli_fetch_assoc($res)) {
                 let actionArea = '';
                 let statusBadge = '';
 
-                // LOGIKA TAMPILAN PER STATUS
+                // --- LOGIKA TOMBOL & BADGE ---
+                
+                // 1. Pending: Konfirmasi Pesanan
                 if (order.status === 'pending') {
                     statusBadge = `<span class="status-label status-pending">Menunggu Konfirmasi</span>`;
-                    // Tombol untuk memproses pesanan
                     actionArea = `<button class="btn-action btn-confirm" onclick="openProcessModal(${order.id})">Proses Pesanan</button>`;
                 
+                // 2. Processed: Input Resi
                 } else if (order.status === 'processed') {
                     statusBadge = `<span class="status-label status-processed">Sedang Diproses</span>`;
-                    // Tombol untuk input resi (Kirim)
                     actionArea = `<button class="btn-action btn-detail" style="background:var(--primary); color:#000;" onclick="openShipModal(${order.id}, '${order.shipping}')">Input Resi</button>`;
                 
+                // 3. Shipping / Delivered (Ada 2 kondisi di Tab Shipping)
                 } else if (order.status === 'shipping') {
-                    statusBadge = `<span class="status-label status-shipping">Sedang Dikirim</span>`;
-                    actionArea = `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>`;
-                
+                    
+                    if (order.db_status === 'shipping') {
+                        // Kondisi: Baru dikirim (Seller bisa klik Konfirmasi Sampai)
+                        statusBadge = `<span class="status-label status-shipping">Sedang Dikirim</span>`;
+                        actionArea = `
+                            <button class="btn-action btn-confirm" style="font-size:0.9rem;" onclick="confirmArrived(${order.id})">Konfirmasi Sampai</button>
+                            <button class="btn-action btn-detail" style="margin-top:5px;" onclick="openDetailModal(${order.id})">Detail</button>
+                        `;
+                    } else if (order.db_status === 'delivered') {
+                        // Kondisi: Barang Sampai (Menunggu Buyer Konfirmasi)
+                        statusBadge = `<span class="status-label status-delivered">Barang Sampai</span>`;
+                        actionArea = `
+                            <small style="color:#e67e22; font-weight:bold; display:block; margin-bottom:5px;">Menunggu Konfirmasi Pembeli</small>
+                            <button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>
+                        `;
+                    }
+
+                // 4. Completed: Selesai / Reviewed
                 } else if (order.status === 'completed') {
-                    // Cek sub-status apakah sudah direview
                     if(order.db_status === 'reviewed') {
                         statusBadge = `<span class="status-label status-reviewed">Sudah Direview</span>`;
                     } else {
                         statusBadge = `<span class="status-label status-done">Selesai</span>`;
                     }
-                    
                     actionArea = `
                         <div style="display:flex; align-items:center; gap:15px;">
                             <span class="done-text"><i class="fas fa-check-circle"></i> Selesai</span>
@@ -324,20 +323,28 @@ while($row = mysqli_fetch_assoc($res)) {
             renderOrders();
         }
 
-        // --- 1. MODAL PROSES (PENDING -> PROCESSED) ---
+        // --- 1. MODAL PROSES ---
         function openProcessModal(id) {
             document.getElementById('processOrderId').value = id;
             document.getElementById('confirmProcessModal').classList.add('open');
         }
 
-        // --- 2. MODAL KIRIM / RESI (PROCESSED -> SHIPPING) ---
+        // --- 2. MODAL KIRIM / RESI ---
         function openShipModal(id, courier) {
             document.getElementById('shipOrderId').value = id;
             document.getElementById('shipCourier').value = courier;
             document.getElementById('shipModal').classList.add('open');
         }
 
-        // --- 3. MODAL DETAIL ---
+        // --- 3. KONFIRMASI SAMPAI (Tanpa Modal Khusus) ---
+        function confirmArrived(id) {
+            if(confirm("Apakah Anda yakin barang sudah sampai di lokasi pembeli? Status akan berubah menjadi 'Sampai' dan menunggu pembeli mengonfirmasi.")) {
+                document.getElementById('deliveredOrderId').value = id;
+                document.getElementById('formMarkDelivered').submit();
+            }
+        }
+
+        // --- 4. MODAL DETAIL ---
         function openDetailModal(id) {
             const order = orders.find(o => o.id === id);
             if (!order) return;
@@ -365,7 +372,6 @@ while($row = mysqli_fetch_assoc($res)) {
             document.getElementById(modalId).classList.remove('open');
         }
 
-        // INIT
         document.addEventListener('DOMContentLoaded', renderOrders);
     </script>
 </body>
