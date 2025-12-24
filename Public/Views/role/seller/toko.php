@@ -23,12 +23,22 @@ $shop_id = $shop['shop_id'];
 // AMBIL DATA RATING DARI DATABASE
 $q_rating = mysqli_query($koneksi, "SELECT AVG(r.rating) as avg FROM reviews r JOIN products p ON r.product_id=p.product_id WHERE p.shop_id='$shop_id'");
 $d_rating = mysqli_fetch_assoc($q_rating);
-$rating_val = (float)$d_rating['avg']; // Nilai float asli (misal 4.5)
-$rating_toko = number_format($rating_val, 1); // Format string (misal "4.5")
+$rating_val = (float)$d_rating['avg']; // Nilai float asli
+$rating_toko = number_format($rating_val, 1);
 
 if($rating_val == 0) {
     $rating_toko = "Baru";
 }
+
+// AMBIL JUMLAH PENGIKUT
+$total_followers = 0;
+try {
+    $q_follow = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM shop_followers WHERE shop_id='$shop_id'");
+    if($q_follow) {
+        $d_follow = mysqli_fetch_assoc($q_follow);
+        $total_followers = $d_follow['total'];
+    }
+} catch (Exception $e) { $total_followers = 0; }
 
 // --- LOGIKA UPDATE PROFIL TOKO ---
 if(isset($_POST['action']) && $_POST['action'] == 'update_profile') {
@@ -107,8 +117,10 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
         
         .shop-info-summary h2 { font-size: 1.8rem; margin-bottom: 5px; color: var(--dark); }
         
-        /* Styling Rating Bintang */
-        .shop-rating { display: flex; align-items: center; gap: 5px; font-size: 0.95rem; color: #666; margin-top: 8px; }
+        /* Styling Rating & Followers */
+        .shop-stats { display: flex; align-items: center; gap: 15px; font-size: 0.95rem; color: #666; margin-top: 8px; }
+        .stat-divider { width: 1px; height: 15px; background-color: #ccc; }
+        
         .star-filled { color: #ffd700; }
         .star-empty { color: #e0e0e0; }
 
@@ -164,12 +176,10 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
             font-size: 0.9rem; font-weight: 500; color: #aaa; transition: 0.2s; cursor: not-allowed;
         }
         
-        /* State when checkbox is checked but disabled (View Mode) */
         .courier-label input:checked + .courier-pill {
             background: #f0f0f0; color: #333; border-color: #ccc;
         }
 
-        /* State when Editing is Active */
         .editing .courier-pill { cursor: pointer; color: #666; }
         .editing .courier-label input:checked + .courier-pill {
             background: var(--dark); color: var(--primary); border-color: var(--dark); box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -249,28 +259,36 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
                                 <div class="shop-info-summary">
                                     <h2><?php echo $shop['shop_name']; ?></h2>
                                     
-                                    <div class="shop-rating">
-                                        <?php if ($rating_toko == "Baru"): ?>
-                                            <span style="background:#eee; padding:3px 10px; border-radius:12px; font-size:0.8rem; color:#666;">Belum ada rating</span>
-                                        <?php else: ?>
-                                            <div class="stars">
-                                                <?php 
-                                                // Logika Render Bintang
-                                                for ($i = 1; $i <= 5; $i++) {
-                                                    if ($i <= $rating_val) {
-                                                        echo '<i class="fas fa-star star-filled"></i>'; // Bintang Penuh
-                                                    } elseif ($i - 0.5 <= $rating_val) {
-                                                        echo '<i class="fas fa-star-half-alt star-filled"></i>'; // Setengah
-                                                    } else {
-                                                        echo '<i class="far fa-star star-empty"></i>'; // Kosong
+                                    <div class="shop-stats">
+                                        <span>
+                                            <i class="fas fa-users" style="color:var(--primary);"></i> 
+                                            <strong><?php echo $total_followers; ?></strong> Pengikut
+                                        </span>
+                                        
+                                        <div class="stat-divider"></div>
+
+                                        <div style="display:flex; align-items:center; gap:5px;">
+                                            <?php if ($rating_toko == "Baru"): ?>
+                                                <span style="background:#eee; padding:3px 10px; border-radius:12px; font-size:0.8rem; color:#666;">Belum ada rating</span>
+                                            <?php else: ?>
+                                                <div class="stars">
+                                                    <?php 
+                                                    for ($i = 1; $i <= 5; $i++) {
+                                                        if ($i <= $rating_val) {
+                                                            echo '<i class="fas fa-star star-filled"></i>';
+                                                        } elseif ($i - 0.5 <= $rating_val) {
+                                                            echo '<i class="fas fa-star-half-alt star-filled"></i>';
+                                                        } else {
+                                                            echo '<i class="far fa-star star-empty"></i>';
+                                                        }
                                                     }
-                                                }
-                                                ?>
-                                            </div>
-                                            <strong><?php echo $rating_toko; ?></strong> <span>/ 5.0</span>
-                                        <?php endif; ?>
+                                                    ?>
+                                                </div>
+                                                <strong><?php echo $rating_toko; ?></strong> <span>/ 5.0</span>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                    </div>
+                                </div>
                             </div>
 
                             <div class="settings-section">
@@ -360,16 +378,14 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
             const btnUpload = document.getElementById('btnUpload');
 
             if (isEditing) {
-                // Mode Edit: Aktifkan input, sembunyikan tombol edit, tampilkan save/cancel
+                // Mode Edit
                 inputs.forEach(el => el.removeAttribute('disabled'));
                 btnEdit.style.display = 'none';
                 actionBtns.style.display = 'flex';
                 btnUpload.style.display = 'flex'; // Munculkan tombol kamera
             } else {
-                // Mode Batal: Reset form, matikan input
-                document.getElementById('formProfile').reset(); // Reset nilai ke awal
-                // Kembalikan gambar ke asal jika batal (opsional, butuh logic complex, biarkan reset text saja)
-                
+                // Mode Batal
+                document.getElementById('formProfile').reset(); 
                 inputs.forEach(el => el.setAttribute('disabled', 'true'));
                 btnEdit.style.display = 'inline-block';
                 actionBtns.style.display = 'none';
@@ -401,7 +417,7 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
                 btnEdit.style.display = 'none';
                 actionBtns.style.display = 'flex';
             } else {
-                document.getElementById('formShipping').reset(); // Reset ke pilihan awal
+                document.getElementById('formShipping').reset(); 
                 checkboxes.forEach(el => el.setAttribute('disabled', 'true'));
                 grid.classList.remove('editing');
                 btnEdit.style.display = 'inline-block';
