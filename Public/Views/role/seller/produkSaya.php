@@ -14,23 +14,24 @@ $user_id = $_SESSION['user_id'];
 // Cek Toko
 $q_shop = mysqli_query($koneksi, "SELECT shop_id FROM shops WHERE user_id = '$user_id'");
 if(mysqli_num_rows($q_shop) == 0){
-    header("Location: dashboard.php"); // Belum punya toko
+    header("Location: dashboard.php");
     exit();
 }
 $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 
 // ==========================================
-// 1. LOGIKA TAMBAH PRODUK
+// 1. LOGIKA TAMBAH PRODUK (STATUS: REVIEW)
 // ==========================================
 if (isset($_POST['action']) && $_POST['action'] == 'add') {
     $name = mysqli_real_escape_string($koneksi, $_POST['name']);
     $price = $_POST['price'];
     $cond = $_POST['condition'];
+    $cat = $_POST['category']; // Ambil Kategori
     $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
     
     // Upload Gambar
-    $db_img_path = "https://placehold.co/300?text=No+Image"; // Default
+    $db_img_path = "https://placehold.co/300?text=No+Image";
     
     if (!empty($_FILES['image']['name'])) {
         $target_dir = "../../../Assets/img/products/";
@@ -44,11 +45,12 @@ if (isset($_POST['action']) && $_POST['action'] == 'add') {
         }
     }
     
-    $query = "INSERT INTO products (shop_id, name, price, `condition`, description, image, status, created_at) 
-              VALUES ('$shop_id', '$name', '$price', '$cond', '$desc', '$db_img_path', 'active', NOW())";
+    // STATUS DEFAULT ADALAH 'review'
+    $query = "INSERT INTO products (shop_id, name, price, category, `condition`, description, image, status, created_at) 
+              VALUES ('$shop_id', '$name', '$price', '$cat', '$cond', '$desc', '$db_img_path', 'review', NOW())";
     
     if(mysqli_query($koneksi, $query)){
-        echo "<script>alert('Produk berhasil ditambahkan!'); window.location.href='produkSaya.php';</script>";
+        echo "<script>alert('Produk berhasil ditambahkan! Menunggu peninjauan admin.'); window.location.href='produkSaya.php';</script>";
     }
 }
 
@@ -60,10 +62,11 @@ if (isset($_POST['action']) && $_POST['action'] == 'edit') {
     $name = mysqli_real_escape_string($koneksi, $_POST['name']);
     $price = $_POST['price'];
     $cond = $_POST['condition'];
+    $cat = $_POST['category']; // Update Kategori
     $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
     
     // Update data teks
-    $query = "UPDATE products SET name='$name', price='$price', `condition`='$cond', description='$desc' 
+    $query = "UPDATE products SET name='$name', price='$price', category='$cat', `condition`='$cond', description='$desc' 
               WHERE product_id='$pid' AND shop_id='$shop_id'";
     mysqli_query($koneksi, $query);
 
@@ -96,11 +99,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id']))
 }
 
 // ==========================================
-// 4. AMBIL DATA PRODUK (READ) + HITUNG FAVORIT
+// 4. AMBIL DATA PRODUK
 // ==========================================
 $products = [];
-
-// Query: Hitung jumlah produk di tabel 'cart' sebagai indikator favorit
 $sql = "SELECT p.*, 
         (SELECT COUNT(*) FROM cart c WHERE c.product_id = p.product_id) as total_favorites
         FROM products p 
@@ -114,9 +115,10 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         'id' => $row['product_id'],
         'name' => $row['name'],
         'price' => (int)$row['price'],
+        'category' => $row['category'], // Ambil kategori
         'img' => $row['image'],
-        'favorites' => $row['total_favorites'], // Jumlah favorit dari cart
-        'status' => $row['status'], // 'active' atau 'sold'
+        'favorites' => $row['total_favorites'],
+        'status' => $row['status'], // active, sold, review
         'desc' => $row['description'],
         'cond' => $row['condition']
     ];
@@ -132,21 +134,18 @@ while($row = mysqli_fetch_assoc($query_prod)) {
     <link rel="stylesheet" href="../../../Assets/css/role/seller/produkSaya.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Overwrite: Posisi Ikon Favorit di Kanan Bawah */
+        /* CSS Overwrite */
         .card-stats {
-            display: flex;
-            justify-content: flex-end; /* Geser ke kanan */
-            margin-top: 10px;
-            color: #888;
-            font-size: 0.85rem;
+            display: flex; justify-content: flex-end; margin-top: 10px; color: #888; font-size: 0.85rem;
         }
-        .card-stats span {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .card-stats i {
-            color: #e74c3c; /* Merah Hati */
+        .card-stats span { display: flex; align-items: center; gap: 5px; }
+        .card-stats i { color: #e74c3c; }
+        
+        /* Badge untuk status review */
+        .review-overlay {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 193, 7, 0.9); color: #000;
+            padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;
         }
     </style>
 </head>
@@ -163,37 +162,14 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             </div>
 
             <ul class="sidebar-menu">
-                <li class="menu-item">
-                    <a href="../buyer/profil.php" class="menu-link">
-                        <i class="fas fa-user"></i>
-                        <span>Biodata Diri</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="../buyer/alamat.php" class="menu-link">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>Alamat</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="../buyer/histori.php" class="menu-link">
-                        <i class="fas fa-history"></i>
-                        <span>Histori</span>
-                    </a>
-                </li>
-                <li class="menu-item active">
-                    <a href="dashboard.php" class="menu-link">
-                        <i class="fas fa-store"></i>
-                        <span>Toko Saya</span>
-                    </a>
-                </li>
+                <li class="menu-item"><a href="../buyer/profil.php" class="menu-link"><i class="fas fa-user"></i><span>Biodata Diri</span></a></li>
+                <li class="menu-item"><a href="../buyer/alamat.php" class="menu-link"><i class="fas fa-map-marker-alt"></i><span>Alamat</span></a></li>
+                <li class="menu-item"><a href="../buyer/histori.php" class="menu-link"><i class="fas fa-history"></i><span>Histori</span></a></li>
+                <li class="menu-item active"><a href="dashboard.php" class="menu-link"><i class="fas fa-store"></i><span>Toko Saya</span></a></li>
             </ul>
 
             <div class="sidebar-footer">
-                <a href="../../../../index.php" class="logout-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+                <a href="../../../../index.php" class="logout-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
             </div>
         </aside>
 
@@ -213,7 +189,8 @@ while($row = mysqli_fetch_assoc($query_prod)) {
                     </div>
 
                     <div class="tabs-container">
-                        <button class="tab-btn active" onclick="switchTab('active', this)">Semua Produk</button>
+                        <button class="tab-btn active" onclick="switchTab('active', this)">Aktif (Dipublish)</button>
+                        <button class="tab-btn" onclick="switchTab('review', this)">Sedang Ditinjau</button>
                         <button class="tab-btn" onclick="switchTab('sold', this)">Terjual</button>
                     </div>
 
@@ -245,17 +222,31 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 
                 <div class="form-group">
                     <label class="form-label">Nama Produk</label>
-                    <input type="text" name="name" id="prodName" class="form-input" placeholder="Contoh: Sepatu Adidas Bekas" required>
+                    <input type="text" name="name" class="form-input" placeholder="Contoh: Sepatu Adidas Bekas" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Harga (Rp)</label>
-                    <input type="number" name="price" id="prodPrice" class="form-input" placeholder="Contoh: 150000" required>
+                    <input type="number" name="price" class="form-input" placeholder="150000" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Kategori</label>
+                    <select name="category" class="form-select" required>
+                        <option value="">Pilih Kategori...</option>
+                        <option value="Elektronik">Elektronik</option>
+                        <option value="Fashion Pria">Fashion Pria</option>
+                        <option value="Fashion Wanita">Fashion Wanita</option>
+                        <option value="Hobi & Koleksi">Hobi & Koleksi</option>
+                        <option value="Otomotif">Otomotif</option>
+                        <option value="Rumah Tangga">Rumah Tangga</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Kondisi</label>
-                    <select name="condition" id="prodCond" class="form-select">
+                    <select name="condition" class="form-select">
                         <option value="Bekas - Seperti Baru">Bekas - Seperti Baru</option>
                         <option value="Bekas - Baik">Bekas - Baik</option>
                         <option value="Bekas - Layak Pakai">Bekas - Layak Pakai</option>
@@ -264,7 +255,11 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 
                 <div class="form-group">
                     <label class="form-label">Deskripsi</label>
-                    <textarea name="description" id="prodDesc" class="form-textarea" rows="3" placeholder="Jelaskan detail barang..."></textarea>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Jelaskan detail barang..."></textarea>
+                </div>
+
+                <div style="background:#f0f8ff; padding:10px; border-radius:6px; margin-bottom:15px; font-size:0.85rem; color:#0056b3;">
+                    <i class="fas fa-info-circle"></i> Produk akan ditinjau oleh admin sebelum ditampilkan ke pembeli.
                 </div>
 
                 <button type="submit" class="btn-submit">Upload Produk</button>
@@ -281,6 +276,11 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             <h2 id="detailName" style="margin-bottom:5px;">Nama Produk</h2>
             <div id="detailPrice" class="detail-price">Rp 0</div>
             
+            <div class="form-group">
+                <label class="form-label">Kategori</label>
+                <div id="detailCat" style="font-weight:600; color:var(--primary);"></div>
+            </div>
+
             <div class="form-group">
                 <label class="form-label">Deskripsi</label>
                 <div id="detailDesc" class="detail-desc-box"></div>
@@ -322,6 +322,19 @@ while($row = mysqli_fetch_assoc($query_prod)) {
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Kategori</label>
+                    <select name="category" id="editCat" class="form-select" required>
+                        <option value="Elektronik">Elektronik</option>
+                        <option value="Fashion Pria">Fashion Pria</option>
+                        <option value="Fashion Wanita">Fashion Wanita</option>
+                        <option value="Hobi & Koleksi">Hobi & Koleksi</option>
+                        <option value="Otomotif">Otomotif</option>
+                        <option value="Rumah Tangga">Rumah Tangga</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Kondisi</label>
                     <select name="condition" id="editCond" class="form-select">
                         <option value="Bekas - Seperti Baru">Bekas - Seperti Baru</option>
@@ -345,14 +358,12 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             window.location.href = '../buyer/dashboard.php';
         }
         
-        // DATA PRODUK (Inject PHP ke JS)
         let myProducts = <?php echo json_encode($products); ?>;
         if (!myProducts) { myProducts = []; }
 
         let currentTab = 'active';
         let currentSelectedId = null;
 
-        // --- RENDER PRODUK ---
         function renderProducts() {
             const grid = document.getElementById('productGrid');
             grid.innerHTML = '';
@@ -366,17 +377,21 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 
             filtered.forEach(p => {
                 const isSold = p.status === 'sold';
+                const isReview = p.status === 'review';
                 const cardClass = isSold ? 'my-product-card sold' : 'my-product-card';
-                // Jika sold, tidak bisa diklik (opsional, di sini kita biarkan bisa diklik untuk lihat detail)
                 
                 const card = document.createElement('div');
                 card.className = cardClass;
                 card.onclick = () => openDetail(p.id);
 
+                let overlay = '';
+                if(isSold) overlay = '<div class="sold-overlay">TERJUAL</div>';
+                if(isReview) overlay = '<div class="review-overlay">MENUNGGU ADMIN</div>';
+
                 card.innerHTML = `
                     <div class="card-img-wrapper">
                         <img src="${p.img}" class="card-img" alt="${p.name}">
-                        <div class="sold-overlay">TERJUAL</div>
+                        ${overlay}
                     </div>
                     <div class="card-body">
                         <div class="card-title">${p.name}</div>
@@ -390,7 +405,6 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             });
         }
 
-        // --- TABS & MODALS MANAGEMENT ---
         function switchTab(status, btn) {
             currentTab = status;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -406,7 +420,6 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             document.getElementById(modalId).classList.remove('open');
         }
 
-        // --- DETAIL PRODUCT LOGIC ---
         function openDetail(id) {
             const product = myProducts.find(p => p.id == id); 
             if (!product) return;
@@ -417,18 +430,17 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             document.getElementById('detailName').textContent = product.name;
             document.getElementById('detailPrice').textContent = 'Rp ' + product.price.toLocaleString('id-ID');
             document.getElementById('detailDesc').textContent = product.desc || "Tidak ada deskripsi.";
+            document.getElementById('detailCat').textContent = product.category || "Tanpa Kategori";
             
             document.getElementById('detailModal').classList.add('open');
         }
 
-        // --- DELETE PRODUCT LOGIC ---
         function deleteCurrentProduct() {
             if (confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
                 window.location.href = `produkSaya.php?action=delete&id=${currentSelectedId}`;
             }
         }
 
-        // --- EDIT PRODUCT LOGIC ---
         function openEditModalFromDetail() {
             closeModal('detailModal'); 
             
@@ -439,13 +451,13 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             document.getElementById('editName').value = product.name;
             document.getElementById('editPrice').value = product.price;
             document.getElementById('editCond').value = product.cond;
+            document.getElementById('editCat').value = product.category; // Set Kategori di Edit
             document.getElementById('editDesc').value = product.desc;
             document.getElementById('previewImgEdit').src = product.img;
             
             document.getElementById('editProductModal').classList.add('open');
         }
 
-        // --- GENERAL IMAGE PREVIEW ---
         function previewImage(input, imgId, iconId) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
