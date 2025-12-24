@@ -211,8 +211,8 @@ if (mysqli_num_rows($query_shop) > 0) {
                 <?php else: ?>
                     <div class="create-shop-card">
                         <i class="fas fa-store illustration-icon"></i>
-                        <h2 style="margin-bottom: 10px;">Buka Toko Gratis</h2>
-                        <p style="color:#666; margin-bottom:30px;">Halo! Untuk mulai berjualan, silakan lengkapi profil toko Anda terlebih dahulu.</p>
+                        <h2 style="margin-bottom: 10px;">Yuk Mulai Berjualan!</h2>
+                        <p style="color:#666; margin-bottom:30px;">Untuk mulai berjualan, silahkan lengkapi profil toko Anda terlebih dahulu.</p>
                         <form method="POST" enctype="multipart/form-data" style="text-align: left;">
                             <input type="hidden" name="create_shop" value="1">
                             <div class="form-group">
@@ -233,7 +233,6 @@ if (mysqli_num_rows($query_shop) > 0) {
                                 <textarea name="shop_description" class="form-textarea" rows="3" placeholder="Jelaskan apa yang Anda jual..." required></textarea>
                             </div>
                             <button type="submit" class="btn-submit" style="width:100%; margin-top:10px;">Buka Toko Sekarang</button>
-                            <div style="text-align:center; margin-top:15px;"><a href="../buyer/dashboard.php" style="color:#666; font-size:0.9rem;">Kembali ke Dashboard Pembeli</a></div>
                         </form>
                     </div>
                 <?php endif; ?>
