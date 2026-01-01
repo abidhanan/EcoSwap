@@ -11,30 +11,48 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
-// 1. AMBIL DATA USER (Termasuk Foto Profil)
+// 1. AMBIL DATA USER
 $q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
 $d_user = mysqli_fetch_assoc($q_user);
-
-// Nama user (prioritas nama asli, fallback ke email)
 $user_name = !empty($d_user['name']) ? $d_user['name'] : explode('@', $d_user['email'])[0];
 
-// LOGIKA FOTO PROFIL NAV BAR
+// FOTO PROFIL
 if (!empty($d_user['profile_picture'])) {
-    // Gunakan foto dari database
     $user_avatar = $d_user['profile_picture'];
 } else {
-    // Gunakan avatar default jika belum upload
     $user_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($user_name);
 }
 
-// 2. AMBIL PRODUK (FEED)
+// ==========================================
+// 2. LOGIKA FILTER KATEGORI & AMBIL PRODUK
+// ==========================================
+$category_filter = isset($_GET['category']) ? $_GET['category'] : 'Semua';
+$where_clause = "WHERE p.status = 'active'";
+
+// Mapping Kategori UI ke Database
+if ($category_filter != 'Semua') {
+    $safe_cat = mysqli_real_escape_string($koneksi, $category_filter);
+    
+    if ($safe_cat == 'Fashion') {
+        // Fashion mencakup Pria & Wanita
+        $where_clause .= " AND (p.category = 'Fashion Pria' OR p.category = 'Fashion Wanita')";
+    } elseif ($safe_cat == 'Hobi') {
+        // Mapping ke Hobi & Koleksi
+        $where_clause .= " AND p.category = 'Hobi & Koleksi'";
+    } else {
+        // Pencarian Exact (Elektronik, Otomotif, Rumah Tangga, dll)
+        $where_clause .= " AND p.category = '$safe_cat'";
+    }
+}
+
 $all_products = [];
 $query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, a.full_address 
                                  FROM products p 
                                  JOIN shops s ON p.shop_id = s.shop_id 
                                  LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
-                                 WHERE p.status = 'active' 
+                                 $where_clause 
                                  ORDER BY p.created_at DESC");
+
 while($row = mysqli_fetch_assoc($query_prod)) {
     $loc = !empty($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia';
     $all_products[] = [
@@ -69,27 +87,22 @@ while($row = mysqli_fetch_assoc($q_notif)){
 }
 $notif_count = mysqli_num_rows(mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id='$user_id' AND is_read=0"));
 
-// 5. AMBIL ALAMAT (UNTUK CHECKOUT)
+// 5. AMBIL ALAMAT
 $addresses = [];
 $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE user_id = '$user_id' ORDER BY is_primary DESC");
 while($row = mysqli_fetch_assoc($q_addr)){
     $addresses[] = $row;
 }
-// Set alamat default tampilan (primary atau index 0)
 $default_addr = !empty($addresses) ? $addresses[0] : null;
 
 // 6. LOGIKA CHAT (Grouping Pesan)
-// Kita perlu mengambil daftar orang yang pernah chat dengan user ini
 $chat_partners = [];
 $chat_messages_grouped = [];
 
-// Query ambil pesan masuk dan keluar
 $q_chat = mysqli_query($koneksi, "
     SELECT c.*, 
-           sender.email as sender_name, 
-           sender.name as sender_real_name,
-           receiver.email as receiver_name,
-           receiver.name as receiver_real_name
+           sender.email as sender_name, sender.name as sender_real_name,
+           receiver.email as receiver_name, receiver.name as receiver_real_name
     FROM chats c
     JOIN users sender ON c.sender_id = sender.user_id
     JOIN users receiver ON c.receiver_id = receiver.user_id
@@ -98,10 +111,8 @@ $q_chat = mysqli_query($koneksi, "
 ");
 
 while($row = mysqli_fetch_assoc($q_chat)){
-    // Tentukan siapa lawannya
     if($row['sender_id'] == $user_id){
         $partner_id = $row['receiver_id'];
-        // Prioritaskan nama asli, jika tidak ada pakai email
         $partner_display = !empty($row['receiver_real_name']) ? $row['receiver_real_name'] : explode('@', $row['receiver_name'])[0];
         $type = 'outgoing';
     } else {
@@ -110,7 +121,6 @@ while($row = mysqli_fetch_assoc($q_chat)){
         $type = 'incoming';
     }
 
-    // Masukkan ke grouping messages
     $chat_messages_grouped[$partner_display][] = [
         'id' => $row['chat_id'],
         'type' => $type,
@@ -118,7 +128,6 @@ while($row = mysqli_fetch_assoc($q_chat)){
         'time' => date('H:i', strtotime($row['created_at']))
     ];
 
-    // Masukkan ke list sidebar (unique)
     if(!isset($chat_partners[$partner_id])) {
         $chat_partners[$partner_id] = [
             'name' => $partner_display,
@@ -126,12 +135,10 @@ while($row = mysqli_fetch_assoc($q_chat)){
             'time' => date('H:i', strtotime($row['created_at']))
         ];
     } else {
-        // Update pesan terakhir
         $chat_partners[$partner_id]['last_msg'] = $row['message'];
         $chat_partners[$partner_id]['time'] = date('H:i', strtotime($row['created_at']));
     }
 }
-$chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
 ?>
 
 <!DOCTYPE html>
@@ -143,7 +150,7 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS Logika Chat */
+        /* CSS Logika Chat & Avatar */
         .message-wrapper { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; position: relative; }
         .message-actions { display: none; background-color: #ffffff; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); padding: 2px 8px; gap: 8px; flex-shrink: 0; border: 1px solid #ddd; }
         .message-wrapper.actions-visible .message-actions { display: flex; }
@@ -155,13 +162,10 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
         .message-bubble { cursor: pointer; transition: opacity 0.2s; }
         .message-bubble:active { opacity: 0.7; }
         
-        /* Tambahan style avatar navbar */
-        .user-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 50%;
-        }
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        
+        /* Cursor pointer untuk kategori */
+        .category-pill { cursor: pointer; }
     </style>
 </head>
 
@@ -193,7 +197,7 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             
             <button class="nav-icon-btn" onclick="toggleChat()">
                 <i class="fas fa-comment-dots"></i>
-                </button>
+            </button>
             
             <div class="user-avatar" onclick="window.location.href='profil.php'">
                 <img src="<?php echo $user_avatar; ?>" alt="User">
@@ -224,18 +228,25 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
         <div class="section-header">
             <h2 class="section-title">Kategori Pilihan</h2>
         </div>
+        
         <div class="category-pills">
-            <div class="category-pill active">Semua</div>
-            <div class="category-pill">Elektronik</div>
-            <div class="category-pill">Fashion</div>
-            <div class="category-pill">Hobi</div>
-            <div class="category-pill">Rumah Tangga</div>
-            <div class="category-pill">Buku</div>
-            <div class="category-pill">Otomotif</div>
+            <?php 
+                $categories = ['Semua', 'Elektronik', 'Fashion', 'Hobi', 'Rumah Tangga', 'Buku', 'Otomotif'];
+                foreach($categories as $cat) {
+                    $isActive = ($category_filter == $cat) ? 'active' : '';
+                    echo '<div class="category-pill '.$isActive.'" onclick="filterCategory(\''.$cat.'\')">'.$cat.'</div>';
+                }
+            ?>
         </div>
 
         <div class="product-grid" id="productGrid">
-            </div>
+            <?php if(empty($all_products)): ?>
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">
+                    <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
+                    Tidak ada produk di kategori <strong><?php echo htmlspecialchars($category_filter); ?></strong>.
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="modal-overlay" id="productModal">
@@ -512,10 +523,14 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
         
         // DATA PRODUK DARI DATABASE (Inject PHP ke JS)
         const products = <?php echo json_encode($all_products); ?>;
-
-        // DATA CHAT DARI DATABASE (Inject PHP ke JS)
-        // Format: {'NamaUser': [{msg}, {msg}]}
         const chatData = <?php echo json_encode($chat_messages_grouped); ?>;
+
+        // --- FUNGSI FILTER KATEGORI (BARU) ---
+        function filterCategory(category) {
+            // Update URL tanpa reload (opsional) atau reload page
+            // Kita reload page agar PHP memfilter data
+            window.location.href = `dashboard.php?category=${encodeURIComponent(category)}`;
+        }
 
         // RENDER PRODUK GRID
         const productGrid = document.getElementById('productGrid');
@@ -597,15 +612,13 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             alert("Barang berhasil ditambahkan ke keranjang!");
         }
 
-        // --- CHECKOUT LOGIC (MERGED FROM CHECKOUT.PHP) ---
-        
+        // --- CHECKOUT LOGIC ---
         let checkoutProductPriceTotal = 0;
         let checkoutShippingPrice = 0;
         const checkoutServiceFee = 1000;
         let activePaymentCategory = null;
         let activePaymentSubOption = null;
 
-        // FUNGSI: Buka Modal Checkout dari Keranjang
         function checkoutFromCart() {
             const items = document.querySelectorAll('.cart-item');
             let selectedItems = [];
@@ -626,17 +639,11 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
                 return;
             }
 
-            // Simpan ke LocalStorage
             localStorage.setItem('checkoutItems', JSON.stringify(selectedItems));
-            
-            // Tutup Sidebar Keranjang
             toggleCart();
-            
-            // Buka Modal Checkout
             initCheckoutModal();
         }
 
-        // FUNGSI: Beli Langsung (Single Item)
         function buyNow() {
             const title = document.getElementById('modalTitle').textContent;
             const priceStr = document.getElementById('modalPrice').textContent.replace('Rp ', '').replace(/\./g, '');
@@ -650,16 +657,14 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             }];
             
             localStorage.setItem('checkoutItems', JSON.stringify(productData));
-            
-            closeModal(); // Tutup modal detail produk
-            initCheckoutModal(); // Buka modal checkout
+            closeModal(); 
+            initCheckoutModal(); 
         }
 
-        // FUNGSI: Inisialisasi Modal Checkout (Render Items)
         function initCheckoutModal() {
             const storedData = localStorage.getItem('checkoutItems');
             const container = document.getElementById('checkoutProductList');
-            container.innerHTML = ''; // Clear previous
+            container.innerHTML = ''; 
             checkoutProductPriceTotal = 0;
 
             if (storedData) {
@@ -681,7 +686,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
                 }
             }
             
-            // Reset Pilihan
             document.getElementById('shippingSelect').value = "0";
             document.querySelectorAll('.payment-category').forEach(el => {
                 el.classList.remove('active');
@@ -701,7 +705,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             document.body.style.overflow = 'auto';
         }
 
-        // Hitung Total di Checkout
         function calculateCheckoutTotal() {
             const shipSelect = document.getElementById('shippingSelect');
             checkoutShippingPrice = parseInt(shipSelect.value) || 0;
@@ -714,7 +717,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             document.getElementById('bottomTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
         }
 
-        // Logika Pembayaran Checkout
         function selectPaymentCategory(catId) {
             document.querySelectorAll('.payment-category').forEach(el => {
                 el.classList.remove('active');
@@ -766,7 +768,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             setTimeout(() => { document.getElementById('list-' + catId).classList.remove('show'); }, 200);
         }
 
-        // Proses Pesanan
         function processOrder() {
             const shipSelect = document.getElementById('shippingSelect');
             if (shipSelect.value === "0") {
@@ -781,7 +782,7 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             closeCheckoutModal();
         }
 
-        // Modal Alamat (Checkout)
+        // Modal Alamat
         function openAddressModal() { document.getElementById('addressModal').classList.add('open'); }
         function closeAddressModal() { document.getElementById('addressModal').classList.remove('open'); }
         
@@ -801,7 +802,7 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             track.style.transform = `translateX(-${index * 100}%)`;
         }, 5000);
 
-        // --- NOTIFICATIONS & CHAT (EXISTING) ---
+        // --- NOTIFICATIONS & CHAT ---
         const notifSidebar = document.getElementById('notifSidebar');
         const notifOverlay = document.getElementById('notifOverlay');
         function toggleNotifications() {
@@ -820,13 +821,12 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             else document.body.style.overflow = 'auto';
         }
 
-        // Logic Chat Dinamis
+        // Logic Chat
         let messages = [];
         let currentChatSeller = '';
 
         function selectChat(sellerName) {
             currentChatSeller = sellerName;
-            // Ambil pesan dari variabel PHP yang sudah diinject
             messages = chatData[sellerName] ? [...chatData[sellerName]] : [];
             
             document.getElementById('chatSellerNameSidebar').textContent = sellerName;
@@ -857,7 +857,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
                 wrapper.className = `message-wrapper ${msg.type}`;
                 wrapper.id = `msg-${index}`;
                 
-                // Logika Tombol Aksi
                 let actionButtons = '';
                 if (msg.type === 'outgoing') {
                     actionButtons = `<button class="action-icon-btn delete" onclick="deleteMessage(${index})"><i class="fas fa-trash-alt"></i></button>`;
@@ -875,7 +874,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
             chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
         }
 
-        // Toggle munculnya tombol chat
         function toggleMessageActions(index) {
             const allWrappers = document.querySelectorAll('.message-wrapper');
             const target = document.getElementById(`msg-${index}`);
@@ -901,7 +899,6 @@ $chat_badge = 0; // Bisa dihitung dari is_read di database jika mau
         function sendMessageSidebar() {
             const input = document.getElementById('messageInputSidebar');
             if(input.value.trim()) {
-                // Di sini harusnya AJAX ke database, tapi sementara simulasi UI dulu
                 const now = new Date();
                 const timeString = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
                 
