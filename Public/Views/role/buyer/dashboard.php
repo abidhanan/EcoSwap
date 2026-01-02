@@ -46,7 +46,8 @@ if ($category_filter != 'Semua') {
 }
 
 $all_products = [];
-$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, a.full_address 
+// Query Join ke Shops dan Addresses + Logic Follow
+$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, a.full_address 
                                  FROM products p 
                                  JOIN shops s ON p.shop_id = s.shop_id 
                                  LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
@@ -54,7 +55,15 @@ $query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, a.full_address
                                  ORDER BY p.created_at DESC");
 
 while($row = mysqli_fetch_assoc($query_prod)) {
+    // Cek status Follow
+    $shop_id_prod = $row['shop_id'];
+    $is_following = false;
+    // Gunakan try-catch atau @ untuk antisipasi jika tabel belum ada
+    $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
+    if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
+
     $loc = !empty($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia';
+    
     $all_products[] = [
         'id' => $row['product_id'],
         'title' => $row['name'],
@@ -62,7 +71,12 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         'loc' => $loc, 
         'img' => $row['image'], 
         'cond' => $row['condition'],
-        'desc' => $row['description']
+        'desc' => $row['description'],
+        'category' => $row['category'],
+        'shop_name' => $row['shop_name'],
+        'shop_img' => $row['shop_image'],
+        'shop_id' => $row['shop_id'],
+        'is_following' => $is_following
     ];
 }
 
@@ -164,8 +178,116 @@ while($row = mysqli_fetch_assoc($q_chat)){
         
         .user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         
+        /* --- MODAL DETAIL (LAYOUT SIMETRIS & RAPI) --- */
+        .product-modal {
+            background: #fff; width: 900px; max-width: 95%; 
+            border-radius: 12px; overflow: hidden; display: flex;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative;
+            max-height: 90vh; /* Batasi tinggi agar tidak overflow layar */
+        }
+        
+        .modal-left { 
+            flex: 1; background: #f8f9fa; display: flex; 
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-left img { 
+            max-width: 100%; max-height: 400px; object-fit: contain; 
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .modal-right { 
+            flex: 1; padding: 30px; display: flex; flex-direction: column; 
+            overflow-y: auto; /* Scroll jika konten panjang */
+        }
+
+        .modal-title { font-size: 1.5rem; font-weight: 700; color: #333; margin-bottom: 5px; line-height: 1.3; }
+        .modal-price { font-size: 1.4rem; color: var(--primary); font-weight: 700; margin: 15px 0; }
+        
+        .modal-meta-row { 
+            display: flex; gap: 15px; font-size: 0.9rem; color: #666; margin-bottom: 20px; 
+            border-bottom: 1px solid #eee; padding-bottom: 15px; 
+        }
+        .modal-meta-row span { display: flex; align-items: center; gap: 5px; }
+
+        .modal-category-badge {
+            display: inline-block; background: #e0f7fa; color: #006064; 
+            padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+            margin-bottom: 10px; align-self: flex-start;
+        }
+
+        .modal-desc { 
+            font-size: 0.95rem; line-height: 1.6; color: #555; margin-bottom: 20px; 
+            flex-grow: 1; /* Isi ruang kosong */
+        }
+
+        /* Container Info Toko (Updated Layout) */
+        .modal-shop-container {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 15px; background: #fdfdfd; border: 1px solid #eee; 
+            border-radius: 10px; margin-bottom: 20px;
+        }
+        .modal-shop-left { display: flex; align-items: center; gap: 12px; }
+        .modal-shop-img { 
+            width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; 
+        }
+        .modal-shop-details { display: flex; flex-direction: column; justify-content: center; }
+        .modal-shop-details h4 { margin: 0; font-size: 1rem; color: #333; font-weight: 700; }
+        .modal-shop-details span { font-size: 0.8rem; color: #888; margin-top: 2px; } /* Online status dll */
+
+        /* Tombol Follow (Updated Style) */
+        .btn-follow {
+            background: #fff; border: 1px solid var(--primary); color: #333;
+            padding: 6px 18px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-follow:hover { background: #fffde7; border-color: #fbc02d; }
+        .btn-follow.following {
+            background: var(--primary); color: #000; border-color: var(--primary);
+        }
+
+        /* Action Buttons Bottom */
+        .modal-actions { 
+            display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 10px; margin-top: auto; 
+        }
+        .btn { border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.95rem; }
+        .btn-outline { background: #fff; border: 1px solid #ddd; color: #333; }
+        .btn-outline:hover { border-color: #aaa; background: #f9f9f9; }
+        .btn-dark { background: #333; color: #fff; }
+        .btn-dark:hover { background: #000; }
+        .btn-primary { background: var(--primary); color: #000; }
+        .btn-primary:hover { opacity: 0.9; }
+
+        
         /* Cursor pointer untuk kategori */
         .category-pill { cursor: pointer; }
+
+        /* --- CSS UPDATE MODAL DETAIL --- */
+        .modal-category-badge {
+            display: inline-block; background: #e0f2f1; padding: 4px 10px; border-radius: 12px;
+            font-size: 0.8rem; color: #00695c; font-weight: 600;
+        }
+
+        /* Container Info Toko */
+        .modal-shop-container {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;
+        }
+        .modal-shop-left { display: flex; align-items: center; gap: 12px; }
+        .modal-shop-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
+        .modal-shop-details { display: flex; flex-direction: column; }
+        .modal-shop-details h4 { margin: 0; font-size: 1rem; color: #333; font-weight: 700; }
+        .modal-shop-details span { font-size: 0.8rem; color: #666; }
+
+        /* Tombol Follow */
+        .btn-follow {
+            background: transparent; border: 1px solid var(--primary); color: var(--dark);
+            padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: 0.2s;
+        }
+        .btn-follow:hover { background: #fff8d6; }
+        .btn-follow.following {
+            background: var(--primary); color: #000; border-color: var(--primary);
+        }
     </style>
 </head>
 
@@ -261,19 +383,20 @@ while($row = mysqli_fetch_assoc($q_chat)){
             
             <div class="modal-right">
                 <h2 class="modal-title" id="modalTitle">Judul Produk</h2>
-                <div class="modal-price" id="modalPrice">Rp 0</div>
+                <div id="modalCategoryBadge" style="margin-bottom: 10px;"></div> <div class="modal-price" id="modalPrice">Rp 0</div>
                 
                 <div class="modal-meta-row">
                     <span><i class="fas fa-map-marker-alt"></i> <span id="modalLoc">Lokasi</span></span>
                     <span><i class="fas fa-star"></i> <span id="modalCond">Kondisi</span></span>
                 </div>
 
-                <div class="modal-desc" id="modalDesc">
-                    Deskripsi produk akan muncul di sini...
-                </div>
+                <div class="modal-desc" id="modalDesc">Deskripsi...</div>
+
+                <div id="modalShopContainer" class="modal-shop-container">
+                    </div>
 
                 <div class="modal-actions">
-                    <button class="btn btn-outline" onclick="toggleChat()"><i class="fas fa-comment"></i> Chat</button>
+                    <button class="btn btn-outline" id="btnModalChat"><i class="fas fa-comment"></i> Chat</button>
                     <button class="btn btn-dark" onclick="addToCart()"><i class="fas fa-cart-plus"></i> Tambah</button>
                     <button class="btn btn-primary" onclick="buyNow()">Beli Sekarang</button>
                 </div>
@@ -554,9 +677,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
             productGrid.appendChild(card);
         });
 
-        // MODAL LOGIC (Detail Produk)
+        // MODAL LOGIC (Detail Produk) - UPDATED
         const modalOverlay = document.getElementById('productModal');
-
+        
         function openModal(product) {
             document.getElementById('modalImg').src = product.img;
             document.getElementById('modalTitle').textContent = product.title;
@@ -564,9 +687,65 @@ while($row = mysqli_fetch_assoc($q_chat)){
             document.getElementById('modalLoc').textContent = product.loc;
             document.getElementById('modalCond').textContent = product.cond;
             document.getElementById('modalDesc').textContent = product.desc;
-            
+
+            // 1. Set Kategori (Di bawah Nama Produk)
+            // Menggunakan badge style agar rapi
+            const catContainer = document.getElementById('modalCategoryBadge');
+            catContainer.innerHTML = `<span class="modal-category-badge">${product.category || 'Umum'}</span>`;
+
+            // 2. Set Info Toko & Follow (Di bawah Deskripsi)
+            const shopContainer = document.getElementById('modalShopContainer');
+            const followText = product.is_following ? 'Mengikuti' : '+ Ikuti';
+            const followClass = product.is_following ? 'btn-follow following' : 'btn-follow';
+            const shopImg = product.shop_img ? product.shop_img : 'https://placehold.co/50';
+
+            shopContainer.innerHTML = `
+                <div class="modal-shop-left">
+                    <img src="${shopImg}" class="modal-shop-img" alt="Toko">
+                    <div class="modal-shop-details">
+                        <h4>${product.shop_name}</h4>
+                        <span>Penjual Terpercaya</span>
+                    </div>
+                </div>
+                <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">
+                    ${followText}
+                </button>
+            `;
+
+            // 3. Konfigurasi Tombol Chat
+            const btnChat = document.getElementById('btnModalChat');
+            // Saat diklik: Tutup modal detail -> Buka Chat -> Pilih User Toko
+            btnChat.onclick = function() {
+                closeModal(); // Tutup modal detail
+                toggleChat(); // Buka sidebar chat
+                // Panggil fungsi selectChat dengan nama toko (asumsi nama toko = user identifier di chat logic)
+                // Di sistem nyata, sebaiknya pakai ID user pemilik toko. Di sini kita pakai nama toko sebagai simulasi.
+                selectChat(product.shop_name); 
+            };
+
             modalOverlay.classList.add('open');
             document.body.style.overflow = 'hidden'; 
+        }
+
+        // --- AJAX FOLLOW TOKO ---
+        function toggleFollow(shopId, btn, shopName) {
+            const formData = new FormData();
+            formData.append('action', 'toggle_follow');
+            formData.append('shop_id', shopId);
+
+            fetch('dashboard.php', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'followed') {
+                    btn.classList.add('following');
+                    btn.textContent = 'Mengikuti';
+                    alert(`Berhasil mengikuti ${shopName}! Anda akan mendapatkan notifikasi jika ada produk baru.`);
+                } else {
+                    btn.classList.remove('following');
+                    btn.textContent = '+ Ikuti';
+                }
+            })
+            .catch(err => console.error(err));
         }
 
         function closeModal() {
