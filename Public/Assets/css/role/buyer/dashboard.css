@@ -19,7 +19,7 @@ ul { list-style: none; }
 .nav-left { display: flex; align-items: center; gap: 20px; }
 .logo { font-size: 1.5rem; font-weight: 800; color: var(--dark); letter-spacing: -0.5px; }
 .logo span { color: var(--primary); }
-.search-container { position: relative; width: 600px; }
+.search-container { position: relative; width: 1090px; }
 .search-input { width: 100%; padding: 10px 40px 10px 20px; border-radius: 25px; border: 1px solid var(--border); background-color: #f9f9f9; outline: none; transition: all 0.3s; }
 .search-input:focus { border-color: var(--primary); background-color: #fff; box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2); }
 .search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--gray); }
@@ -30,7 +30,7 @@ ul { list-style: none; }
 .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 /* HERO */
-.container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
+.container { max-width: 100%; margin: 0 auto; padding: 30px 20px; }
 .hero-section { border-radius: 16px; overflow: hidden; height: 350px; position: relative; box-shadow: var(--shadow); margin-bottom: 40px; background-color: #000; }
 .carousel-track { display: flex; height: 100%; transition: transform 0.5s ease; }
 .carousel-slide { min-width: 100%; position: relative; }
