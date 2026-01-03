@@ -30,7 +30,7 @@ ul { list-style: none; }
 .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 /* HERO */
-.container { max-width: 100%; margin: 0 auto; padding: 30px 20px; }
+.container { max-width: 1475px; margin: 0 auto; padding: 30px 20px; }
 .hero-section { border-radius: 16px; overflow: hidden; height: 350px; position: relative; box-shadow: var(--shadow); margin-bottom: 40px; background-color: #000; }
 .carousel-track { display: flex; height: 100%; transition: transform 0.5s ease; }
 .carousel-slide { min-width: 100%; position: relative; }
