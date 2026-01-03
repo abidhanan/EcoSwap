@@ -11,6 +11,47 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
+// ==========================================
+// HANDLE AJAX REQUESTS (Follow & Chat)
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json'); // Wajib agar tidak error parsing JSON
+
+    // 1. HANDLER FOLLOW
+    if ($_POST['action'] == 'toggle_follow') {
+        $target_shop_id = $_POST['shop_id'];
+        $check = mysqli_query($koneksi, "SELECT * FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'");
+        
+        if (mysqli_num_rows($check) > 0) {
+            mysqli_query($koneksi, "DELETE FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'");
+            echo json_encode(['status' => 'unfollowed']);
+        } else {
+            mysqli_query($koneksi, "INSERT INTO shop_followers (shop_id, user_id) VALUES ('$target_shop_id', '$user_id')");
+            echo json_encode(['status' => 'followed']);
+        }
+        exit;
+    }
+
+    // 2. HANDLER KIRIM CHAT (BARU)
+    if ($_POST['action'] == 'send_message') {
+        $receiver_id = $_POST['receiver_id'];
+        $message = mysqli_real_escape_string($koneksi, $_POST['message']);
+
+        if(!empty($message) && !empty($receiver_id)) {
+            $insert = mysqli_query($koneksi, "INSERT INTO chats (sender_id, receiver_id, message) VALUES ('$user_id', '$receiver_id', '$message')");
+            if($insert) {
+                echo json_encode(['status' => 'success', 'time' => date('H:i')]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => mysqli_error($koneksi)]);
+            }
+        } else {
+            echo json_encode(['status' => 'empty']);
+        }
+        exit;
+    }
+}
+// ==========================================
+
 // 1. AMBIL DATA USER
 $q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
 $d_user = mysqli_fetch_assoc($q_user);
@@ -46,22 +87,31 @@ if ($category_filter != 'Semua') {
 }
 
 $all_products = [];
-// Query Join ke Shops dan Addresses + Logic Follow
-$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, a.full_address 
+// Modifikasi query: Tambahkan s.shop_address
+$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_address, a.full_address 
                                  FROM products p 
                                  JOIN shops s ON p.shop_id = s.shop_id 
                                  LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
                                  $where_clause 
                                  ORDER BY p.created_at DESC");
 
+// ... (Query sebelumnya tetap sama)
+
 while($row = mysqli_fetch_assoc($query_prod)) {
     // Cek status Follow
     $shop_id_prod = $row['shop_id'];
     $is_following = false;
-    // Gunakan try-catch atau @ untuk antisipasi jika tabel belum ada
     $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
-    if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
+    if(mysqli_num_rows($q_check) > 0) $is_following = true;
 
+    // LOGIKA ALAMAT PENDEK
+    // 1. Ambil alamat penuh (prioritas toko, fallback alamat user)
+    $raw_addr = !empty($row['shop_address']) ? $row['shop_address'] : (isset($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia');
+    
+    // 2. Potong jika terlalu panjang (> 35 karakter) agar tampilan rapi
+    $short_addr = strlen($raw_addr) > 35 ? substr($raw_addr, 0, 35) . '...' : $raw_addr;
+
+    // Lokasi (Kota/Negara) untuk display card (opsional, biarkan default)
     $loc = !empty($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia';
     
     $all_products[] = [
@@ -76,6 +126,7 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         'shop_name' => $row['shop_name'],
         'shop_img' => $row['shop_image'],
         'shop_id' => $row['shop_id'],
+        'shop_address' => $short_addr, // Gunakan alamat yang sudah dipendekkan
         'is_following' => $is_following
     ];
 }
@@ -109,48 +160,51 @@ while($row = mysqli_fetch_assoc($q_addr)){
 }
 $default_addr = !empty($addresses) ? $addresses[0] : null;
 
-// 6. LOGIKA CHAT (Grouping Pesan)
+// 6. LOGIKA CHAT (Updated)
 $chat_partners = [];
 $chat_messages_grouped = [];
 
 $q_chat = mysqli_query($koneksi, "
     SELECT c.*, 
-           sender.email as sender_name, sender.name as sender_real_name,
-           receiver.email as receiver_name, receiver.name as receiver_real_name
-    FROM chats c
-    JOIN users sender ON c.sender_id = sender.user_id
-    JOIN users receiver ON c.receiver_id = receiver.user_id
-    WHERE c.sender_id = '$user_id' OR c.receiver_id = '$user_id'
+           sender.user_id as s_id, sender.name as s_name, 
+           receiver.user_id as r_id, receiver.name as r_name 
+    FROM chats c 
+    JOIN users sender ON c.sender_id = sender.user_id 
+    JOIN users receiver ON c.receiver_id = receiver.user_id 
+    WHERE c.sender_id = '$user_id' OR c.receiver_id = '$user_id' 
     ORDER BY c.created_at ASC
 ");
 
 while($row = mysqli_fetch_assoc($q_chat)){
     if($row['sender_id'] == $user_id){
-        $partner_id = $row['receiver_id'];
-        $partner_display = !empty($row['receiver_real_name']) ? $row['receiver_real_name'] : explode('@', $row['receiver_name'])[0];
+        $pid = $row['receiver_id']; // Partner ID (Seller)
+        $pname = $row['r_name'];
         $type = 'outgoing';
     } else {
-        $partner_id = $row['sender_id'];
-        $partner_display = !empty($row['sender_real_name']) ? $row['sender_real_name'] : explode('@', $row['sender_name'])[0];
+        $pid = $row['sender_id']; // Partner ID (Seller)
+        $pname = $row['s_name'];
         $type = 'incoming';
     }
 
-    $chat_messages_grouped[$partner_display][] = [
+    // Grouping pesan
+    $chat_messages_grouped[$pid][] = [ // Key pakai ID, bukan Nama (biar aman)
         'id' => $row['chat_id'],
         'type' => $type,
         'text' => $row['message'],
         'time' => date('H:i', strtotime($row['created_at']))
     ];
 
-    if(!isset($chat_partners[$partner_id])) {
-        $chat_partners[$partner_id] = [
-            'name' => $partner_display,
+    // List Sidebar
+    if(!isset($chat_partners[$pid])) {
+        $chat_partners[$pid] = [
+            'id' => $pid, // Simpan ID
+            'name' => $pname,
             'last_msg' => $row['message'],
             'time' => date('H:i', strtotime($row['created_at']))
         ];
     } else {
-        $chat_partners[$partner_id]['last_msg'] = $row['message'];
-        $chat_partners[$partner_id]['time'] = date('H:i', strtotime($row['created_at']));
+        $chat_partners[$pid]['last_msg'] = $row['message'];
+        $chat_partners[$pid]['time'] = date('H:i', strtotime($row['created_at']));
     }
 }
 ?>
@@ -607,13 +661,13 @@ while($row = mysqli_fetch_assoc($q_chat)){
             <?php if(empty($chat_partners)): ?>
                 <div style="text-align:center; padding:20px; color:#666;">Belum ada percakapan</div>
             <?php else: ?>
-                <?php foreach($chat_partners as $partner_name => $chat_info): ?>
-                <div class="chat-item" onclick="selectChat('<?php echo $chat_info['name']; ?>')">
-                    <div class="chat-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=<?php echo $chat_info['name']; ?>" alt="User"></div>
+                <?php foreach($chat_partners as $pid => $info): ?>
+                <div class="chat-item" onclick="selectChat(<?php echo $pid; ?>, '<?php echo addslashes($info['name']); ?>')">
+                    <div class="chat-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=<?php echo $info['name']; ?>" alt="User"></div>
                     <div class="chat-content">
-                        <div class="chat-name"><?php echo $chat_info['name']; ?></div>
-                        <div class="chat-message"><?php echo $chat_info['last_msg']; ?></div>
-                        <div class="chat-time"><?php echo $chat_info['time']; ?></div>
+                        <div class="chat-name"><?php echo $info['name']; ?></div>
+                        <div class="chat-message"><?php echo $info['last_msg']; ?></div>
+                        <div class="chat-time"><?php echo $info['time']; ?></div>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -644,18 +698,17 @@ while($row = mysqli_fetch_assoc($q_chat)){
     <script>
         const goToDashboard = () => window.location.href = 'dashboard.php';
         
-        // DATA PRODUK DARI DATABASE (Inject PHP ke JS)
+        // --- DATA DARI PHP ---
         const products = <?php echo json_encode($all_products); ?>;
-        const chatData = <?php echo json_encode($chat_messages_grouped); ?>;
+        // chatData sekarang kuncinya adalah ID User (bukan nama)
+        const chatData = <?php echo json_encode($chat_messages_grouped); ?>; 
 
-        // --- FUNGSI FILTER KATEGORI (BARU) ---
+        // --- FUNGSI FILTER KATEGORI ---
         function filterCategory(category) {
-            // Update URL tanpa reload (opsional) atau reload page
-            // Kita reload page agar PHP memfilter data
             window.location.href = `dashboard.php?category=${encodeURIComponent(category)}`;
         }
 
-        // RENDER PRODUK GRID
+        // --- RENDER PRODUK GRID ---
         const productGrid = document.getElementById('productGrid');
 
         products.forEach(p => {
@@ -677,24 +730,30 @@ while($row = mysqli_fetch_assoc($q_chat)){
             productGrid.appendChild(card);
         });
 
-        // MODAL LOGIC (Detail Produk) - UPDATED
+        // --- UPDATE LOGIC MODAL (CHAT & FOLLOW) ---
         const modalOverlay = document.getElementById('productModal');
-        
+
         function openModal(product) {
             document.getElementById('modalImg').src = product.img;
             document.getElementById('modalTitle').textContent = product.title;
             document.getElementById('modalPrice').textContent = 'Rp ' + product.price.toLocaleString('id-ID');
-            document.getElementById('modalLoc').textContent = product.loc;
-            document.getElementById('modalCond').textContent = product.cond;
             document.getElementById('modalDesc').textContent = product.desc;
-
-            // 1. Set Kategori (Di bawah Nama Produk)
-            // Menggunakan badge style agar rapi
+            
+            // Meta Row: Tampilkan Kondisi (Hapus Lokasi agar tidak duplikat)
+            const metaRow = document.querySelector('.modal-meta-row');
+            if(metaRow) {
+                 metaRow.innerHTML = `<span style="color:#555; font-weight:600;">Kondisi: <span id="modalCond" style="font-weight:normal; margin-left:4px; color:#333;">${product.cond}</span></span>`;
+            }
+            
+            // Kategori Badge
             const catContainer = document.getElementById('modalCategoryBadge');
-            catContainer.innerHTML = `<span class="modal-category-badge">${product.category || 'Umum'}</span>`;
+            if(catContainer) {
+                catContainer.innerHTML = `<span class="modal-category-badge">${product.category || 'Umum'}</span>`;
+            }
 
-            // 2. Set Info Toko & Follow (Di bawah Deskripsi)
+            // Shop Info (Foto, Nama, Alamat, Tombol Follow)
             const shopContainer = document.getElementById('modalShopContainer');
+            
             const followText = product.is_following ? 'Mengikuti' : '+ Ikuti';
             const followClass = product.is_following ? 'btn-follow following' : 'btn-follow';
             const shopImg = product.shop_img ? product.shop_img : 'https://placehold.co/50';
@@ -704,7 +763,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
                     <img src="${shopImg}" class="modal-shop-img" alt="Toko">
                     <div class="modal-shop-details">
                         <h4>${product.shop_name}</h4>
-                        <span>Penjual Terpercaya</span>
+                        <span style="font-size:0.8rem; color:#666; display:flex; align-items:center; gap:4px;">
+                            <i class="fas fa-map-marker-alt" style="color:#fbc02d;"></i> ${product.shop_address || 'Indonesia'}
+                        </span>
                     </div>
                 </div>
                 <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">
@@ -712,40 +773,21 @@ while($row = mysqli_fetch_assoc($q_chat)){
                 </button>
             `;
 
-            // 3. Konfigurasi Tombol Chat
-            const btnChat = document.getElementById('btnModalChat');
-            // Saat diklik: Tutup modal detail -> Buka Chat -> Pilih User Toko
-            btnChat.onclick = function() {
-                closeModal(); // Tutup modal detail
-                toggleChat(); // Buka sidebar chat
-                // Panggil fungsi selectChat dengan nama toko (asumsi nama toko = user identifier di chat logic)
-                // Di sistem nyata, sebaiknya pakai ID user pemilik toko. Di sini kita pakai nama toko sebagai simulasi.
-                selectChat(product.shop_name); 
+            // Konfigurasi Tombol Chat (Buka Chat dengan Seller)
+            const btnChat = document.querySelector('.modal-actions .btn-outline'); 
+            const newBtnChat = btnChat.cloneNode(true); 
+            btnChat.parentNode.replaceChild(newBtnChat, btnChat);
+            
+            newBtnChat.onclick = function() {
+                closeModal(); 
+                toggleChat();
+                // Buka chat dengan Seller ID (product.shop_id)
+                // Pastikan selectChat menerima ID dan Nama Toko
+                selectChat(product.shop_id, product.shop_name, shopImg); 
             };
 
             modalOverlay.classList.add('open');
             document.body.style.overflow = 'hidden'; 
-        }
-
-        // --- AJAX FOLLOW TOKO ---
-        function toggleFollow(shopId, btn, shopName) {
-            const formData = new FormData();
-            formData.append('action', 'toggle_follow');
-            formData.append('shop_id', shopId);
-
-            fetch('dashboard.php', { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'followed') {
-                    btn.classList.add('following');
-                    btn.textContent = 'Mengikuti';
-                    alert(`Berhasil mengikuti ${shopName}! Anda akan mendapatkan notifikasi jika ada produk baru.`);
-                } else {
-                    btn.classList.remove('following');
-                    btn.textContent = '+ Ikuti';
-                }
-            })
-            .catch(err => console.error(err));
         }
 
         function closeModal() {
@@ -757,269 +799,61 @@ while($row = mysqli_fetch_assoc($q_chat)){
             if (e.target === modalOverlay) closeModal();
         });
 
-        // --- CART LOGIC ---
-        const cartSidebar = document.getElementById('cartSidebar');
-        const cartOverlay = document.getElementById('cartOverlay');
+        // --- AJAX FOLLOW TOKO ---
+        function toggleFollow(shopId, btn, shopName) {
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = '...';
 
-        function toggleCart() {
-            cartSidebar.classList.toggle('open');
-            cartOverlay.classList.toggle('open');
-            if(cartSidebar.classList.contains('open')) {
-                document.body.style.overflow = 'hidden';
-                updateCartTotal(); 
-            } else {
-                document.body.style.overflow = 'auto';
-            }
-        }
+            const formData = new FormData();
+            formData.append('action', 'toggle_follow');
+            formData.append('shop_id', shopId);
 
-        function updateCartTotal() {
-            let total = 0;
-            const items = document.querySelectorAll('.cart-item');
-            items.forEach(item => {
-                const checkbox = item.querySelector('.cart-checkbox');
-                if (checkbox.checked) {
-                    const price = parseInt(item.getAttribute('data-price'));
-                    total += price;
+            fetch('dashboard.php', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'followed') {
+                    btn.classList.add('following');
+                    btn.textContent = 'Mengikuti';
+                    alert(`Berhasil mengikuti ${shopName}! Anda akan mendapatkan notifikasi produk baru.`);
+                } else if (data.status === 'unfollowed') {
+                    btn.classList.remove('following');
+                    btn.textContent = '+ Ikuti';
+                } else {
+                    alert('Gagal memproses permintaan.');
+                    btn.textContent = originalText;
                 }
-            });
-            document.getElementById('cartTotalPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
+            })
+            .catch(err => {
+                console.error(err);
+                btn.textContent = originalText;
+            })
+            .finally(() => { btn.disabled = false; });
         }
 
-        function addToCart() {
-            closeModal();
-            setTimeout(toggleCart, 300);
-            alert("Barang berhasil ditambahkan ke keranjang!");
-        }
-
-        // --- CHECKOUT LOGIC ---
-        let checkoutProductPriceTotal = 0;
-        let checkoutShippingPrice = 0;
-        const checkoutServiceFee = 1000;
-        let activePaymentCategory = null;
-        let activePaymentSubOption = null;
-
-        function checkoutFromCart() {
-            const items = document.querySelectorAll('.cart-item');
-            let selectedItems = [];
-
-            items.forEach(item => {
-                const checkbox = item.querySelector('.cart-checkbox');
-                if (checkbox.checked) {
-                    selectedItems.push({
-                        title: item.getAttribute('data-name'),
-                        price: parseInt(item.getAttribute('data-price')),
-                        img: item.getAttribute('data-img')
-                    });
-                }
-            });
-
-            if (selectedItems.length === 0) {
-                alert("Silakan pilih minimal satu barang untuk di-checkout.");
-                return;
-            }
-
-            localStorage.setItem('checkoutItems', JSON.stringify(selectedItems));
-            toggleCart();
-            initCheckoutModal();
-        }
-
-        function buyNow() {
-            const title = document.getElementById('modalTitle').textContent;
-            const priceStr = document.getElementById('modalPrice').textContent.replace('Rp ', '').replace(/\./g, '');
-            const price = parseInt(priceStr);
-            const img = document.getElementById('modalImg').src;
-
-            const productData = [{
-                title: title,
-                price: price,
-                img: img
-            }];
-            
-            localStorage.setItem('checkoutItems', JSON.stringify(productData));
-            closeModal(); 
-            initCheckoutModal(); 
-        }
-
-        function initCheckoutModal() {
-            const storedData = localStorage.getItem('checkoutItems');
-            const container = document.getElementById('checkoutProductList');
-            container.innerHTML = ''; 
-            checkoutProductPriceTotal = 0;
-
-            if (storedData) {
-                const products = JSON.parse(storedData);
-                if (products && products.length > 0) {
-                    products.forEach(item => {
-                        checkoutProductPriceTotal += item.price;
-                        const row = document.createElement('div');
-                        row.className = 'product-row-checkout';
-                        row.innerHTML = `
-                            <img src="${item.img}" class="product-img-checkout">
-                            <div class="product-details-checkout">
-                                <div class="prod-name-checkout">${item.title}</div>
-                                <div class="prod-price-checkout">Rp ${item.price.toLocaleString('id-ID')}</div>
-                            </div>
-                        `;
-                        container.appendChild(row);
-                    });
-                }
-            }
-            
-            document.getElementById('shippingSelect').value = "0";
-            document.querySelectorAll('.payment-category').forEach(el => {
-                el.classList.remove('active');
-                el.querySelector('.check-circle').className = 'far fa-circle check-circle';
-            });
-            activePaymentCategory = null;
-            document.getElementById('selected-bank-text').innerText = '';
-            document.getElementById('selected-ewallet-text').innerText = '';
-
-            calculateCheckoutTotal();
-            document.getElementById('checkoutModal').classList.add('open');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeCheckoutModal() {
-            document.getElementById('checkoutModal').classList.remove('open');
-            document.body.style.overflow = 'auto';
-        }
-
-        function calculateCheckoutTotal() {
-            const shipSelect = document.getElementById('shippingSelect');
-            checkoutShippingPrice = parseInt(shipSelect.value) || 0;
-
-            const total = checkoutProductPriceTotal + checkoutShippingPrice + checkoutServiceFee;
-
-            document.getElementById('summaryProdPrice').innerText = 'Rp ' + checkoutProductPriceTotal.toLocaleString('id-ID');
-            document.getElementById('summaryShipPrice').innerText = 'Rp ' + checkoutShippingPrice.toLocaleString('id-ID');
-            document.getElementById('summaryTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
-            document.getElementById('bottomTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
-        }
-
-        function selectPaymentCategory(catId) {
-            document.querySelectorAll('.payment-category').forEach(el => {
-                el.classList.remove('active');
-                el.querySelector('.check-circle').className = 'far fa-circle check-circle';
-            });
-            const activeEl = document.getElementById('cat-' + catId);
-            activeEl.classList.add('active');
-            activeEl.querySelector('.check-circle').className = 'fas fa-check-circle check-circle';
-            activePaymentCategory = catId;
-            
-            if (catId === 'cod') {
-                activePaymentSubOption = null;
-                closeAllPaymentDropdowns();
-            } else {
-                const listEl = document.getElementById('list-' + catId);
-                if (!listEl.classList.contains('show')) {
-                    closeAllPaymentDropdowns();
-                    listEl.classList.add('show');
-                }
-            }
-        }
-
-        function togglePaymentDropdown(event, listId) {
-            event.stopPropagation();
-            const listEl = document.getElementById(listId);
-            const isShown = listEl.classList.contains('show');
-            closeAllPaymentDropdowns();
-            if (!isShown) listEl.classList.add('show');
-        }
-
-        function closeAllPaymentDropdowns() {
-            document.querySelectorAll('.payment-options-list').forEach(el => el.classList.remove('show'));
-        }
-
-        function selectPaymentSubOption(catId, val, displayName) {
-            selectPaymentCategory(catId);
-            const listContainer = document.getElementById('list-' + catId);
-            listContainer.querySelectorAll('.sub-option').forEach(el => el.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
-            activePaymentSubOption = val;
-            
-            if (catId === 'bank') {
-                document.getElementById('selected-bank-text').innerText = `(${displayName})`;
-                document.getElementById('selected-ewallet-text').innerText = '';
-            } else if (catId === 'ewallet') {
-                document.getElementById('selected-ewallet-text').innerText = `(${displayName})`;
-                document.getElementById('selected-bank-text').innerText = '';
-            }
-            setTimeout(() => { document.getElementById('list-' + catId).classList.remove('show'); }, 200);
-        }
-
-        function processOrder() {
-            const shipSelect = document.getElementById('shippingSelect');
-            if (shipSelect.value === "0") {
-                alert("Mohon pilih jasa pengiriman terlebih dahulu.");
-                return;
-            }
-            if (!activePaymentCategory) {
-                alert("Mohon pilih metode pembayaran.");
-                return;
-            }
-            alert("Pesanan berhasil dibuat! Anda akan dialihkan ke dashboard.");
-            closeCheckoutModal();
-        }
-
-        // Modal Alamat
-        function openAddressModal() { document.getElementById('addressModal').classList.add('open'); }
-        function closeAddressModal() { document.getElementById('addressModal').classList.remove('open'); }
-        
-        function selectAddress(element, name, detail, phone) {
-            document.querySelectorAll('.address-option').forEach(el => el.classList.remove('selected'));
-            element.classList.add('selected');
-            document.getElementById('displayAddrName').innerText = name + ' | ' + phone;
-            document.getElementById('displayAddrDetail').innerText = detail;
-            closeAddressModal();
-        }
-
-        // --- CAROUSEL ---
-        const track = document.getElementById('carouselTrack');
-        let index = 0;
-        setInterval(() => {
-            index = (index + 1) % 2;
-            track.style.transform = `translateX(-${index * 100}%)`;
-        }, 5000);
-
-        // --- NOTIFICATIONS & CHAT ---
-        const notifSidebar = document.getElementById('notifSidebar');
-        const notifOverlay = document.getElementById('notifOverlay');
-        function toggleNotifications() {
-            notifSidebar.classList.toggle('open');
-            notifOverlay.classList.toggle('open');
-            if(notifSidebar.classList.contains('open')) document.body.style.overflow = 'hidden';
-            else document.body.style.overflow = 'auto';
-        }
-
-        const chatSidebar = document.getElementById('chatSidebar');
-        const chatOverlay = document.getElementById('chatOverlay');
-        function toggleChat() {
-            chatSidebar.classList.toggle('open');
-            chatOverlay.classList.toggle('open');
-            if(chatSidebar.classList.contains('open')) document.body.style.overflow = 'hidden';
-            else document.body.style.overflow = 'auto';
-        }
-
-        // Logic Chat
+        // --- UPDATE LOGIC CHAT (KIRIM & TAMPIL) ---
+        let currentChatPartnerId = null; 
         let messages = [];
-        let currentChatSeller = '';
 
-        function selectChat(sellerName) {
-            currentChatSeller = sellerName;
-            messages = chatData[sellerName] ? [...chatData[sellerName]] : [];
+        function selectChat(partnerId, partnerName, partnerImage = null) {
+            currentChatPartnerId = partnerId; 
             
-            document.getElementById('chatSellerNameSidebar').textContent = sellerName;
-            document.getElementById('chatSellerAvatarSidebar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${sellerName}`;
+            // Ambil pesan history (jika ada)
+            messages = (chatData && chatData[partnerId]) ? [...chatData[partnerId]] : [];
+            
+            document.getElementById('chatSellerNameSidebar').textContent = partnerName;
+            
+            const avatarEl = document.getElementById('chatSellerAvatarSidebar');
+            if (partnerImage) {
+                avatarEl.src = partnerImage;
+            } else {
+                avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${partnerName}`;
+            }
             
             renderMessagesSidebar();
             
             document.getElementById('chatItemsContainer').style.display = 'none';
             document.getElementById('chatAreaSidebar').style.display = 'flex';
-        }
-
-        function backToChatList() {
-            document.getElementById('chatItemsContainer').style.display = 'block';
-            document.getElementById('chatAreaSidebar').style.display = 'none';
         }
 
         function renderMessagesSidebar() {
@@ -1053,42 +887,164 @@ while($row = mysqli_fetch_assoc($q_chat)){
             chatMessagesSidebar.scrollTop = chatMessagesSidebar.scrollHeight;
         }
 
-        function toggleMessageActions(index) {
-            const allWrappers = document.querySelectorAll('.message-wrapper');
-            const target = document.getElementById(`msg-${index}`);
-            allWrappers.forEach(w => {
-                if (w !== target) w.classList.remove('actions-visible');
-            });
-            target.classList.toggle('actions-visible');
-        }
-
-        function deleteMessage(index) {
-            if (confirm("Hapus pesan ini?")) {
-                messages.splice(index, 1); 
-                renderMessagesSidebar();   
-            }
-        }
-
-        function reportMessage(index) {
-            const msgText = messages[index].text;
-            alert(`Pesan: "${msgText}" telah dilaporkan ke admin Ecoswap.`);
-            document.getElementById(`msg-${index}`).classList.remove('actions-visible');
-        }
-
         function sendMessageSidebar() {
             const input = document.getElementById('messageInputSidebar');
-            if(input.value.trim()) {
+            const msgText = input.value.trim();
+            
+            if(msgText && currentChatPartnerId) {
+                // Tampilan Optimistik
                 const now = new Date();
                 const timeString = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-                
-                messages.push({id: Date.now(), type:'outgoing', text: input.value, time: timeString});
+                messages.push({id: Date.now(), type:'outgoing', text: msgText, time: timeString});
                 renderMessagesSidebar();
                 input.value = '';
+
+                // Kirim ke Database
+                const formData = new FormData();
+                formData.append('action', 'send_message');
+                formData.append('receiver_id', currentChatPartnerId); 
+                formData.append('message', msgText);
+
+                fetch('dashboard.php', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status !== 'success') {
+                        alert('Gagal mengirim pesan: ' + data.message);
+                    }
+                })
+                .catch(err => console.error(err));
+            } else if (!currentChatPartnerId) {
+                alert("Error: ID Penjual tidak ditemukan.");
             }
         }
+        
         function handleEnterSidebar(e) { if(e.key === 'Enter') sendMessageSidebar(); }
-        function openFileInput() { document.getElementById('fileInput').click(); }
-        function sendImage() { alert("Fitur kirim gambar dummy"); }
+        function toggleMessageActions(index) {
+            const target = document.getElementById(`msg-${index}`);
+            target.classList.toggle('actions-visible');
+        }
+        function deleteMessage(index) {
+             if(confirm("Hapus pesan?")) { messages.splice(index, 1); renderMessagesSidebar(); }
+        }
+        function reportMessage(index) { alert("Pesan dilaporkan."); }
+
+        // --- SIDEBAR TOGGLES (CART, NOTIF, CHAT) ---
+        function toggleCart() { 
+            document.getElementById('cartSidebar').classList.toggle('open'); 
+            document.getElementById('cartOverlay').classList.toggle('open');
+            if(document.getElementById('cartSidebar').classList.contains('open')) updateCartTotal();
+        }
+        function toggleNotifications() { 
+            document.getElementById('notifSidebar').classList.toggle('open'); 
+            document.getElementById('notifOverlay').classList.toggle('open');
+        }
+        function toggleChat() { 
+            document.getElementById('chatSidebar').classList.toggle('open'); 
+            document.getElementById('chatOverlay').classList.toggle('open');
+        }
+        function backToChatList() {
+            document.getElementById('chatItemsContainer').style.display = 'block';
+            document.getElementById('chatAreaSidebar').style.display = 'none';
+        }
+
+        // --- CART & CHECKOUT ---
+        function updateCartTotal() {
+            let total = 0;
+            document.querySelectorAll('.cart-item').forEach(item => {
+                if(item.querySelector('.cart-checkbox').checked) total += parseInt(item.getAttribute('data-price'));
+            });
+            document.getElementById('cartTotalPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
+        }
+        function addToCart() { closeModal(); setTimeout(toggleCart, 300); alert("Barang ditambahkan!"); }
+        
+        let checkoutProductPriceTotal = 0;
+        let checkoutShippingPrice = 0;
+        const checkoutServiceFee = 1000;
+        let activePaymentCategory = null;
+
+        function checkoutFromCart() {
+            const items = document.querySelectorAll('.cart-item');
+            let selectedItems = [];
+            items.forEach(item => {
+                if (item.querySelector('.cart-checkbox').checked) {
+                    selectedItems.push({
+                        title: item.getAttribute('data-name'),
+                        price: parseInt(item.getAttribute('data-price')),
+                        img: item.getAttribute('data-img')
+                    });
+                }
+            });
+            if (selectedItems.length === 0) { alert("Pilih minimal satu barang."); return; }
+            localStorage.setItem('checkoutItems', JSON.stringify(selectedItems));
+            toggleCart(); initCheckoutModal();
+        }
+
+        function buyNow() {
+            const title = document.getElementById('modalTitle').textContent;
+            const price = parseInt(document.getElementById('modalPrice').textContent.replace(/\D/g, ''));
+            const img = document.getElementById('modalImg').src;
+            localStorage.setItem('checkoutItems', JSON.stringify([{title, price, img}]));
+            closeModal(); initCheckoutModal();
+        }
+
+        function initCheckoutModal() {
+            const storedData = localStorage.getItem('checkoutItems');
+            const container = document.getElementById('checkoutProductList');
+            container.innerHTML = ''; 
+            checkoutProductPriceTotal = 0;
+            if (storedData) {
+                const products = JSON.parse(storedData);
+                products.forEach(item => {
+                    checkoutProductPriceTotal += item.price;
+                    container.innerHTML += `<div class="product-row-checkout"><img src="${item.img}" class="product-img-checkout"><div class="product-details-checkout"><div class="prod-name-checkout">${item.title}</div><div class="prod-price-checkout">Rp ${item.price.toLocaleString('id-ID')}</div></div></div>`;
+                });
+            }
+            calculateCheckoutTotal();
+            document.getElementById('checkoutModal').classList.add('open');
+        }
+
+        function closeCheckoutModal() { document.getElementById('checkoutModal').classList.remove('open'); }
+        
+        function calculateCheckoutTotal() {
+            const shipSelect = document.getElementById('shippingSelect');
+            checkoutShippingPrice = parseInt(shipSelect.value) || 0;
+            const total = checkoutProductPriceTotal + checkoutShippingPrice + checkoutServiceFee;
+            document.getElementById('summaryProdPrice').innerText = 'Rp ' + checkoutProductPriceTotal.toLocaleString('id-ID');
+            document.getElementById('summaryShipPrice').innerText = 'Rp ' + checkoutShippingPrice.toLocaleString('id-ID');
+            document.getElementById('summaryTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
+            document.getElementById('bottomTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
+        }
+        
+        function selectPaymentCategory(catId) {
+            document.querySelectorAll('.payment-category').forEach(el => {
+                el.classList.remove('active');
+                el.querySelector('.check-circle').className = 'far fa-circle check-circle';
+            });
+            const activeEl = document.getElementById('cat-' + catId);
+            activeEl.classList.add('active');
+            activeEl.querySelector('.check-circle').className = 'fas fa-check-circle check-circle';
+            activePaymentCategory = catId;
+        }
+
+        function processOrder() {
+            if (document.getElementById('shippingSelect').value === "0") { alert("Pilih pengiriman."); return; }
+            if (!activePaymentCategory) { alert("Pilih pembayaran."); return; }
+            alert("Pesanan berhasil!"); closeCheckoutModal();
+        }
+
+        // Address Modal
+        function openAddressModal() { document.getElementById('addressModal').classList.add('open'); }
+        function closeAddressModal() { document.getElementById('addressModal').classList.remove('open'); }
+        function selectAddress(el, name, detail, phone) {
+            document.getElementById('displayAddrName').innerText = name + ' | ' + phone;
+            document.getElementById('displayAddrDetail').innerText = detail;
+            closeAddressModal();
+        }
+        
+        // Carousel
+        const track = document.getElementById('carouselTrack');
+        let cIndex = 0;
+        setInterval(() => { cIndex = (cIndex + 1) % 2; track.style.transform = `translateX(-${cIndex * 100}%)`; }, 5000);
 
     </script>
 </body>
