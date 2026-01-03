@@ -1,0 +1,43 @@
+.chat-sidebar { position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background-color: #fff; z-index: 1100; box-shadow: -5px 0 30px rgba(0,0,0,0.1); transition: right 0.3s ease-in-out; display: flex; flex-direction: column; }
+.chat-sidebar.open { right: 0; }
+.chat-overlay-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1050; display: none; }
+.chat-overlay-bg.open { display: block; }
+.chat-header { padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; background-color: #1e1e1e; color: white; }
+.chat-items { flex: 1; padding: 20px; overflow-y: auto; }
+.chat-item { display: flex; gap: 15px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed #e0e0e0; cursor: pointer; }
+.chat-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; background-color: #ddd; }
+.chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.chat-content { flex: 1; }
+.chat-name { font-size: 0.9rem; font-weight: 600; margin-bottom: 5px; color: #1e1e1e; }
+.chat-message { font-size: 0.8rem; color: #666; margin-bottom: 5px; }
+.chat-time { font-size: 0.7rem; color: #888; }
+.close-chat-btn { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
+
+/* Chat Area Inside Sidebar */
+.chat-area-sidebar { flex: 1; display: flex; flex-direction: column; height: 100%; }
+.chat-header-sidebar { display: flex; align-items: center; padding: 15px 20px; background-color: #1e1e1e; color: white; border-bottom: 1px solid #e0e0e0; }
+.back-to-list-btn { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; margin-right: 15px; }
+.seller-info-sidebar { display: flex; align-items: center; flex: 1; }
+.seller-avatar-sidebar { width: 40px; height: 40px; border-radius: 50%; background-color: #ddd; margin-right: 10px; object-fit: cover; }
+.seller-details-sidebar h4 { font-size: 1rem; margin: 0; font-weight: 600; }
+.seller-details-sidebar span { font-size: 0.8rem; color: #ccc; }
+.chat-messages { flex: 1; padding: 20px; overflow-y: auto; background-color: #f9f9f9; }
+.message-wrapper { display: flex; margin-bottom: 15px; align-items: flex-end; gap: 8px; }
+.message-wrapper.incoming { justify-content: flex-start; }
+.message-wrapper.outgoing { justify-content: flex-end; }
+.message-actions { display: none; background-color: #ffffff; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); padding: 2px 8px; gap: 8px; flex-shrink: 0; border: 1px solid #ddd; }
+.message-wrapper.actions-visible .message-actions { display: flex; }
+.message-wrapper.outgoing .message-actions { order: -1; }
+.message-wrapper.incoming .message-actions { order: 1; }
+.message-bubble { max-width: 70%; padding: 10px 15px; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; position: relative; cursor: pointer; transition: opacity 0.2s; }
+.message-bubble:active { opacity: 0.7; }
+.message-wrapper.incoming .message-bubble { background-color: white; color: #1e1e1e; border-bottom-left-radius: 5px; }
+.message-wrapper.outgoing .message-bubble { background-color: #ffd700; color: white; border-bottom-right-radius: 5px; }
+.message-time { font-size: 0.7rem; color: #888; margin-top: 5px; text-align: center; }
+.input-area-sidebar { display: flex; align-items: center; padding: 15px 20px; background-color: white; border-top: 1px solid #e0e0e0; }
+.add-file-btn-sidebar, .send-btn-sidebar, .action-icon-btn { background: none; border: none; font-size: 1.2rem; color: #888; cursor: pointer; }
+.send-btn-sidebar { color: #ffd700; margin-left: 10px; }
+.chat-input-sidebar { flex: 1; padding: 10px 15px; border: 1px solid #e0e0e0; border-radius: 25px; outline: none; font-size: 0.9rem; margin: 0 10px; }
+.action-icon-btn { font-size: 0.85rem; padding: 5px; transition: color 0.2s; }
+.action-icon-btn.report:hover { color: #f39c12; }
+.action-icon-btn.delete:hover { color: #e74c3c; }
