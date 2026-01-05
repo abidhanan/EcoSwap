@@ -1,3 +1,21 @@
+<style>
+    /* CSS tambahan untuk tombol hapus di keranjang */
+    .btn-delete {
+        background: none;
+        border: none;
+        color: #ff4d4d;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 5px;
+        margin-left: 10px;
+        transition: transform 0.2s;
+    }
+    .btn-delete:hover {
+        transform: scale(1.1);
+        color: #d93636;
+    }
+</style>
+
 <div class="cart-overlay-bg" id="cartOverlay" onclick="toggleCart()"></div>
 <div class="cart-sidebar" id="cartSidebar">
     <div class="cart-header">
@@ -19,6 +37,9 @@
                     <div class="cart-item-title"><?php echo $item['name']; ?></div>
                     <div class="cart-item-price">Rp <?php echo number_format($item['price'], 0, ',', '.'); ?></div>
                 </div>
+                <button class="btn-delete" onclick="deleteCartItem(event, <?php echo $item['cart_id']; ?>)">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
             <?php endforeach; ?>
         <?php endif; ?>
