@@ -51,7 +51,8 @@ if ($category_filter != 'Semua') {
 }
 
 $all_products = [];
-$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_address, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 $where_clause ORDER BY p.created_at DESC");
+// PERUBAHAN DI SINI: Mengambil shop_city dari tabel shops
+$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city FROM products p JOIN shops s ON p.shop_id = s.shop_id $where_clause ORDER BY p.created_at DESC");
 
 while($row = mysqli_fetch_assoc($query_prod)) {
     $shop_id_prod = $row['shop_id'];
@@ -59,12 +60,23 @@ while($row = mysqli_fetch_assoc($query_prod)) {
     $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
     if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
 
-    $shop_addr = !empty($row['shop_address']) ? $row['shop_address'] : (isset($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia');
-    $short_addr = strlen($shop_addr) > 35 ? substr($shop_addr, 0, 35) . '...' : $shop_addr;
-    $loc = !empty($row['full_address']) ? explode(',', $row['full_address'])[0] : 'Indonesia';
+    // LOGIKA LOKASI: Prioritaskan shop_city dari database
+    $shop_city = !empty($row['shop_city']) ? $row['shop_city'] : 'Indonesia';
     
     $all_products[] = [
-        'id' => $row['product_id'], 'title' => $row['name'], 'price' => (int)$row['price'], 'loc' => $loc, 'img' => $row['image'], 'cond' => $row['condition'], 'desc' => $row['description'], 'category' => $row['category'], 'shop_name' => $row['shop_name'], 'shop_img' => $row['shop_image'], 'shop_id' => $row['shop_id'], 'shop_address' => $short_addr, 'is_following' => $is_following
+        'id' => $row['product_id'], 
+        'title' => $row['name'], 
+        'price' => (int)$row['price'], 
+        'loc' => $shop_city, // Menggunakan Kota Toko
+        'img' => $row['image'], 
+        'cond' => $row['condition'], 
+        'desc' => $row['description'], 
+        'category' => $row['category'], 
+        'shop_name' => $row['shop_name'], 
+        'shop_img' => $row['shop_image'], 
+        'shop_id' => $row['shop_id'], 
+        'shop_address' => $shop_city, // Menggunakan Kota Toko untuk tampilan di modal juga
+        'is_following' => $is_following
     ];
 }
 
@@ -205,6 +217,7 @@ while($row = mysqli_fetch_assoc($q_chat)){
             const card = document.createElement('div');
             card.className = 'product-card';
             card.onclick = () => openModal(p);
+            // Menampilkan Kota (p.loc) di kartu produk
             card.innerHTML = `<div class="product-img-wrapper"><img src="${p.img}"></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price">Rp ${p.price.toLocaleString('id-ID')}</div><div class="product-meta"><i class="fas fa-map-marker-alt"></i> ${p.loc}</div></div>`;
             productGrid.appendChild(card);
         });
@@ -228,13 +241,14 @@ while($row = mysqli_fetch_assoc($q_chat)){
             const followClass = product.is_following ? 'btn-follow following' : 'btn-follow';
             const shopImg = product.shop_img ? product.shop_img : 'https://placehold.co/50';
 
+            // Menampilkan Kota (product.shop_address) di detail Toko
             shopContainer.innerHTML = `
                 <div class="modal-shop-left">
                     <img src="${shopImg}" class="modal-shop-img" alt="Toko">
                     <div class="modal-shop-details">
                         <h4>${product.shop_name}</h4>
                         <span style="font-size:0.8rem; color:#666; display:flex; align-items:center; gap:4px;">
-                            <i class="fas fa-map-marker-alt" style="color:#fbc02d;"></i> ${product.shop_address || 'Indonesia'}
+                            <i class="fas fa-map-marker-alt" style="color:#fbc02d;"></i> ${product.shop_address}
                         </span>
                     </div>
                 </div>
