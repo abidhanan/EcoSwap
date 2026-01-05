@@ -10,9 +10,9 @@
             <div style="text-align:center; padding:20px; color:#666;">Keranjang kosong</div>
         <?php else: ?>
             <?php foreach($cart_items as $item): ?>
-            <div class="cart-item" data-id="<?php echo $item['cart_id']; ?>" data-price="<?php echo $item['price']; ?>" data-name="<?php echo $item['name']; ?>" data-img="<?php echo $item['image']; ?>">
+            <div class="cart-item" onclick="toggleCartItem(this)" data-id="<?php echo $item['cart_id']; ?>" data-price="<?php echo $item['price']; ?>" data-name="<?php echo $item['name']; ?>" data-img="<?php echo $item['image']; ?>" style="cursor:pointer;">
                 <div class="cart-check-wrapper">
-                    <input type="checkbox" class="cart-checkbox" onchange="updateCartTotal()">
+                    <input type="checkbox" class="cart-checkbox" onclick="event.stopPropagation(); updateCartTotal()">
                 </div>
                 <img src="<?php echo $item['image']; ?>" class="cart-item-img" alt="Item">
                 <div class="cart-item-info">

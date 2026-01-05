@@ -199,6 +199,7 @@ while($row = mysqli_fetch_assoc($q_chat)){
 
         function filterCategory(cat) { window.location.href = `dashboard.php?category=${encodeURIComponent(cat)}`; }
 
+        // Render Produk
         const productGrid = document.getElementById('productGrid');
         products.forEach(p => {
             const card = document.createElement('div');
@@ -208,7 +209,7 @@ while($row = mysqli_fetch_assoc($q_chat)){
             productGrid.appendChild(card);
         });
 
-        // MODAL LOGIC
+        // Modal Logic
         const modalOverlay = document.getElementById('productModal');
         function openModal(product) {
             document.getElementById('modalImg').src = product.img;
@@ -261,66 +262,146 @@ while($row = mysqli_fetch_assoc($q_chat)){
             }).finally(() => { btn.disabled = false; });
         }
 
-        // CHAT LOGIC
+        // --- CHECKOUT LOGIC ---
+        const formatRupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+        let checkoutProductPriceTotal = 0, checkoutShippingPrice = 0; const checkoutServiceFee = 1000; let activePaymentCategory = null;
+
+        function checkoutFromCart() {
+            const items = [];
+            document.querySelectorAll('.cart-item').forEach(el => {
+                if(el.querySelector('.cart-checkbox').checked) {
+                    items.push({
+                        title: el.getAttribute('data-name'),
+                        price: parseInt(el.getAttribute('data-price')),
+                        img: el.getAttribute('data-img')
+                    });
+                }
+            });
+            if(items.length===0) { alert("Pilih minimal satu barang."); return; }
+            localStorage.setItem('checkoutItems', JSON.stringify(items));
+            toggleCart(); initCheckoutModal();
+        }
+
+        function buyNow() {
+            const title = document.getElementById('modalTitle').textContent;
+            const price = parseInt(document.getElementById('modalPrice').textContent.replace(/\D/g, ''));
+            const img = document.getElementById('modalImg').src;
+            localStorage.setItem('checkoutItems', JSON.stringify([{title, price, img}]));
+            closeModal(); initCheckoutModal();
+        }
+
+        function initCheckoutModal() {
+            const storedData = localStorage.getItem('checkoutItems');
+            const container = document.getElementById('checkoutProductList');
+            container.innerHTML = ''; checkoutProductPriceTotal = 0;
+            if (storedData) {
+                const data = JSON.parse(storedData);
+                data.forEach(item => {
+                    checkoutProductPriceTotal += item.price;
+                    container.innerHTML += `
+                        <div class="product-row-checkout">
+                            <img src="${item.img}" class="product-img-checkout">
+                            <div class="product-details-checkout">
+                                <div class="prod-name-checkout">${item.title}</div>
+                                <div class="prod-price-checkout">${formatRupiah(item.price)}</div>
+                            </div>
+                        </div>`;
+                });
+            }
+            // Reset UI
+            document.getElementById('shippingSelect').selectedIndex = 0;
+            activePaymentCategory = null;
+            document.querySelectorAll('.payment-category').forEach(el => {
+                 el.classList.remove('active');
+                 el.querySelector('.check-circle').className = 'far fa-circle check-circle';
+            });
+            calculateCheckoutTotal();
+            document.getElementById('checkoutModal').classList.add('open');
+        }
+
+        function closeCheckoutModal() { document.getElementById('checkoutModal').classList.remove('open'); }
+
+        function calculateCheckoutTotal() {
+            const ship = parseInt(document.getElementById('shippingSelect').value)||0; 
+            const total = checkoutProductPriceTotal + ship + checkoutServiceFee;
+            document.getElementById('summaryProdPrice').innerText = formatRupiah(checkoutProductPriceTotal);
+            document.getElementById('summaryShipPrice').innerText = formatRupiah(ship);
+            document.getElementById('summaryTotal').innerText = formatRupiah(total);
+            document.getElementById('bottomTotal').innerText = formatRupiah(total);
+        }
+
+        function selectPaymentCategory(catId) {
+             document.querySelectorAll('.payment-category').forEach(el => { 
+                 el.classList.remove('active'); 
+                 el.querySelector('.check-circle').className = 'far fa-circle check-circle'; 
+             });
+             const activeEl = document.getElementById('cat-' + catId); 
+             activeEl.classList.add('active'); 
+             activeEl.querySelector('.check-circle').className = 'fas fa-check-circle check-circle';
+             activePaymentCategory = catId;
+        }
+
+        function togglePaymentDropdown(e, id) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
+        function selectPaymentSubOption(cat, val, name) { selectPaymentCategory(cat); document.getElementById('list-'+cat).classList.remove('show'); }
+
+        function processOrder() { 
+            if (document.getElementById('shippingSelect').value === "0") { alert("Pilih pengiriman."); return; }
+            if (!activePaymentCategory) { alert("Pilih metode pembayaran."); return; }
+            alert('Pesanan berhasil dibuat!'); closeCheckoutModal(); 
+        }
+
+        // --- CART ROW CLICK ---
+        function toggleCartItem(el) {
+            const cb = el.querySelector('.cart-checkbox');
+            cb.checked = !cb.checked;
+            updateCartTotal();
+        }
+
+        // --- SIDEBARS ---
+        function toggleCart() { document.getElementById('cartSidebar').classList.toggle('open'); document.getElementById('cartOverlay').classList.toggle('open'); updateCartTotal(); }
+        function toggleNotifications() { document.getElementById('notifSidebar').classList.toggle('open'); document.getElementById('notifOverlay').classList.toggle('open'); }
+        function toggleChat() { document.getElementById('chatSidebar').classList.toggle('open'); document.getElementById('chatOverlay').classList.toggle('open'); }
+        
+        function updateCartTotal() { let t=0; document.querySelectorAll('.cart-item').forEach(el=>{ if(el.querySelector('.cart-checkbox').checked) t+=parseInt(el.getAttribute('data-price')) }); document.getElementById('cartTotalPrice').innerText=formatRupiah(t); }
+        function addToCart() { closeModal(); setTimeout(toggleCart, 300); alert("Barang ditambahkan!"); }
+
+        // --- CHAT ---
         let currentChatPartnerId = null; let messages = [];
-        function selectChat(partnerId, partnerName, partnerImage = null) {
-            currentChatPartnerId = partnerId; 
-            messages = (chatData && chatData[partnerId]) ? [...chatData[partnerId]] : [];
-            document.getElementById('chatSellerNameSidebar').textContent = partnerName;
+        function selectChat(pid, name, img=null) {
+            currentChatPartnerId = pid; 
+            messages = (chatData && chatData[pid]) ? [...chatData[pid]] : [];
+            document.getElementById('chatSellerNameSidebar').textContent = name;
             const avatarEl = document.getElementById('chatSellerAvatarSidebar');
-            if (partnerImage) avatarEl.src = partnerImage;
-            else avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${partnerName}`;
+            avatarEl.src = img || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
             renderMessagesSidebar();
             document.getElementById('chatItemsContainer').style.display = 'none';
             document.getElementById('chatAreaSidebar').style.display = 'flex';
         }
         function renderMessagesSidebar() {
-            const container = document.getElementById('chatMessagesSidebar'); container.innerHTML = '';
-            if(messages.length === 0){ container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Belum ada pesan.</div>'; return; }
-            messages.forEach((msg, index) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = `message-wrapper ${msg.type}`;
-                wrapper.innerHTML = `<div class="message-bubble">${msg.text}</div><span class="message-time">${msg.time}</span>`;
-                container.appendChild(wrapper);
+            const c = document.getElementById('chatMessagesSidebar'); c.innerHTML = '';
+            if(messages.length===0){ c.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Belum ada pesan.</div>'; return; }
+            messages.forEach(m => {
+                c.innerHTML += `<div class="message-wrapper ${m.type}"><div class="message-bubble">${m.text}</div><span class="message-time">${m.time}</span></div>`;
             });
-            container.scrollTop = container.scrollHeight;
+            c.scrollTop = c.scrollHeight;
         }
         function sendMessageSidebar() {
-            const input = document.getElementById('messageInputSidebar'); const msgText = input.value.trim();
-            if(msgText && currentChatPartnerId) {
-                messages.push({id: Date.now(), type:'outgoing', text: msgText, time: 'Now'});
-                renderMessagesSidebar(); input.value = '';
-                const formData = new FormData();
-                formData.append('action', 'send_message'); formData.append('receiver_id', currentChatPartnerId); formData.append('message', msgText);
-                fetch('dashboard.php', { method: 'POST', body: formData });
+            const inp = document.getElementById('messageInputSidebar'); const txt = inp.value.trim();
+            if(txt && currentChatPartnerId) {
+                messages.push({type:'outgoing', text:txt, time:'Now'}); renderMessagesSidebar(); inp.value='';
+                const fd = new FormData(); fd.append('action', 'send_message'); fd.append('receiver_id', currentChatPartnerId); fd.append('message', txt);
+                fetch('dashboard.php', { method: 'POST', body: fd });
             }
         }
         function handleEnterSidebar(e) { if(e.key === 'Enter') sendMessageSidebar(); }
-
-        // Common
-        const track = document.getElementById('carouselTrack'); let i = 0;
-        setInterval(() => { i = (i + 1) % 2; track.style.transform = `translateX(-${i * 100}%)`; }, 5000);
-        function toggleCart() { document.getElementById('cartSidebar').classList.toggle('open'); document.getElementById('cartOverlay').classList.toggle('open'); updateCartTotal(); }
-        function toggleNotifications() { document.getElementById('notifSidebar').classList.toggle('open'); document.getElementById('notifOverlay').classList.toggle('open'); }
-        function toggleChat() { document.getElementById('chatSidebar').classList.toggle('open'); document.getElementById('chatOverlay').classList.toggle('open'); }
         function backToChatList() { document.getElementById('chatItemsContainer').style.display = 'block'; document.getElementById('chatAreaSidebar').style.display = 'none'; }
         
-        // Checkout & Addr
-        let checkoutProductPriceTotal = 0;
-        function updateCartTotal() { let t=0; document.querySelectorAll('.cart-item').forEach(i=>{if(i.querySelector('.cart-checkbox').checked)t+=parseInt(i.getAttribute('data-price'))}); document.getElementById('cartTotalPrice').innerText='Rp '+t.toLocaleString('id-ID'); }
-        function addToCart() { closeModal(); setTimeout(toggleCart, 300); alert("Barang ditambahkan!"); }
-        function checkoutFromCart() { toggleCart(); initCheckoutModal(); }
-        function buyNow() { closeModal(); initCheckoutModal(); }
-        function initCheckoutModal() { document.getElementById('checkoutModal').classList.add('open'); calculateCheckoutTotal(); }
-        function closeCheckoutModal() { document.getElementById('checkoutModal').classList.remove('open'); }
+        // --- OTHER ---
         function openAddressModal() { document.getElementById('addressModal').classList.add('open'); }
         function closeAddressModal() { document.getElementById('addressModal').classList.remove('open'); }
         function selectAddress(el, name, detail, phone) { document.getElementById('displayAddrName').innerText=name+' | '+phone; document.getElementById('displayAddrDetail').innerText=detail; closeAddressModal(); }
-        function calculateCheckoutTotal() { const ship = parseInt(document.getElementById('shippingSelect').value)||0; document.getElementById('summaryShipPrice').innerText = 'Rp '+ship.toLocaleString(); }
-        function selectPaymentCategory(catId) { document.querySelectorAll('.payment-category').forEach(el => { el.classList.remove('active'); el.querySelector('.check-circle').className = 'far fa-circle check-circle'; }); const activeEl = document.getElementById('cat-' + catId); activeEl.classList.add('active'); activeEl.querySelector('.check-circle').className = 'fas fa-check-circle check-circle'; }
-        function togglePaymentDropdown(e, id) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
-        function selectPaymentSubOption(cat, val, name) { selectPaymentCategory(cat); document.getElementById('list-'+cat).classList.remove('show'); }
-        function processOrder() { alert('Pesanan berhasil!'); closeCheckoutModal(); }
+        const track = document.getElementById('carouselTrack'); let ci = 0;
+        setInterval(() => { ci = (ci + 1) % 2; track.style.transform = `translateX(-${ci * 100}%)`; }, 5000);
     </script>
 </body>
 </html>

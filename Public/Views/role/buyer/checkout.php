@@ -2,9 +2,10 @@
     <div class="checkout-modal-box">
         <div class="checkout-header-modal">
             <div class="header-title">Checkout</div>
-            <button class="close-modal-btn" onclick="closeCheckoutModal()" style="position:static;width:30px;height:30px;"><i class="fas fa-times"></i></button>
+            <button class="close-modal-btn" onclick="closeCheckoutModal()"><i class="fas fa-times"></i></button>
         </div>
         <div class="checkout-body-modal">
+            
             <div class="section-card-checkout">
                 <div class="section-title-checkout"><span><i class="fas fa-map-marker-alt" style="color:#e74c3c"></i> Alamat Pengiriman</span></div>
                 <div class="address-box" onclick="openAddressModal()">
@@ -18,24 +19,28 @@
                     <?php endif; ?>
                 </div>
             </div>
+
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Produk Dipesan</div>
                 <div class="product-list-container" id="checkoutProductList"></div>
             </div>
+
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Opsi Pengiriman</div>
                 <select class="shipping-select" id="shippingSelect" onchange="calculateCheckoutTotal()">
-                    <option value="0" disabled selected>Pilih Kurir</option>
+                    <option value="0" disabled selected>-- Pilih Kurir --</option>
                     <option value="15000">JNE Reguler (Rp 15.000)</option>
                     <option value="18000">J&T Express (Rp 18.000)</option>
                     <option value="25000">GoSend Instant (Rp 25.000)</option>
+                    <option value="12000">SiCepat Halu (Rp 12.000)</option>
                 </select>
             </div>
+
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Metode Pembayaran</div>
-                <div class="payment-category" id="cat-bank">
-                    <div class="payment-header" onclick="selectPaymentCategory('bank')">
-                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-bank"></i><span class="ph-title"><i class="fas fa-university"></i> Transfer Bank <span id="selected-bank-text" style="color:#666;font-weight:normal;margin-left:5px;font-size:0.9rem;"></span></span></div>
+                <div class="payment-category" id="cat-bank" onclick="selectPaymentCategory('bank')">
+                    <div class="payment-header">
+                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-bank"></i><span class="ph-title"><i class="fas fa-university"></i> Transfer Bank</span></div>
                         <div class="dropdown-toggle" onclick="togglePaymentDropdown(event, 'list-bank')"><i class="fas fa-chevron-down"></i></div>
                     </div>
                     <div class="payment-options-list" id="list-bank">
@@ -44,9 +49,9 @@
                         <div class="sub-option" onclick="selectPaymentSubOption('bank', 'MDR', 'Bank Mandiri')"><img src="https://placehold.co/40x25/FFB700/000000?text=MDR" class="sub-icon"> Bank Mandiri</div>
                     </div>
                 </div>
-                <div class="payment-category" id="cat-ewallet">
-                    <div class="payment-header" onclick="selectPaymentCategory('ewallet')">
-                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-ewallet"></i><span class="ph-title"><i class="fas fa-wallet"></i> E-Wallet <span id="selected-ewallet-text" style="color:#666;font-weight:normal;margin-left:5px;font-size:0.9rem;"></span></span></div>
+                <div class="payment-category" id="cat-ewallet" onclick="selectPaymentCategory('ewallet')">
+                    <div class="payment-header">
+                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-ewallet"></i><span class="ph-title"><i class="fas fa-wallet"></i> E-Wallet</span></div>
                         <div class="dropdown-toggle" onclick="togglePaymentDropdown(event, 'list-ewallet')"><i class="fas fa-chevron-down"></i></div>
                     </div>
                     <div class="payment-options-list" id="list-ewallet">
@@ -55,18 +60,19 @@
                         <div class="sub-option" onclick="selectPaymentSubOption('ewallet', 'Dana', 'Dana')"><img src="https://placehold.co/40x25/118EEA/ffffff?text=Dana" class="sub-icon"> Dana</div>
                     </div>
                 </div>
-                <div class="payment-category" id="cat-cod">
-                    <div class="payment-header" onclick="selectPaymentCategory('cod')">
-                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-cod"></i> <span class="ph-title"><i class="fas fa-hand-holding-usd"></i> COD (Bayar di Tempat)</span></div>
+                <div class="payment-category" id="cat-cod" onclick="selectPaymentCategory('cod')">
+                    <div class="payment-header">
+                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-cod"></i><span class="ph-title"><i class="fas fa-hand-holding-usd"></i> COD</span></div>
                     </div>
                 </div>
             </div>
+
             <div class="section-card-checkout" style="margin-bottom: 20px;">
                 <div class="section-title-checkout">Rincian Pembayaran</div>
                 <div class="summary-row"><span>Subtotal</span><span class="price-val" id="summaryProdPrice">Rp 0</span></div>
                 <div class="summary-row"><span>Pengiriman</span><span class="price-val" id="summaryShipPrice">Rp 0</span></div>
                 <div class="summary-row"><span>Biaya Layanan</span><span class="price-val">Rp 1.000</span></div>
-                <div class="summary-row total"><span>Total</span><span class="price-val" id="summaryTotal" style="color:#ffd700">Rp 0</span></div>
+                <div class="summary-row total"><span>Total</span><span class="price-val" id="summaryTotal" style="color:var(--primary)">Rp 0</span></div>
             </div>
         </div>
         <div class="checkout-footer-modal">
