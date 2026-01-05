@@ -20,10 +20,10 @@ if(mysqli_num_rows($q_shop) == 0){
 $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 
-// AMBIL DATA RATING DARI DATABASE
+// AMBIL DATA RATING
 $q_rating = mysqli_query($koneksi, "SELECT AVG(r.rating) as avg FROM reviews r JOIN products p ON r.product_id=p.product_id WHERE p.shop_id='$shop_id'");
 $d_rating = mysqli_fetch_assoc($q_rating);
-$rating_val = (float)$d_rating['avg']; // Nilai float asli
+$rating_val = (float)$d_rating['avg']; 
 $rating_toko = number_format($rating_val, 1);
 
 if($rating_val == 0) {
@@ -40,28 +40,46 @@ try {
     }
 } catch (Exception $e) { $total_followers = 0; }
 
-// --- LOGIKA UPDATE PROFIL TOKO ---
+// --- LOGIKA UPDATE PROFIL TOKO (DIPERBARUI ALAMATNYA) ---
 if(isset($_POST['action']) && $_POST['action'] == 'update_profile') {
     $name = mysqli_real_escape_string($koneksi, $_POST['shop_name']);
     $desc = mysqli_real_escape_string($koneksi, $_POST['shop_desc']);
     $phone = mysqli_real_escape_string($koneksi, $_POST['shop_phone']);
-    $addr = mysqli_real_escape_string($koneksi, $_POST['shop_address']);
     
-    $query = "UPDATE shops SET shop_name='$name', shop_description='$desc', shop_phone='$phone', shop_address='$addr' WHERE shop_id='$shop_id'";
-    mysqli_query($koneksi, $query);
+    // Ambil data alamat terpisah
+    $street = mysqli_real_escape_string($koneksi, $_POST['shop_street']);
+    $village = mysqli_real_escape_string($koneksi, $_POST['shop_village']);
+    $subdistrict = mysqli_real_escape_string($koneksi, $_POST['shop_subdistrict']);
+    $city = mysqli_real_escape_string($koneksi, $_POST['shop_city']);
+    $postcode = mysqli_real_escape_string($koneksi, $_POST['shop_postcode']);
     
-    // Upload Foto
-    if(!empty($_FILES['shop_image']['name'])){
-        $target_dir = "../../../Assets/img/shops/";
-        if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
-        $file_name = time() . "_" . basename($_FILES["shop_image"]["name"]);
-        $target_file = $target_dir . $file_name;
-        if (move_uploaded_file($_FILES["shop_image"]["tmp_name"], $target_file)) {
-            mysqli_query($koneksi, "UPDATE shops SET shop_image='$target_file' WHERE shop_id='$shop_id'");
+    // Update Query dengan kolom alamat baru
+    $query = "UPDATE shops SET 
+              shop_name='$name', 
+              shop_description='$desc', 
+              shop_phone='$phone', 
+              shop_street='$street',
+              shop_village='$village',
+              shop_subdistrict='$subdistrict',
+              shop_city='$city',
+              shop_postcode='$postcode'
+              WHERE shop_id='$shop_id'";
+              
+    if(mysqli_query($koneksi, $query)) {
+        // Upload Foto
+        if(!empty($_FILES['shop_image']['name'])){
+            $target_dir = "../../../Assets/img/shops/";
+            if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
+            $file_name = time() . "_" . basename($_FILES["shop_image"]["name"]);
+            $target_file = $target_dir . $file_name;
+            if (move_uploaded_file($_FILES["shop_image"]["tmp_name"], $target_file)) {
+                mysqli_query($koneksi, "UPDATE shops SET shop_image='$target_file' WHERE shop_id='$shop_id'");
+            }
         }
+        echo "<script>alert('Profil toko berhasil diperbarui!'); window.location.href='toko.php';</script>";
+    } else {
+        echo "<script>alert('Gagal memperbarui profil: " . mysqli_error($koneksi) . "');</script>";
     }
-    
-    echo "<script>alert('Profil toko berhasil diperbarui!'); window.location.href='toko.php';</script>";
 }
 
 // --- LOGIKA UPDATE JASA PENGANTARAN ---
@@ -75,6 +93,19 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
     $q_ship = "UPDATE shops SET shipping_options='$json_couriers' WHERE shop_id='$shop_id'";
     mysqli_query($koneksi, $q_ship);
     echo "<script>alert('Jasa pengantaran berhasil disimpan!'); window.location.href='toko.php';</script>";
+}
+
+// --- LOGIKA UPDATE METODE PEMBAYARAN ---
+$available_payments = ["Transfer Bank (BCA)", "Transfer Bank (BRI)", "Transfer Bank (Mandiri)", "E-Wallet (GoPay)", "E-Wallet (OVO)", "E-Wallet (Dana)", "COD (Bayar di Tempat)"];
+$saved_payments = !empty($shop['payment_methods']) ? json_decode($shop['payment_methods'], true) : [];
+if(!is_array($saved_payments)) $saved_payments = [];
+
+if(isset($_POST['action']) && $_POST['action'] == 'update_payment') {
+    $selected_payments = isset($_POST['payments']) ? $_POST['payments'] : [];
+    $json_payments = json_encode($selected_payments);
+    $q_pay = "UPDATE shops SET payment_methods='$json_payments' WHERE shop_id='$shop_id'";
+    mysqli_query($koneksi, $q_pay);
+    echo "<script>alert('Metode pembayaran berhasil disimpan!'); window.location.href='toko.php';</script>";
 }
 ?>
 
@@ -106,11 +137,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
         .shop-img-container { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
         .shop-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
-        /* Tombol Kamera (Hidden by default) */
+        /* Tombol Kamera */
         .edit-img-btn {
             position: absolute; bottom: 5px; right: 5px; background: var(--dark); color: #fff;
             border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer;
-            display: none; /* Disembunyikan dulu */
+            display: none; 
             align-items: center; justify-content: center; transition: 0.2s; z-index: 2;
         }
         .edit-img-btn:hover { background: var(--primary); color: #000; }
@@ -143,7 +174,6 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
             background-color: #fff;
         }
         
-        /* Disabled State Styling */
         .form-input:disabled, .form-textarea:disabled {
             background-color: #f9f9f9;
             color: #555;
@@ -162,9 +192,9 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
         }
         .btn-edit:hover { background: var(--dark); color: #fff; }
 
-        .action-buttons { display: none; gap: 10px; } /* Hidden by default */
+        .action-buttons { display: none; gap: 10px; } 
         .btn-save { background: var(--primary); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-        .btn-cancel { background: #eee; color: #333; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-cancel { background: #eee; color: #333; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; }
 
         /* Courier Pills */
         .courier-grid { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -269,7 +299,9 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
 
                                         <div style="display:flex; align-items:center; gap:5px;">
                                             <?php if ($rating_toko == "Baru"): ?>
-                                                <span style="background:#eee; padding:3px 10px; border-radius:12px; font-size:0.8rem; color:#666;">Belum ada rating</span>
+                                                <span>
+                                                    <i class="fas fa-star" style="color:var(--primary);"></i> Belum ada rating
+                                                </span>
                                             <?php else: ?>
                                                 <div class="stars">
                                                     <?php 
@@ -322,8 +354,28 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
                                     </div>
 
                                     <div class="form-group form-full">
-                                        <label class="form-label">Alamat Operasional Lengkap</label>
-                                        <textarea name="shop_address" class="form-textarea profile-input" rows="3" placeholder="Nama Jalan, RT/RW, Kelurahan, Kecamatan, Kota, Kode Pos" required disabled><?php echo !empty($shop['shop_address']) ? $shop['shop_address'] : ''; ?></textarea>
+                                        <label class="form-label">Jalan / Nama Gedung / RT RW</label>
+                                        <textarea name="shop_street" class="form-textarea profile-input" rows="2" placeholder="Contoh: Jl. Sudirman No. 10, RT 01/RW 02" required disabled><?php echo !empty($shop['shop_street']) ? $shop['shop_street'] : ''; ?></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Kelurahan / Desa</label>
+                                        <input type="text" name="shop_village" class="form-input profile-input" placeholder="Nama Kelurahan / Desa" value="<?php echo !empty($shop['shop_village']) ? $shop['shop_village'] : ''; ?>" required disabled>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Kecamatan</label>
+                                        <input type="text" name="shop_subdistrict" class="form-input profile-input" placeholder="Nama Kecamatan" value="<?php echo !empty($shop['shop_subdistrict']) ? $shop['shop_subdistrict'] : ''; ?>" required disabled>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Kota / Kabupaten</label>
+                                        <input type="text" name="shop_city" class="form-input profile-input" placeholder="Nama Kota / Kabupaten" value="<?php echo !empty($shop['shop_city']) ? $shop['shop_city'] : ''; ?>" required disabled>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Kode Pos</label>
+                                        <input type="number" name="shop_postcode" class="form-input profile-input" placeholder="Contoh: 57123" value="<?php echo !empty($shop['shop_postcode']) ? $shop['shop_postcode'] : ''; ?>" required disabled>
                                     </div>
                                 </div>
                             </div>
@@ -360,7 +412,39 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
                             </form>
                         </div>
 
-                    </div> </div>
+                        <div class="settings-section">
+                            <form id="formPayment" method="POST">
+                                <input type="hidden" name="action" value="update_payment">
+                                
+                                <div class="section-header">
+                                    <div class="section-title"><i class="fas fa-wallet"></i> Metode Pembayaran</div>
+                                    
+                                    <button type="button" id="btnEditPayment" class="btn-edit" onclick="toggleEditPayment(true)">
+                                        <i class="fas fa-pen"></i> Ubah Pembayaran
+                                    </button>
+
+                                    <div id="actionPayment" class="action-buttons">
+                                        <button type="button" class="btn-cancel" onclick="toggleEditPayment(false)">Batal</button>
+                                        <button type="submit" class="btn-save">Simpan</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="courier-grid" id="paymentGrid">
+                                    <?php foreach($available_payments as $payment): ?>
+                                        <label class="courier-label">
+                                            <input type="checkbox" name="payments[]" class="payment-checkbox" value="<?php echo $payment; ?>" 
+                                                   <?php echo in_array($payment, $saved_payments) ? 'checked' : ''; ?> disabled> 
+                                            <span class="courier-pill">
+                                                <?php echo $payment; ?>
+                                            </span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </form>
+                        </div>
+
+                    </div> 
+                </div>
             </div>
         </main>
     </div>
@@ -378,13 +462,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
             const btnUpload = document.getElementById('btnUpload');
 
             if (isEditing) {
-                // Mode Edit
                 inputs.forEach(el => el.removeAttribute('disabled'));
                 btnEdit.style.display = 'none';
                 actionBtns.style.display = 'flex';
-                btnUpload.style.display = 'flex'; // Munculkan tombol kamera
+                btnUpload.style.display = 'flex'; 
             } else {
-                // Mode Batal
                 document.getElementById('formProfile').reset(); 
                 inputs.forEach(el => el.setAttribute('disabled', 'true'));
                 btnEdit.style.display = 'inline-block';
@@ -393,7 +475,6 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
             }
         }
 
-        // Preview Image saat upload
         function previewImage(input) {
             if (input.files && input.files[0]) {
                 var reader = new FileReader();
@@ -413,11 +494,32 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_shipping') {
 
             if (isEditing) {
                 checkboxes.forEach(el => el.removeAttribute('disabled'));
-                grid.classList.add('editing'); // Tambah class untuk styling aktif
+                grid.classList.add('editing'); 
                 btnEdit.style.display = 'none';
                 actionBtns.style.display = 'flex';
             } else {
                 document.getElementById('formShipping').reset(); 
+                checkboxes.forEach(el => el.setAttribute('disabled', 'true'));
+                grid.classList.remove('editing');
+                btnEdit.style.display = 'inline-block';
+                actionBtns.style.display = 'none';
+            }
+        }
+
+        // --- 3. LOGIKA EDIT PEMBAYARAN ---
+        function toggleEditPayment(isEditing) {
+            const checkboxes = document.querySelectorAll('.payment-checkbox');
+            const grid = document.getElementById('paymentGrid');
+            const btnEdit = document.getElementById('btnEditPayment');
+            const actionBtns = document.getElementById('actionPayment');
+
+            if (isEditing) {
+                checkboxes.forEach(el => el.removeAttribute('disabled'));
+                grid.classList.add('editing'); 
+                btnEdit.style.display = 'none';
+                actionBtns.style.display = 'flex';
+            } else {
+                document.getElementById('formPayment').reset(); 
                 checkboxes.forEach(el => el.setAttribute('disabled', 'true'));
                 grid.classList.remove('editing');
                 btnEdit.style.display = 'inline-block';
