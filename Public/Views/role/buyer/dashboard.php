@@ -6,22 +6,25 @@ include '../../../Auth/koneksi.php';
 if (!isset($_SESSION['user_id'])) { header("Location: ../../auth/login.php"); exit(); }
 $user_id = $_SESSION['user_id'];
 
-// AJAX Handler: Follow
+// --- AJAX HANDLER: FOLLOW ---
 if (isset($_POST['action']) && $_POST['action'] == 'toggle_follow') {
     header('Content-Type: application/json');
     $target_shop_id = $_POST['shop_id'];
     $check = mysqli_query($koneksi, "SELECT * FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'");
+    
     if (mysqli_num_rows($check) > 0) {
+        // Unfollow
         mysqli_query($koneksi, "DELETE FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'");
         echo json_encode(['status' => 'unfollowed']);
     } else {
+        // Follow
         mysqli_query($koneksi, "INSERT INTO shop_followers (shop_id, user_id) VALUES ('$target_shop_id', '$user_id')");
         echo json_encode(['status' => 'followed']);
     }
     exit; 
 }
 
-// AJAX Handler: Chat
+// --- AJAX HANDLER: CHAT ---
 if (isset($_POST['action']) && $_POST['action'] == 'send_message') {
     header('Content-Type: application/json');
     $receiver_id = $_POST['receiver_id'];
@@ -34,79 +37,99 @@ if (isset($_POST['action']) && $_POST['action'] == 'send_message') {
     exit;
 }
 
+// --- AJAX HANDLER: FILTER PRODUK (Agar tidak reload page) ---
+if (isset($_GET['action']) && $_GET['action'] == 'filter_products') {
+    header('Content-Type: application/json');
+    $category_filter = isset($_GET['category']) ? $_GET['category'] : 'Semua';
+    
+    $where_clause = "WHERE p.status = 'active'";
+    if ($category_filter != 'Semua') {
+        $safe_cat = mysqli_real_escape_string($koneksi, $category_filter);
+        if ($safe_cat == 'Fashion') $where_clause .= " AND (p.category = 'Fashion Pria' OR p.category = 'Fashion Wanita')";
+        elseif ($safe_cat == 'Hobi') $where_clause .= " AND p.category = 'Hobi & Koleksi'";
+        else $where_clause .= " AND p.category = '$safe_cat'";
+    }
+
+    // UPDATE QUERY: Mengambil shop_city
+    $query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 $where_clause ORDER BY p.created_at DESC");
+    
+    $filtered_products = [];
+    while($row = mysqli_fetch_assoc($query_prod)) {
+        $shop_id_prod = $row['shop_id'];
+        $is_following = false;
+        $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
+        if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
+
+        // LOGIKA KOTA: Ambil shop_city, jika kosong ambil dari full_address
+        $city = !empty($row['shop_city']) ? $row['shop_city'] : (isset($row['full_address']) ? trim(explode(',', $row['full_address'])[2] ?? 'Indonesia') : 'Indonesia');
+        
+        // Bersihkan format nama kota jika perlu
+        $city = str_replace(['Kota ', 'Kabupaten '], '', $city); 
+
+        $filtered_products[] = [
+            'id' => $row['product_id'], 
+            'title' => $row['name'], 
+            'price' => (int)$row['price'], 
+            'loc' => $city, // Menggunakan Kota
+            'img' => $row['image'], 
+            'cond' => $row['condition'], 
+            'desc' => $row['description'], 
+            'category' => $row['category'], 
+            'shop_name' => $row['shop_name'], 
+            'shop_img' => $row['shop_image'], 
+            'shop_id' => $row['shop_id'], 
+            'shop_address' => $city, // Menggunakan Kota untuk modal juga
+            'is_following' => $is_following
+        ];
+    }
+    echo json_encode($filtered_products);
+    exit;
+}
+
 // 1. Data User
 $q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
 $d_user = mysqli_fetch_assoc($q_user);
 $user_name = !empty($d_user['name']) ? $d_user['name'] : explode('@', $d_user['email'])[0];
 $user_avatar = !empty($d_user['profile_picture']) ? $d_user['profile_picture'] : "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($user_name);
 
-// 2. Filter & Produk
-$category_filter = isset($_GET['category']) ? $_GET['category'] : 'Semua';
-$where_clause = "WHERE p.status = 'active'";
-if ($category_filter != 'Semua') {
-    $safe_cat = mysqli_real_escape_string($koneksi, $category_filter);
-    if ($safe_cat == 'Fashion') $where_clause .= " AND (p.category = 'Fashion Pria' OR p.category = 'Fashion Wanita')";
-    elseif ($safe_cat == 'Hobi') $where_clause .= " AND p.category = 'Hobi & Koleksi'";
-    else $where_clause .= " AND p.category = '$safe_cat'";
-}
+// 2. Data Awal Produk (Load Pertama kali)
+// Default tampilkan semua saat load pertama
+$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 WHERE p.status = 'active' ORDER BY p.created_at DESC");
 
 $all_products = [];
-// UPDATE QUERY: Mengambil shop_city dari tabel shops
-$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city, s.shop_address FROM products p JOIN shops s ON p.shop_id = s.shop_id $where_clause ORDER BY p.created_at DESC");
-
 while($row = mysqli_fetch_assoc($query_prod)) {
     $shop_id_prod = $row['shop_id'];
     $is_following = false;
     $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
     if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
 
-    // LOGIKA ALAMAT: Prioritaskan shop_city
-    if (!empty($row['shop_city'])) {
-        $loc_display = $row['shop_city'];
-    } else {
-        // Fallback jika kota belum disetting (misal data lama), ambil potongan pertama dari alamat lengkap
-        $loc_display = !empty($row['shop_address']) ? explode(',', $row['shop_address'])[0] : 'Indonesia';
-    }
-    
+    // LOGIKA KOTA
+    $city = !empty($row['shop_city']) ? $row['shop_city'] : (isset($row['full_address']) ? trim(explode(',', $row['full_address'])[2] ?? 'Indonesia') : 'Indonesia');
+    $city = str_replace(['Kota ', 'Kabupaten '], '', $city); 
+
     $all_products[] = [
-        'id' => $row['product_id'], 
-        'title' => $row['name'], 
-        'price' => (int)$row['price'], 
-        'loc' => $loc_display, // Hanya Kota
-        'img' => $row['image'], 
-        'cond' => $row['condition'], 
-        'desc' => $row['description'], 
-        'category' => $row['category'], 
-        'shop_name' => $row['shop_name'], 
-        'shop_img' => $row['shop_image'], 
-        'shop_id' => $row['shop_id'], 
-        'shop_address' => $loc_display, // Hanya Kota untuk di modal juga
-        'is_following' => $is_following
+        'id' => $row['product_id'], 'title' => $row['name'], 'price' => (int)$row['price'], 'loc' => $city, 'img' => $row['image'], 'cond' => $row['condition'], 'desc' => $row['description'], 'category' => $row['category'], 'shop_name' => $row['shop_name'], 'shop_img' => $row['shop_image'], 'shop_id' => $row['shop_id'], 'shop_address' => $city, 'is_following' => $is_following
     ];
 }
 
-// 3. Keranjang
+// 3. Keranjang & Notif & Alamat & Chat (Sama seperti sebelumnya)
 $cart_items = []; $cart_total = 0;
 $q_cart = mysqli_query($koneksi, "SELECT c.cart_id, p.product_id, p.name, p.price, p.image FROM cart c JOIN products p ON c.product_id = p.product_id WHERE c.user_id = '$user_id' ORDER BY c.created_at DESC");
 while($row = mysqli_fetch_assoc($q_cart)){ $cart_items[] = $row; $cart_total += $row['price']; }
 $cart_count = count($cart_items);
 
-// 4. Notifikasi
 $notif_items = [];
 $q_notif = mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id = '$user_id' ORDER BY created_at DESC LIMIT 10");
 while($row = mysqli_fetch_assoc($q_notif)){ $notif_items[] = $row; }
 $notif_count = mysqli_num_rows(mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id='$user_id' AND is_read=0"));
 
-// 5. Alamat
 $addresses = [];
 $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE user_id = '$user_id' ORDER BY is_primary DESC");
 while($row = mysqli_fetch_assoc($q_addr)){ $addresses[] = $row; }
 $default_addr = !empty($addresses) ? $addresses[0] : null;
 
-// 6. Chat
 $chat_partners = []; $chat_messages_grouped = [];
 $q_chat = mysqli_query($koneksi, "SELECT c.*, sender.user_id as s_id, sender.name as s_name, receiver.user_id as r_id, receiver.name as r_name FROM chats c JOIN users sender ON c.sender_id = sender.user_id JOIN users receiver ON c.receiver_id = receiver.user_id WHERE c.sender_id = '$user_id' OR c.receiver_id = '$user_id' ORDER BY c.created_at ASC");
-
 while($row = mysqli_fetch_assoc($q_chat)){
     if($row['sender_id'] == $user_id){ $pid = $row['receiver_id']; $pname = $row['r_name']; $type = 'outgoing'; } 
     else { $pid = $row['sender_id']; $pname = $row['s_name']; $type = 'incoming'; }
@@ -128,6 +151,19 @@ while($row = mysqli_fetch_assoc($q_chat)){
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/chat.css">
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/checkout.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* CSS Tambahan untuk Tombol Follow */
+        .btn-follow {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-follow i { font-size: 0.9rem; }
+        .btn-follow.following {
+            background-color: #e0e0e0;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 
 <body>
@@ -168,19 +204,16 @@ while($row = mysqli_fetch_assoc($q_chat)){
             <?php 
                 $categories = ['Semua', 'Elektronik', 'Fashion', 'Hobi', 'Rumah Tangga', 'Buku', 'Otomotif'];
                 foreach($categories as $cat) {
-                    $isActive = ($category_filter == $cat) ? 'active' : '';
-                    echo '<div class="category-pill '.$isActive.'" onclick="filterCategory(\''.$cat.'\')">'.$cat.'</div>';
+                    $isActive = ($cat == 'Semua') ? 'active' : ''; // Default active
+                    echo '<div class="category-pill '.$isActive.'" onclick="filterCategory(this, \''.$cat.'\')">'.$cat.'</div>';
                 }
             ?>
         </div>
 
         <div class="product-grid" id="productGrid">
-            <?php if(empty($all_products)): ?>
-                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">
-                    <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
-                    Tidak ada produk di kategori <strong><?php echo htmlspecialchars($category_filter); ?></strong>.
-                </div>
-            <?php endif; ?>
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;" id="loadingGrid">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat produk...
+            </div>
         </div>
     </div>
 
@@ -211,24 +244,70 @@ while($row = mysqli_fetch_assoc($q_chat)){
 
     <script>
         const goToDashboard = () => window.location.href = 'dashboard.php';
-        const products = <?php echo json_encode($all_products); ?>;
+        let products = <?php echo json_encode($all_products); ?>; // Data awal
         const chatData = <?php echo json_encode($chat_messages_grouped); ?>;
 
-        function filterCategory(cat) { window.location.href = `dashboard.php?category=${encodeURIComponent(cat)}`; }
-
-        // Render Produk
-        const productGrid = document.getElementById('productGrid');
-        products.forEach(p => {
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.onclick = () => openModal(p);
-            // Menampilkan hanya kota di card
-            card.innerHTML = `<div class="product-img-wrapper"><img src="${p.img}"></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price">Rp ${p.price.toLocaleString('id-ID')}</div><div class="product-meta"><i class="fas fa-map-marker-alt"></i> ${p.loc}</div></div>`;
-            productGrid.appendChild(card);
+        // Render Produk Awal
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProducts(products);
         });
 
-        // Modal Logic
+        // FUNGSI RENDER PRODUK
+        function renderProducts(data) {
+            const productGrid = document.getElementById('productGrid');
+            productGrid.innerHTML = '';
+            
+            if(data.length === 0) {
+                productGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">
+                        <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
+                        Tidak ada produk ditemukan.
+                    </div>`;
+                return;
+            }
+
+            data.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.onclick = () => openModal(p);
+                // Menampilkan Kota (p.loc)
+                card.innerHTML = `
+                    <div class="product-img-wrapper"><img src="${p.img}"></div>
+                    <div class="product-info">
+                        <div class="product-title">${p.title}</div>
+                        <div class="product-price">Rp ${p.price.toLocaleString('id-ID')}</div>
+                        <div class="product-meta"><i class="fas fa-map-marker-alt"></i> ${p.loc}</div>
+                    </div>`;
+                productGrid.appendChild(card);
+            });
+        }
+
+        // FUNGSI FILTER KATEGORI (AJAX - TIDAK RELOAD PAGE)
+        function filterCategory(btn, cat) { 
+            // Update UI Pills
+            document.querySelectorAll('.category-pill').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Show Loading
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat...</div>';
+
+            // Fetch AJAX
+            fetch(`dashboard.php?action=filter_products&category=${encodeURIComponent(cat)}`)
+                .then(response => response.json())
+                .then(data => {
+                    products = data; // Update data global
+                    renderProducts(products); // Render ulang grid
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    grid.innerHTML = '<div style="text-align:center;">Gagal memuat produk.</div>';
+                });
+        }
+
+        // --- MODAL LOGIC ---
         const modalOverlay = document.getElementById('productModal');
+        
         function openModal(product) {
             document.getElementById('modalImg').src = product.img;
             document.getElementById('modalTitle').textContent = product.title;
@@ -243,10 +322,12 @@ while($row = mysqli_fetch_assoc($q_chat)){
 
             const shopContainer = document.getElementById('modalShopContainer');
             
-            // LOGIKA BUTTON FOLLOW (Icon + Text)
-            const followIcon = product.is_following ? '<i class="fas fa-check"></i>' : '<i class="fas fa-plus"></i>';
-            const followText = product.is_following ? ' Mengikuti' : ' Ikuti';
-            const followClass = product.is_following ? 'btn-follow following' : 'btn-follow';
+            // LOGIKA TOMBOL FOLLOW (ICON & TEXT)
+            const isFollowing = product.is_following;
+            const followText = isFollowing ? 'Mengikuti' : 'Ikuti';
+            const followIcon = isFollowing ? '<i class="fas fa-check"></i>' : '<i class="fas fa-plus"></i>';
+            const followClass = isFollowing ? 'btn-follow following' : 'btn-follow';
+            
             const shopImg = product.shop_img ? product.shop_img : 'https://placehold.co/50';
 
             shopContainer.innerHTML = `
@@ -259,7 +340,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
                         </span>
                     </div>
                 </div>
-                <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">${followIcon}${followText}</button>
+                <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">
+                    ${followIcon} ${followText}
+                </button>
             `;
 
             const btnChat = document.getElementById('btnModalChat'); 
@@ -274,32 +357,54 @@ while($row = mysqli_fetch_assoc($q_chat)){
         function closeModal() { modalOverlay.classList.remove('open'); document.body.style.overflow = 'auto'; }
         modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
 
+        // --- FOLLOW LOGIC (AJAX) ---
         function toggleFollow(shopId, btn, shopName) {
             btn.disabled = true; 
-            // Simpan icon lama sementara loading
-            const oldHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
+            // Tampilan loading sementara
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
             
-            const formData = new FormData(); formData.append('action', 'toggle_follow'); formData.append('shop_id', shopId);
-            fetch('dashboard.php', { method: 'POST', body: formData }).then(res => res.json()).then(data => {
-                if (data.status === 'followed') { 
-                    btn.classList.add('following'); 
-                    // Update Icon dan Text ke Mengikuti
-                    btn.innerHTML = '<i class="fas fa-check"></i> Mengikuti'; 
-                    alert(`Berhasil mengikuti ${shopName}! Anda akan mendapatkan notifikasi produk baru.`); 
-                } 
-                else if (data.status === 'unfollowed') { 
-                    btn.classList.remove('following'); 
-                    // Update Icon dan Text ke Ikuti
-                    btn.innerHTML = '<i class="fas fa-plus"></i> Ikuti'; 
-                }
-            }).catch(err => {
-                console.error(err);
-                btn.innerHTML = oldHtml; // Kembalikan jika error
-            }).finally(() => { btn.disabled = false; });
+            const formData = new FormData(); 
+            formData.append('action', 'toggle_follow'); 
+            formData.append('shop_id', shopId);
+            
+            fetch('dashboard.php', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'followed') { 
+                        // Update ke Status Mengikuti
+                        btn.classList.add('following'); 
+                        btn.innerHTML = '<i class="fas fa-check"></i> Mengikuti'; 
+                        
+                        // Optional: Update data produk global agar saat dibuka lagi modalnya statusnya tetap
+                        updateLocalProductFollowStatus(shopId, true);
+                        
+                    } else if (data.status === 'unfollowed') { 
+                        // Update ke Status Ikuti
+                        btn.classList.remove('following'); 
+                        btn.innerHTML = '<i class="fas fa-plus"></i> Ikuti'; 
+
+                        updateLocalProductFollowStatus(shopId, false);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Terjadi kesalahan koneksi.");
+                })
+                .finally(() => { 
+                    btn.disabled = false; 
+                });
         }
 
-        // --- CHECKOUT LOGIC ---
+        // Helper untuk update status follow di array lokal tanpa reload
+        function updateLocalProductFollowStatus(shopId, status) {
+            products.forEach(p => {
+                if(p.shop_id == shopId) {
+                    p.is_following = status;
+                }
+            });
+        }
+
+        // --- CHECKOUT LOGIC (SAMA SEPERTI SEBELUMNYA) ---
         const formatRupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
         let checkoutProductPriceTotal = 0, checkoutShippingPrice = 0; const checkoutServiceFee = 1000; let activePaymentCategory = null;
 
