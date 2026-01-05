@@ -59,6 +59,13 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     exit;
 }
 
+// --- AJAX HANDLER: MARK NOTIF READ ---
+if (isset($_POST['action']) && $_POST['action'] == 'mark_read') {
+    $nid = $_POST['notif_id'];
+    mysqli_query($koneksi, "UPDATE notifications SET is_read=1 WHERE notif_id='$nid'");
+    exit;
+}
+
 // --- AJAX HANDLER: GET SHOP SETTINGS ---
 if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') {
     header('Content-Type: application/json');
