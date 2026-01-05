@@ -146,7 +146,7 @@ while($row = mysqli_fetch_assoc($q_rev)) {
 
                     <div id="sectionSold" class="data-section active">
                         <div class="section-header">
-                            <div><i class="fas fa-list-ul"></i> Riwayat Penjualan (Selesai)</div>
+                            <div><i class="fas fa-list-ul"></i> Riwayat Penjualan </div>
                         </div>
                         <div class="table-responsive">
                             <table class="data-table">
