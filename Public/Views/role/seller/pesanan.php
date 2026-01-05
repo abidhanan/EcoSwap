@@ -19,7 +19,6 @@ $shop_name = $shop['shop_name'];
 // 1. LOGIKA UPDATE STATUS & NOTIFIKASI
 // ==========================================
 
-// Fungsi Bantu Kirim Notif
 function sendNotification($koneksi, $user_id, $title, $message) {
     $title = mysqli_real_escape_string($koneksi, $title);
     $message = mysqli_real_escape_string($koneksi, $message);
@@ -84,10 +83,12 @@ $query_orders = "SELECT o.*, p.name as product_name, p.image as product_image,
 $res = mysqli_query($koneksi, $query_orders);
 
 while($row = mysqli_fetch_assoc($res)) {
+    // Logic Tab
     $tab_status = $row['status'];
     if($row['status'] == 'delivered') $tab_status = 'shipping'; 
     if($row['status'] == 'reviewed') $tab_status = 'completed';
 
+    // Parse Shipping & Payment (Format: "JNE (15k) | E-Wallet")
     $shipping_raw = $row['shipping_method'];
     $parts = explode(' | ', $shipping_raw);
     $shipping_label = isset($parts[0]) ? $parts[0] : $shipping_raw;
@@ -123,10 +124,10 @@ while($row = mysqli_fetch_assoc($res)) {
     <link rel="stylesheet" href="../../../Assets/css/role/seller/pesanan.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Override & Perapihan CSS */
+        /* Base & Layout */
         .content { padding: 30px 5%; background-color: #f8f9fa; min-height: 100vh; }
         
-        /* Tabs Container */
+        /* Tabs Styling */
         .tabs-container {
             display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 25px;
             overflow-x: auto; padding-bottom: 0;
@@ -142,7 +143,7 @@ while($row = mysqli_fetch_assoc($res)) {
         }
         .tab-btn:hover { color: var(--primary); }
 
-        /* Order Card */
+        /* Order Card Styling */
         .order-card {
             background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
@@ -154,15 +155,16 @@ while($row = mysqli_fetch_assoc($res)) {
         .order-left { display: flex; gap: 15px; flex: 1; }
         .order-img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
         
-        .order-info { display: flex; flex-direction: column; gap: 5px; }
-        .order-info h3 { font-size: 1.1rem; color: #333; margin: 0; font-weight: 700; }
-        .order-meta { font-size: 0.85rem; color: #777; display: flex; gap: 10px; align-items: center; }
-        .order-price { font-size: 1rem; font-weight: 700; color: var(--primary); margin-top: 5px; }
+        .order-info { display: flex; flex-direction: column; gap: 6px; }
+        .order-meta { font-size: 0.85rem; color: #888; display: flex; gap: 8px; align-items: center; }
+        .order-title { font-size: 1.1rem; color: #333; font-weight: 700; margin: 0; }
+        .buyer-info { font-size: 0.9rem; color: #555; display: flex; align-items: center; gap: 5px; }
+        .order-price { font-size: 1rem; font-weight: 700; color: var(--primary); }
         
-        .order-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 150px; }
+        .order-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 160px; }
         
-        /* Badges */
-        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        /* Status Badges */
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px; }
         .status-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .status-processed { background: #e2e6ea; color: #383d41; border: 1px solid #d6d8db; }
         .status-shipping { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
@@ -171,23 +173,25 @@ while($row = mysqli_fetch_assoc($res)) {
 
         /* Buttons */
         .btn-action {
-            padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; border: none; font-weight: 600;
-            transition: 0.2s; text-align: center;
+            padding: 9px 18px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; border: none; font-weight: 600;
+            transition: 0.2s; text-align: center; width: 100%;
         }
-        .btn-confirm { background: var(--primary); color: #000; }
-        .btn-confirm:hover { filter: brightness(0.9); }
-        .btn-detail { background: #f8f9fa; border: 1px solid #ddd; color: #333; }
-        .btn-detail:hover { background: #e2e6ea; }
+        .btn-confirm { background: var(--primary); color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-confirm:hover { filter: brightness(0.9); transform: translateY(-1px); }
+        .btn-detail { background: #fff; border: 1px solid #ddd; color: #555; }
+        .btn-detail:hover { background: #f8f9fa; border-color: #bbb; color: #333; }
 
-        /* Detail Modal Styles */
-        .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        /* Modal Customization */
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; border-bottom: 1px dashed #f0f0f0; padding-bottom: 5px; }
+        .detail-row:last-child { border-bottom: none; }
         .detail-label { color: #666; }
-        .detail-val { font-weight: 600; color: #333; text-align: right; max-width: 60%; }
-        
+        .detail-val { font-weight: 600; color: #333; text-align: right; max-width: 65%; }
+
         /* Responsive */
         @media (max-width: 768px) {
             .order-card { flex-direction: column; }
             .order-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+            .btn-action { width: auto; padding: 8px 14px; }
         }
     </style>
 </head>
@@ -249,9 +253,13 @@ while($row = mysqli_fetch_assoc($res)) {
 
     <div class="modal-overlay" id="detailModal">
         <div class="modal-container">
-            <div class="modal-header"><div class="modal-title">Detail Pesanan</div><span class="close-modal" onclick="closeModal('detailModal')">&times;</span></div>
-            <div id="detailContent" style="padding: 10px 0;"></div>
-            <button class="btn-submit" style="background:#eee; color:#333; margin-top:15px;" onclick="closeModal('detailModal')">Tutup</button>
+            <div class="modal-header">
+                <div class="modal-title">Rincian Pesanan</div>
+                <span class="close-modal" onclick="closeModal('detailModal')">&times;</span>
+            </div>
+            <div id="detailContent" style="padding: 5px 0;">
+                </div>
+            <button class="btn-submit" style="background:#eee; color:#333; margin-top:15px; border:1px solid #ccc;" onclick="closeModal('detailModal')">Tutup</button>
         </div>
     </div>
 
@@ -269,7 +277,7 @@ while($row = mysqli_fetch_assoc($res)) {
             if (filtered.length === 0) { 
                 container.innerHTML = `
                     <div style="text-align:center; padding:60px; color:#999;">
-                        <i class="fas fa-clipboard-check" style="font-size:3rem; margin-bottom:15px; opacity:0.5;"></i>
+                        <i class="fas fa-box-open" style="font-size:3rem; margin-bottom:15px; opacity:0.3;"></i>
                         <br>Tidak ada pesanan di tab ini.
                     </div>`; 
                 return; 
@@ -278,7 +286,7 @@ while($row = mysqli_fetch_assoc($res)) {
             filtered.forEach(order => {
                 let actionArea = '', statusBadge = '';
                 
-                // Status Logic
+                // Status Logic & Buttons
                 if (order.status === 'pending') {
                     statusBadge = `<span class="status-badge status-pending">Menunggu Konfirmasi</span>`;
                     actionArea = `<button class="btn-action btn-confirm" onclick="openProcessModal(${order.id})">Proses Pesanan</button>`;
@@ -288,7 +296,7 @@ while($row = mysqli_fetch_assoc($res)) {
                 } else if (order.status === 'shipping') {
                     if (order.db_status === 'shipping') {
                         statusBadge = `<span class="status-badge status-shipping">Sedang Dikirim</span>`;
-                        actionArea = `<button class="btn-action btn-detail" onclick="confirmArrived(${order.id})">Konfirmasi Sampai</button>`;
+                        actionArea = `<button class="btn-action btn-confirm" style="font-size:0.8rem; padding:8px 12px;" onclick="confirmArrived(${order.id})">Konfirmasi Sampai</button>`;
                     } else {
                         statusBadge = `<span class="status-badge status-delivered">Barang Sampai</span>`;
                         actionArea = `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>`;
@@ -306,16 +314,21 @@ while($row = mysqli_fetch_assoc($res)) {
                                 <div class="order-meta">
                                     <span>${order.invoice}</span> • <span>${order.date}</span>
                                 </div>
-                                <h3>${order.product}</h3>
-                                <div class="order-meta">
-                                    <i class="fas fa-user"></i> ${order.buyer}
+                                <h3 class="order-title">${order.product}</h3>
+                                <div class="buyer-info">
+                                    <i class="fas fa-user-circle" style="color:#aaa;"></i> ${order.buyer}
                                 </div>
-                                <p class="order-price">Rp ${order.price.toLocaleString('id-ID')}</p>
-                                <div style="margin-top:5px;">${statusBadge}</div>
+                                <div style="margin-top:4px;">${statusBadge}</div>
                             </div>
                         </div>
                         <div class="order-right">
-                            ${actionArea}
+                            <div class="order-price">Rp ${order.price.toLocaleString('id-ID')}</div>
+                            <div style="margin-top:auto; width:100%; display:flex; flex-direction:column; gap:8px;">
+                                ${actionArea}
+                                ${ (order.status !== 'completed' && order.status !== 'shipping') ? 
+                                    `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>` : '' 
+                                }
+                            </div>
                         </div>
                     </div>`;
             });
@@ -327,25 +340,54 @@ while($row = mysqli_fetch_assoc($res)) {
         function confirmArrived(id) { if(confirm("Yakin barang sudah sampai?")) { document.getElementById('deliveredOrderId').value = id; document.getElementById('formMarkDelivered').submit(); } }
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('open'); }
 
+        // --- FUNGSI DETAIL OVERLAY ---
         function openDetailModal(id) {
             const order = orders.find(o => o.id === id); if (!order) return;
             const resi = order.tracking ? order.tracking : '-';
             const content = document.getElementById('detailContent');
+            
             content.innerHTML = `
-                <div class="detail-row"><span class="detail-label">Invoice</span> <span class="detail-val">${order.invoice}</span></div>
-                <div class="detail-row"><span class="detail-label">Produk</span> <span class="detail-val">${order.product}</span></div>
-                <div class="detail-row"><span class="detail-label">Harga</span> <span class="detail-val">Rp ${order.price.toLocaleString('id-ID')}</span></div>
-                <div class="detail-row"><span class="detail-label">Jasa Kirim</span> <span class="detail-val">${order.shipping}</span></div>
-                <div class="detail-row"><span class="detail-label">Pembayaran</span> <span class="detail-val" style="color:var(--primary); font-weight:bold;">${order.payment}</span></div>
-                <div class="detail-row"><span class="detail-label">No. Resi</span> <span class="detail-val" style="font-weight:bold; letter-spacing:1px;">${resi}</span></div>
+                <div style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee;">
+                    <div style="font-size:0.85rem; color:#888;">No. Invoice</div>
+                    <div style="font-weight:700; color:#333;">${order.invoice}</div>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Nama Produk</span>
+                    <span class="detail-val">${order.product}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Harga</span>
+                    <span class="detail-val" style="color:var(--primary);">Rp ${order.price.toLocaleString('id-ID')}</span>
+                </div>
                 
-                <div style="margin:20px 0 10px 0; border-top:1px dashed #ddd; padding-top:15px; font-weight:700; color:#333;">Info Penerima</div>
+                <div style="margin-top:15px; margin-bottom:10px; font-weight:700; color:#555;">Pengiriman & Pembayaran</div>
+                <div class="detail-row">
+                    <span class="detail-label">Jasa Kirim</span>
+                    <span class="detail-val">${order.shipping}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">No. Resi</span>
+                    <span class="detail-val" style="letter-spacing:1px; background:#f5f5f5; padding:2px 6px; border-radius:4px;">${resi}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Metode Bayar</span>
+                    <span class="detail-val">${order.payment}</span>
+                </div>
                 
-                <div class="detail-row"><span class="detail-label">Nama</span> <span class="detail-val">${order.buyer}</span></div>
-                <div class="detail-row"><span class="detail-label">Alamat</span> <span class="detail-val" style="text-align:right; font-size:0.9rem; line-height:1.4;">${order.address}</span></div>
+                <div style="margin-top:15px; margin-bottom:10px; font-weight:700; color:#555;">Info Pembeli</div>
+                <div class="detail-row">
+                    <span class="detail-label">Nama</span>
+                    <span class="detail-val">${order.buyer}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Alamat</span>
+                    <span class="detail-val" style="font-size:0.85rem; line-height:1.4;">${order.address}</span>
+                </div>
             `;
             document.getElementById('detailModal').classList.add('open');
         }
+
         document.addEventListener('DOMContentLoaded', renderOrders);
     </script>
 </body>
