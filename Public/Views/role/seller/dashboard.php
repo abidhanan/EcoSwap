@@ -42,7 +42,7 @@ if (isset($_POST['create_shop'])) {
 // --- CEK DATA TOKO ---
 $has_shop = false;
 $shop_data = [];
-$rating_toko = "Baru"; 
+$rating_toko = "0"; 
 $total_followers = 0;
 
 $query_shop = mysqli_query($koneksi, "SELECT * FROM shops WHERE user_id = '$user_id'");
@@ -59,7 +59,7 @@ if (mysqli_num_rows($query_shop) > 0) {
             $rating_val = (float)$data_rating['avg_rating'];
             if($rating_val > 0) $rating_toko = number_format($rating_val, 1);
         }
-    } catch (Exception $e) { $rating_toko = "Baru"; }
+    } catch (Exception $e) { $rating_toko = "0"; }
 
     // Followers
     try {

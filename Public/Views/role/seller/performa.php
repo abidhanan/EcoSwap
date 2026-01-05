@@ -140,7 +140,7 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                         <div class="stat-card" id="cardRating" onclick="showSection('rating')">
                             <div class="stat-icon"><i class="fas fa-star"></i></div>
                             <div class="stat-label">Rating Toko</div>
-                            <div class="stat-value"><?php echo $rating_toko; ?> <span style="font-size:1rem; color:#888; font-weight:normal;">/ 5.0</span></div>
+                            <div class="stat-value"><?php echo $rating_toko; ?> <span style="font-size:1rem; color:#888; font-weight:normal;"></span></div>
                         </div>
                     </div>
 

@@ -27,7 +27,7 @@ $rating_val = (float)$d_rating['avg'];
 $rating_toko = number_format($rating_val, 1);
 
 if($rating_val == 0) {
-    $rating_toko = "Baru";
+    $rating_toko = "0";
 }
 
 // AMBIL JUMLAH PENGIKUT
@@ -298,10 +298,8 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_payment') {
                                         <div class="stat-divider"></div>
 
                                         <div style="display:flex; align-items:center; gap:5px;">
-                                            <?php if ($rating_toko == "Baru"): ?>
-                                                <span>
-                                                    <i class="fas fa-star" style="color:var(--primary);"></i> Belum ada rating
-                                                </span>
+                                            <?php if ($rating_toko == "0"): ?>
+                                                <span><i class="fas fa-star" style="color:var(--primary);"></i> <strong><?php echo $rating_toko; ?></strong> Rating</span>
                                             <?php else: ?>
                                                 <div class="stars">
                                                     <?php 
