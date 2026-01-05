@@ -213,40 +213,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'summary';
                     </div>
 
                     <div id="tab-settings" class="tab-content" style="display: <?php echo ($active_tab == 'settings') ? 'block' : 'none'; ?>;">
-                        
-                        <form id="formService" method="POST">
-                            <input type="hidden" name="action" value="save_settings">
-                            
-                            <div class="manage-card">
-                                <div class="card-header-flex">
-                                    <div class="card-title" style="border:none; padding:0; margin:0;"><i class="fas fa-concierge-bell" style="color:var(--primary);"></i> Biaya Layanan Toko</div>
-                                    <button type="button" class="btn-edit-settings" id="btnEditService" onclick="toggleEdit('Service', true)">
-                                        <i class="fas fa-pen"></i> Ubah
-                                    </button>
-                                </div>
-
-                                <div class="fee-row">
-                                    <div class="fee-label"><span class="fee-icon"><i class="fas fa-user-shield"></i></span> Biaya Transaksi (Admin)</div>
-                                    <div class="fee-input-wrapper">
-                                        <span class="currency-prefix">Rp</span>
-                                        <input type="number" name="admin_fee" class="fee-input input-service" value="<?php echo isset($service_fees['admin']) ? $service_fees['admin'] : 2500; ?>" disabled>
-                                    </div>
-                                </div>
-                                <div class="fee-row">
-                                    <div class="fee-label"><span class="fee-icon"><i class="fas fa-box-open"></i></span> Biaya Kemasan (Packing)</div>
-                                    <div class="fee-input-wrapper">
-                                        <span class="currency-prefix">Rp</span>
-                                        <input type="number" name="packing_fee" class="fee-input input-service" value="<?php echo isset($service_fees['packing']) ? $service_fees['packing'] : 1000; ?>" disabled>
-                                    </div>
-                                </div>
-
-                                <div class="action-group" id="actionService">
-                                    <button type="button" class="btn-cancel" onclick="toggleEdit('Service', false)">Batal</button>
-                                    <button type="submit" class="btn-save" style="margin-top:0;">Simpan</button>
-                                </div>
-                            </div>
-                        </form>
-
                         <form id="formShipping" method="POST">
                             <input type="hidden" name="action" value="save_settings">
                             <input type="hidden" name="ship_type" value="1"> <div class="manage-card">

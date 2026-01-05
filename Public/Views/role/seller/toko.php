@@ -384,7 +384,7 @@ if(isset($_POST['action']) && $_POST['action'] == 'update_payment') {
                                 <input type="hidden" name="action" value="update_shipping">
                                 
                                 <div class="section-header">
-                                    <div class="section-title"><i class="fas fa-truck"></i> Jasa Pengantaran</div>
+                                    <div class="section-title"><i class="fas fa-truck"></i> Jasa Pengiriman</div>
                                     
                                     <button type="button" id="btnEditShipping" class="btn-edit" onclick="toggleEditShipping(true)">
                                         <i class="fas fa-pen"></i> Ubah Pengiriman
