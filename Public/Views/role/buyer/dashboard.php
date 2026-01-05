@@ -51,8 +51,8 @@ if ($category_filter != 'Semua') {
 }
 
 $all_products = [];
-// UPDATE SQL: Menambahkan s.shop_city agar bisa mengambil kota saja
-$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_address, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 $where_clause ORDER BY p.created_at DESC");
+// UPDATE QUERY: Mengambil shop_city dari tabel shops
+$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city, s.shop_address FROM products p JOIN shops s ON p.shop_id = s.shop_id $where_clause ORDER BY p.created_at DESC");
 
 while($row = mysqli_fetch_assoc($query_prod)) {
     $shop_id_prod = $row['shop_id'];
@@ -60,22 +60,19 @@ while($row = mysqli_fetch_assoc($query_prod)) {
     $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
     if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
 
-    // LOGIKA LOKASI: Prioritaskan shop_city
+    // LOGIKA ALAMAT: Prioritaskan shop_city
     if (!empty($row['shop_city'])) {
-        $display_loc = $row['shop_city'];
+        $loc_display = $row['shop_city'];
     } else {
-        // Fallback ke alamat lama jika shop_city kosong (untuk data lama)
-        $raw_addr = !empty($row['shop_address']) ? $row['shop_address'] : (isset($row['full_address']) ? $row['full_address'] : 'Indonesia');
-        // Ambil kata pertama/bagian depan saja jika terlalu panjang
-        $parts = explode(',', $raw_addr);
-        $display_loc = trim($parts[0]); 
+        // Fallback jika kota belum disetting (misal data lama), ambil potongan pertama dari alamat lengkap
+        $loc_display = !empty($row['shop_address']) ? explode(',', $row['shop_address'])[0] : 'Indonesia';
     }
     
     $all_products[] = [
         'id' => $row['product_id'], 
         'title' => $row['name'], 
         'price' => (int)$row['price'], 
-        'loc' => $display_loc, // Menggunakan Kota
+        'loc' => $loc_display, // Hanya Kota
         'img' => $row['image'], 
         'cond' => $row['condition'], 
         'desc' => $row['description'], 
@@ -83,7 +80,7 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         'shop_name' => $row['shop_name'], 
         'shop_img' => $row['shop_image'], 
         'shop_id' => $row['shop_id'], 
-        'shop_address' => $display_loc, // Menggunakan Kota untuk modal juga
+        'shop_address' => $loc_display, // Hanya Kota untuk di modal juga
         'is_following' => $is_following
     ];
 }
@@ -225,7 +222,7 @@ while($row = mysqli_fetch_assoc($q_chat)){
             const card = document.createElement('div');
             card.className = 'product-card';
             card.onclick = () => openModal(p);
-            // Menampilkan Kota (p.loc)
+            // Menampilkan hanya kota di card
             card.innerHTML = `<div class="product-img-wrapper"><img src="${p.img}"></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price">Rp ${p.price.toLocaleString('id-ID')}</div><div class="product-meta"><i class="fas fa-map-marker-alt"></i> ${p.loc}</div></div>`;
             productGrid.appendChild(card);
         });
@@ -246,9 +243,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
 
             const shopContainer = document.getElementById('modalShopContainer');
             
-            // LOGIKA BUTTON FOLLOW BARU (DENGAN ICON)
+            // LOGIKA BUTTON FOLLOW (Icon + Text)
             const followIcon = product.is_following ? '<i class="fas fa-check"></i>' : '<i class="fas fa-plus"></i>';
-            const followText = product.is_following ? 'Mengikuti' : 'Ikuti';
+            const followText = product.is_following ? ' Mengikuti' : ' Ikuti';
             const followClass = product.is_following ? 'btn-follow following' : 'btn-follow';
             const shopImg = product.shop_img ? product.shop_img : 'https://placehold.co/50';
 
@@ -262,9 +259,7 @@ while($row = mysqli_fetch_assoc($q_chat)){
                         </span>
                     </div>
                 </div>
-                <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">
-                   ${followIcon} ${followText}
-                </button>
+                <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">${followIcon}${followText}</button>
             `;
 
             const btnChat = document.getElementById('btnModalChat'); 
@@ -281,9 +276,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
 
         function toggleFollow(shopId, btn, shopName) {
             btn.disabled = true; 
-            // Simpan status sementara
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '...';
+            // Simpan icon lama sementara loading
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
             
             const formData = new FormData(); formData.append('action', 'toggle_follow'); formData.append('shop_id', shopId);
             fetch('dashboard.php', { method: 'POST', body: formData }).then(res => res.json()).then(data => {
@@ -298,6 +293,9 @@ while($row = mysqli_fetch_assoc($q_chat)){
                     // Update Icon dan Text ke Ikuti
                     btn.innerHTML = '<i class="fas fa-plus"></i> Ikuti'; 
                 }
+            }).catch(err => {
+                console.error(err);
+                btn.innerHTML = oldHtml; // Kembalikan jika error
             }).finally(() => { btn.disabled = false; });
         }
 
