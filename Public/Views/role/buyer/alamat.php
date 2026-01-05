@@ -13,40 +13,79 @@ $user_id = $_SESSION['user_id'];
 
 // --- 1. LOGIKA TAMBAH ALAMAT ---
 if (isset($_POST['action']) && $_POST['action'] == 'add') {
-    $label = mysqli_real_escape_string($koneksi, $_POST['label']);
+    // Logika Label (Radio vs Input Manual)
+    $label_choice = $_POST['label_choice'];
+    if ($label_choice == 'Lainnya') {
+        $label = mysqli_real_escape_string($koneksi, $_POST['custom_label']);
+    } else {
+        $label = mysqli_real_escape_string($koneksi, $label_choice);
+    }
+
     $name = mysqli_real_escape_string($koneksi, $_POST['recipient_name']);
     $phone = mysqli_real_escape_string($koneksi, $_POST['phone_number']);
-    $addr = mysqli_real_escape_string($koneksi, $_POST['full_address']);
+    
+    // Detail Alamat
+    $addr = mysqli_real_escape_string($koneksi, $_POST['full_address']); // Jalan/RT/RW
+    $village = mysqli_real_escape_string($koneksi, $_POST['village']);
+    $subdistrict = mysqli_real_escape_string($koneksi, $_POST['subdistrict']);
+    $city = mysqli_real_escape_string($koneksi, $_POST['city']);
+    $postcode = mysqli_real_escape_string($koneksi, $_POST['postal_code']);
+    
     $landmark = mysqli_real_escape_string($koneksi, $_POST['landmark']);
 
     // Cek apakah ini alamat pertama? Jika ya, set jadi primary
     $cek_addr = mysqli_query($koneksi, "SELECT address_id FROM addresses WHERE user_id='$user_id'");
     $is_primary = (mysqli_num_rows($cek_addr) == 0) ? 1 : 0;
 
-    $query = "INSERT INTO addresses (user_id, label, recipient_name, phone_number, full_address, landmark, is_primary) 
-              VALUES ('$user_id', '$label', '$name', '$phone', '$addr', '$landmark', '$is_primary')";
+    $query = "INSERT INTO addresses (user_id, label, recipient_name, phone_number, full_address, village, subdistrict, city, postal_code, landmark, is_primary) 
+              VALUES ('$user_id', '$label', '$name', '$phone', '$addr', '$village', '$subdistrict', '$city', '$postcode', '$landmark', '$is_primary')";
     
     if(mysqli_query($koneksi, $query)) {
         echo "<script>alert('Alamat berhasil ditambahkan!'); window.location.href='alamat.php';</script>";
     } else {
-        echo "<script>alert('Gagal menambah alamat.');</script>";
+        echo "<script>alert('Gagal menambah alamat: " . mysqli_error($koneksi) . "');</script>";
     }
 }
 
 // --- 2. LOGIKA EDIT ALAMAT ---
 if (isset($_POST['action']) && $_POST['action'] == 'edit') {
     $id = $_POST['address_id'];
-    $label = mysqli_real_escape_string($koneksi, $_POST['label']);
+    
+    // Logika Label
+    $label_choice = $_POST['label_choice'];
+    if ($label_choice == 'Lainnya') {
+        $label = mysqli_real_escape_string($koneksi, $_POST['custom_label']);
+    } else {
+        $label = mysqli_real_escape_string($koneksi, $label_choice);
+    }
+
     $name = mysqli_real_escape_string($koneksi, $_POST['recipient_name']);
     $phone = mysqli_real_escape_string($koneksi, $_POST['phone_number']);
+    
     $addr = mysqli_real_escape_string($koneksi, $_POST['full_address']);
+    $village = mysqli_real_escape_string($koneksi, $_POST['village']);
+    $subdistrict = mysqli_real_escape_string($koneksi, $_POST['subdistrict']);
+    $city = mysqli_real_escape_string($koneksi, $_POST['city']);
+    $postcode = mysqli_real_escape_string($koneksi, $_POST['postal_code']);
+    
     $landmark = mysqli_real_escape_string($koneksi, $_POST['landmark']);
 
-    $query = "UPDATE addresses SET label='$label', recipient_name='$name', phone_number='$phone', full_address='$addr', landmark='$landmark' 
+    $query = "UPDATE addresses SET 
+              label='$label', 
+              recipient_name='$name', 
+              phone_number='$phone', 
+              full_address='$addr', 
+              village='$village',
+              subdistrict='$subdistrict',
+              city='$city',
+              postal_code='$postcode',
+              landmark='$landmark' 
               WHERE address_id='$id' AND user_id='$user_id'";
     
     if(mysqli_query($koneksi, $query)) {
         echo "<script>alert('Alamat berhasil diperbarui!'); window.location.href='alamat.php';</script>";
+    } else {
+        echo "<script>alert('Gagal update: " . mysqli_error($koneksi) . "');</script>";
     }
 }
 
@@ -75,6 +114,18 @@ while($row = mysqli_fetch_assoc($q_addr)) {
     <title>Pengaturan Alamat - Ecoswap</title>
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/alamat.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* CSS Tambahan untuk Input Custom Label */
+        .custom-label-input {
+            margin-top: 10px;
+            display: none; /* Hidden by default */
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+    </style>
 </head>
 
 <body>
@@ -151,7 +202,20 @@ while($row = mysqli_fetch_assoc($q_addr)) {
                                 <div class="card-body">
                                     <div class="receiver-name"><?php echo $addr['recipient_name']; ?></div>
                                     <span class="receiver-phone"><?php echo $addr['phone_number']; ?></span>
-                                    <div class="address-detail"><?php echo $addr['full_address']; ?></div>
+                                    
+                                    <div class="address-detail">
+                                        <?php echo $addr['full_address']; ?><br>
+                                        <?php 
+                                            // Menampilkan Kel/Kec/Kota jika ada
+                                            $details = [];
+                                            if(!empty($addr['village'])) $details[] = "Kel. " . $addr['village'];
+                                            if(!empty($addr['subdistrict'])) $details[] = "Kec. " . $addr['subdistrict'];
+                                            if(!empty($addr['city'])) $details[] = $addr['city'];
+                                            if(!empty($addr['postal_code'])) $details[] = $addr['postal_code'];
+                                            echo implode(", ", $details);
+                                        ?>
+                                    </div>
+
                                     <div class="address-landmark">
                                         <i class="fas fa-map-marker-alt"></i> 
                                         <?php echo !empty($addr['landmark']) ? $addr['landmark'] : 'Tidak ada patokan'; ?>
@@ -181,18 +245,19 @@ while($row = mysqli_fetch_assoc($q_addr)) {
                     <label class="form-label">Simpan Sebagai</label>
                     <div class="label-options">
                         <label>
-                            <input type="radio" name="label" class="label-option-input" value="Rumah" checked>
+                            <input type="radio" name="label_choice" class="label-option-input" value="Rumah" checked onchange="toggleCustomLabel()">
                             <span class="label-option-pill">Rumah</span>
                         </label>
                         <label>
-                            <input type="radio" name="label" class="label-option-input" value="Kantor">
+                            <input type="radio" name="label_choice" class="label-option-input" value="Kantor" onchange="toggleCustomLabel()">
                             <span class="label-option-pill">Kantor</span>
                         </label>
                         <label>
-                            <input type="radio" name="label" class="label-option-input" value="Lainnya">
+                            <input type="radio" name="label_choice" class="label-option-input" value="Lainnya" onchange="toggleCustomLabel()">
                             <span class="label-option-pill">Lainnya</span>
                         </label>
                     </div>
+                    <input type="text" name="custom_label" id="customLabelInput" class="form-input custom-label-input" placeholder="Isi nama label (contoh: Kost, Apartemen)">
                 </div>
 
                 <div class="form-group">
@@ -206,8 +271,30 @@ while($row = mysqli_fetch_assoc($q_addr)) {
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Alamat Lengkap</label>
-                    <textarea name="full_address" id="inputAddress" class="form-textarea" rows="3" placeholder="Jalan, No. Rumah, RT/RW, Kelurahan, Kecamatan..." required></textarea>
+                    <label class="form-label">Jalan / Nama Gedung / No. Rumah</label>
+                    <textarea name="full_address" id="inputAddress" class="form-textarea" rows="2" placeholder="Contoh: Jl. Merdeka No. 10, RT 01/RW 02" required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Kelurahan / Desa</label>
+                        <input type="text" name="village" id="inputVillage" class="form-input" placeholder="Nama Kelurahan" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Kecamatan</label>
+                        <input type="text" name="subdistrict" id="inputSubdistrict" class="form-input" placeholder="Nama Kecamatan" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Kota / Kabupaten</label>
+                        <input type="text" name="city" id="inputCity" class="form-input" placeholder="Nama Kota" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Kode Pos</label>
+                        <input type="number" name="postal_code" id="inputPostcode" class="form-input" placeholder="Contoh: 57123" required>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -228,7 +315,6 @@ while($row = mysqli_fetch_assoc($q_addr)) {
     <script>
         const goToDashboard = () => window.location.href = 'dashboard.php';
 
-        /* Navigasi Kartu (Visual Saja) */
         function pilihAlamat(element) {
             const cards = document.querySelectorAll('.address-card');
             cards.forEach(card => card.classList.remove('active'));
@@ -239,6 +325,7 @@ while($row = mysqli_fetch_assoc($q_addr)) {
         const modalTitle = document.getElementById('modalTitle');
         const submitBtn = document.getElementById('submitBtn');
         const deleteBtn = document.getElementById('deleteBtn');
+        const customLabelInput = document.getElementById('customLabelInput');
         
         // Element Form
         const formAction = document.getElementById('formAction');
@@ -246,54 +333,94 @@ while($row = mysqli_fetch_assoc($q_addr)) {
         const inputName = document.getElementById('inputName');
         const inputPhone = document.getElementById('inputPhone');
         const inputAddress = document.getElementById('inputAddress');
+        const inputVillage = document.getElementById('inputVillage');
+        const inputSubdistrict = document.getElementById('inputSubdistrict');
+        const inputCity = document.getElementById('inputCity');
+        const inputPostcode = document.getElementById('inputPostcode');
         const inputLandmark = document.getElementById('inputLandmark');
 
         function bukaModal() { modal.classList.add('open'); }
         function tutupModal() { modal.classList.remove('open'); }
-        
-        // Klik di luar modal menutup modal
         modal.addEventListener('click', function(e) { if (e.target === modal) tutupModal(); });
 
+        // Logic Toggle Custom Label
+        function toggleCustomLabel() {
+            const radios = document.getElementsByName('label_choice');
+            let selectedValue;
+            for (const radio of radios) {
+                if (radio.checked) {
+                    selectedValue = radio.value;
+                    break;
+                }
+            }
+            
+            if (selectedValue === 'Lainnya') {
+                customLabelInput.style.display = 'block';
+                customLabelInput.required = true;
+            } else {
+                customLabelInput.style.display = 'none';
+                customLabelInput.required = false;
+                customLabelInput.value = ''; // Reset jika pindah ke Rumah/Kantor
+            }
+        }
+
         function tambahAlamatBaru() {
-            // Reset Form
             document.querySelector('form').reset();
             formAction.value = 'add';
             addressId.value = '';
             
-            // Set Default Radio
+            // Default Radio Rumah
             const rumahRadio = document.querySelector('input[value="Rumah"]');
             if(rumahRadio) rumahRadio.checked = true;
+            toggleCustomLabel(); // Hide custom input
 
             modalTitle.textContent = "Tambah Alamat";
             submitBtn.textContent = "Simpan Alamat";
-            deleteBtn.style.display = 'none'; // Sembunyikan tombol hapus
+            deleteBtn.style.display = 'none';
             bukaModal();
         }
 
         function editAlamat(event, data) {
-            event.stopPropagation(); // Mencegah trigger onclick card wrapper
+            event.stopPropagation();
 
-            // Isi Form dengan Data dari Database (via JSON)
             formAction.value = 'edit';
             addressId.value = data.address_id;
             inputName.value = data.recipient_name;
             inputPhone.value = data.phone_number;
+            
+            // Isi detail alamat baru
             inputAddress.value = data.full_address;
+            inputVillage.value = data.village || '';
+            inputSubdistrict.value = data.subdistrict || '';
+            inputCity.value = data.city || '';
+            inputPostcode.value = data.postal_code || '';
+            
             inputLandmark.value = data.landmark;
 
-            // Set Radio Button
-            const radios = document.getElementsByName('label');
+            // Logic mengisi Radio Button & Custom Label
+            const radios = document.getElementsByName('label_choice');
+            let isStandard = false;
+            
             for(let r of radios) {
-                if(r.value === data.label) { r.checked = true; break; }
-                else if (data.label !== 'Rumah' && data.label !== 'Kantor') {
-                    // Fallback ke lainnya jika label custom (opsional)
-                    if(r.value === 'Lainnya') r.checked = true;
+                if(r.value === data.label) { 
+                    r.checked = true; 
+                    isStandard = true; 
+                    break; 
                 }
             }
 
+            if (!isStandard) {
+                // Jika label bukan Rumah/Kantor, pilih Lainnya dan isi text input
+                const lainnyaRadio = document.querySelector('input[value="Lainnya"]');
+                if(lainnyaRadio) lainnyaRadio.checked = true;
+                customLabelInput.value = data.label;
+            }
+
+            toggleCustomLabel(); // Update visibility input text
+
             modalTitle.textContent = "Ubah Alamat";
             submitBtn.textContent = "Simpan Perubahan";
-            deleteBtn.style.display = 'block'; // Tampilkan tombol hapus
+            deleteBtn.style.display = 'block';
             bukaModal();
         }
 
