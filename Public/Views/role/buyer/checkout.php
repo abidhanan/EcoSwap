@@ -28,50 +28,20 @@
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Opsi Pengiriman</div>
                 <select class="shipping-select" id="shippingSelect" onchange="calculateCheckoutTotal()">
-                    <option value="0" disabled selected>-- Pilih Kurir --</option>
-                    <option value="15000">JNE Reguler (Rp 15.000)</option>
-                    <option value="18000">J&T Express (Rp 18.000)</option>
-                    <option value="25000">GoSend Instant (Rp 25.000)</option>
-                    <option value="12000">SiCepat Halu (Rp 12.000)</option>
+                    <option value="0" disabled selected>-- Memuat --</option>
                 </select>
             </div>
 
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Metode Pembayaran</div>
-                <div class="payment-category" id="cat-bank" onclick="selectPaymentCategory('bank')">
-                    <div class="payment-header">
-                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-bank"></i><span class="ph-title"><i class="fas fa-university"></i> Transfer Bank</span></div>
-                        <div class="dropdown-toggle" onclick="togglePaymentDropdown(event, 'list-bank')"><i class="fas fa-chevron-down"></i></div>
-                    </div>
-                    <div class="payment-options-list" id="list-bank">
-                        <div class="sub-option" onclick="selectPaymentSubOption('bank', 'BCA', 'Bank BCA')"><img src="https://placehold.co/40x25/003399/ffffff?text=BCA" class="sub-icon"> Bank BCA</div>
-                        <div class="sub-option" onclick="selectPaymentSubOption('bank', 'BRI', 'Bank BRI')"><img src="https://placehold.co/40x25/00529C/ffffff?text=BRI" class="sub-icon"> Bank BRI</div>
-                        <div class="sub-option" onclick="selectPaymentSubOption('bank', 'MDR', 'Bank Mandiri')"><img src="https://placehold.co/40x25/FFB700/000000?text=MDR" class="sub-icon"> Bank Mandiri</div>
-                    </div>
-                </div>
-                <div class="payment-category" id="cat-ewallet" onclick="selectPaymentCategory('ewallet')">
-                    <div class="payment-header">
-                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-ewallet"></i><span class="ph-title"><i class="fas fa-wallet"></i> E-Wallet</span></div>
-                        <div class="dropdown-toggle" onclick="togglePaymentDropdown(event, 'list-ewallet')"><i class="fas fa-chevron-down"></i></div>
-                    </div>
-                    <div class="payment-options-list" id="list-ewallet">
-                        <div class="sub-option" onclick="selectPaymentSubOption('ewallet', 'Gopay', 'GoPay')"><img src="https://placehold.co/40x25/00A5CF/ffffff?text=GoPay" class="sub-icon"> GoPay</div>
-                        <div class="sub-option" onclick="selectPaymentSubOption('ewallet', 'OVO', 'OVO')"><img src="https://placehold.co/40x25/4C2A86/ffffff?text=OVO" class="sub-icon"> OVO</div>
-                        <div class="sub-option" onclick="selectPaymentSubOption('ewallet', 'Dana', 'Dana')"><img src="https://placehold.co/40x25/118EEA/ffffff?text=Dana" class="sub-icon"> Dana</div>
-                    </div>
-                </div>
-                <div class="payment-category" id="cat-cod" onclick="selectPaymentCategory('cod')">
-                    <div class="payment-header">
-                        <div class="ph-left"><i class="far fa-circle check-circle" id="check-cod"></i><span class="ph-title"><i class="fas fa-hand-holding-usd"></i> COD</span></div>
-                    </div>
-                </div>
+                <div id="paymentContainer"></div>
             </div>
 
             <div class="section-card-checkout" style="margin-bottom: 20px;">
                 <div class="section-title-checkout">Rincian Pembayaran</div>
                 <div class="summary-row"><span>Subtotal</span><span class="price-val" id="summaryProdPrice">Rp 0</span></div>
                 <div class="summary-row"><span>Pengiriman</span><span class="price-val" id="summaryShipPrice">Rp 0</span></div>
-                <div class="summary-row"><span>Biaya Layanan</span><span class="price-val">Rp 1.000</span></div>
+                <div class="summary-row"><span>Biaya Admin</span><span class="price-val">Rp 1.000</span></div>
                 <div class="summary-row total"><span>Total</span><span class="price-val" id="summaryTotal" style="color:var(--primary)">Rp 0</span></div>
             </div>
         </div>

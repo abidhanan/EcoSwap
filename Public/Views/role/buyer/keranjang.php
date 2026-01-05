@@ -1,19 +1,6 @@
 <style>
-    /* CSS tambahan untuk tombol hapus di keranjang */
-    .btn-delete {
-        background: none;
-        border: none;
-        color: #ff4d4d;
-        font-size: 1rem;
-        cursor: pointer;
-        padding: 5px;
-        margin-left: 10px;
-        transition: transform 0.2s;
-    }
-    .btn-delete:hover {
-        transform: scale(1.1);
-        color: #d93636;
-    }
+    .btn-delete { background: none; border: none; color: #ff4d4d; font-size: 1rem; cursor: pointer; padding: 5px; margin-left: 10px; transition: transform 0.2s; }
+    .btn-delete:hover { transform: scale(1.1); color: #d93636; }
 </style>
 
 <div class="cart-overlay-bg" id="cartOverlay" onclick="toggleCart()"></div>
@@ -28,7 +15,13 @@
             <div style="text-align:center; padding:20px; color:#666;">Keranjang kosong</div>
         <?php else: ?>
             <?php foreach($cart_items as $item): ?>
-            <div class="cart-item" onclick="toggleCartItem(this)" data-id="<?php echo $item['cart_id']; ?>" data-price="<?php echo $item['price']; ?>" data-name="<?php echo $item['name']; ?>" data-img="<?php echo $item['image']; ?>" style="cursor:pointer;">
+            <div class="cart-item" onclick="toggleCartItem(this)" 
+                 data-id="<?php echo $item['cart_id']; ?>" 
+                 data-price="<?php echo $item['price']; ?>" 
+                 data-name="<?php echo $item['name']; ?>" 
+                 data-img="<?php echo $item['image']; ?>" 
+                 data-shop-id="<?php echo $item['shop_id']; ?>" 
+                 style="cursor:pointer;">
                 <div class="cart-check-wrapper">
                     <input type="checkbox" class="cart-checkbox" onclick="event.stopPropagation(); updateCartTotal()">
                 </div>
