@@ -11,18 +11,23 @@
                     <span><i class="fas fa-map-marker-alt" style="color:#e74c3c"></i> Alamat Pengiriman</span>
                 </div>
                 <div class="address-box" onclick="openAddressModal()">
-                    <div class="addr-change">Ubah</div>
                     <?php if($default_addr): ?>
-                        <div class="addr-name" id="displayAddrName">
-                            <?php echo $default_addr['recipient_name']; ?> <span style="color:#888;">|</span> <?php echo $default_addr['phone_number']; ?>
+                        <div class="addr-header-row">
+                            <span class="addr-recipient"><?php echo $default_addr['recipient_name']; ?></span>
+                            <span class="addr-divider">|</span>
+                            <span class="addr-phone"><?php echo $default_addr['phone_number']; ?></span>
+                            <span class="addr-label-tag"><?php echo $default_addr['label']; ?></span>
                         </div>
-                        <div class="addr-detail" id="displayAddrDetail" style="margin-top:5px; line-height:1.4;">
+                        <div class="addr-body-text">
                             <?php echo $default_addr['full_address']; ?><br>
                             <?php echo $default_addr['formatted_details']; ?>
                         </div>
+                        <div class="addr-change-text">Ubah Alamat <i class="fas fa-chevron-right"></i></div>
                     <?php else: ?>
-                        <div class="addr-name" id="displayAddrName">Belum ada alamat</div>
-                        <div class="addr-detail" id="displayAddrDetail">Klik untuk menambahkan alamat baru</div>
+                        <div class="addr-empty-state">
+                            <i class="fas fa-exclamation-circle"></i> Belum ada alamat tersimpan.
+                            <br><span style="font-size:0.85rem; color:var(--primary);">Silakan atur alamat di menu Profil terlebih dahulu.</span>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -34,17 +39,13 @@
 
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Opsi Pengiriman</div>
-                <div class="custom-select-wrapper">
-                    <select class="shipping-select" id="shippingSelect" onchange="calculateCheckoutTotal()">
-                        <option value="0" disabled selected>-- Memuat opsi pengiriman --</option>
-                    </select>
-                    <i class="fas fa-chevron-down select-arrow"></i>
-                </div>
+                <div id="shippingContainer" style="display:flex; flex-direction:column; gap:10px;">
+                    </div>
             </div>
 
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Metode Pembayaran</div>
-                <div id="paymentContainer">
+                <div id="paymentContainer" style="display:flex; flex-direction:column; gap:10px;">
                     </div>
             </div>
 
@@ -88,18 +89,42 @@
             </div>
             <?php endforeach; ?>
         </div>
-        <button class="btn-add-addr" onclick="window.location.href='alamat.php'">+ Tambah Alamat Baru</button>
-    </div>
+        </div>
 </div>
 
 <style>
-    /* Sedikit perbaikan CSS untuk select dropdown */
-    .custom-select-wrapper { position: relative; }
-    .shipping-select {
-        width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;
-        background: #fff; appearance: none; font-size: 0.95rem; cursor: pointer;
+    /* Styling Address Box di Checkout */
+    .address-box {
+        border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; cursor: pointer; background: #fff; transition: all 0.2s;
     }
-    .select-arrow { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; }
-    .btn-add-addr { width: 100%; padding: 12px; border: 1px dashed #aaa; background: #fff; margin-top: 10px; border-radius: 8px; cursor: pointer; color: #555; }
-    .btn-add-addr:hover { background: #f9f9f9; border-color: var(--primary); color: #000; }
+    .address-box:hover { border-color: var(--primary); background-color: #fffdf0; }
+    .addr-header-row { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 600; color: #333; margin-bottom: 6px; }
+    .addr-divider { color: #ccc; font-weight: normal; }
+    .addr-label-tag { font-size: 0.7rem; background: #eee; padding: 2px 6px; border-radius: 4px; color: #555; font-weight: normal; margin-left: auto; }
+    .addr-body-text { font-size: 0.9rem; color: #666; line-height: 1.5; padding-right: 20px; }
+    .addr-change-text { margin-top: 10px; font-size: 0.85rem; color: var(--primary); font-weight: 600; text-align: right; }
+    .addr-empty-state { text-align: center; padding: 15px; color: #888; font-size: 0.9rem; }
+
+    /* CSS Shipping Option Card (Baru) */
+    .shipping-option-card {
+        border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 15px; background: #fff; cursor: pointer; transition: 0.2s;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .shipping-option-card:hover { background: #f9f9f9; }
+    .shipping-option-card.active { border-color: var(--primary); background: #fffdf0; }
+    .ship-info { display: flex; flex-direction: column; gap: 3px; }
+    .ship-name { font-weight: bold; color: #333; font-size: 0.95rem; }
+    .ship-price { color: #666; font-size: 0.9rem; }
+
+    /* CSS Payment Dropdown */
+    .payment-category { border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: #fff; transition: 0.3s; }
+    .payment-category.active { border-color: var(--primary); background: #fffdf0; }
+    .payment-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; cursor: pointer; }
+    .ph-left { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #333; }
+    .payment-options-list { display: none; background: #fafafa; border-top: 1px solid #eee; }
+    .payment-options-list.show { display: block; animation: slideDown 0.3s ease; }
+    .sub-option { padding: 10px 15px 10px 45px; cursor: pointer; color: #555; font-size: 0.9rem; display: flex; align-items: center; }
+    .sub-option:hover { background: #eee; color: #000; }
+    .sub-option.selected { color: var(--primary); font-weight: bold; background: #fff; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
