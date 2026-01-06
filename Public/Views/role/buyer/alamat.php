@@ -145,12 +145,6 @@ while($row = mysqli_fetch_assoc($q_addr)) {
     <title>Pengaturan Alamat - Ecoswap</title>
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/alamat.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .custom-label-input { margin-top: 10px; display: none; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        /* Style agar card terlihat bisa diklik */
-        .address-card { cursor: pointer; } 
-    </style>
 </head>
 
 <body>
@@ -347,12 +341,8 @@ while($row = mysqli_fetch_assoc($q_addr)) {
     <script>
         const goToDashboard = () => window.location.href = 'dashboard.php';
 
-        // --- FUNGSI SET ALAMAT UTAMA (BARU) ---
         function setPrimaryAddress(id, currentStatus) {
-            // Jika sudah primary (1), tidak perlu refresh atau update
             if (currentStatus == 1) return;
-
-            // Langsung update ke server
             window.location.href = `alamat.php?action=set_primary&id=${id}`;
         }
 
@@ -412,9 +402,7 @@ while($row = mysqli_fetch_assoc($q_addr)) {
         }
 
         function editAlamat(event, data) {
-            // PENTING: stopPropagation mencegah event onclick parent (setPrimaryAddress) terpanggil
             event.stopPropagation();
-
             formAction.value = 'edit';
             addressId.value = data.address_id;
             inputName.value = data.recipient_name;
@@ -437,13 +425,11 @@ while($row = mysqli_fetch_assoc($q_addr)) {
                     break; 
                 }
             }
-
             if (!isStandard) {
                 const lainnyaRadio = document.querySelector('input[value="Lainnya"]');
                 if(lainnyaRadio) lainnyaRadio.checked = true;
                 customLabelInput.value = data.label;
             }
-
             toggleCustomLabel();
 
             modalTitle.textContent = "Ubah Alamat";
