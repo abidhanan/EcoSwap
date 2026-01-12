@@ -6,7 +6,7 @@ include '../../../Auth/koneksi.php';
 if (!isset($_SESSION['user_id'])) { header("Location: ../../auth/login.php"); exit(); }
 $user_id = $_SESSION['user_id'];
 
-// --- AJAX HANDLER: CREATE ORDER ---
+// --- AJAX HANDLER: CREATE ORDER (TERHUBUNG KE DATABASE) ---
 if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     header('Content-Type: application/json');
     
@@ -16,46 +16,68 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     $payment_method = $_POST['payment_method'];
     $items = json_decode($_POST['items'], true); 
     
-    // Ambil detail alamat snapshot
+    // 1. Ambil Detail Alamat Lengkap (Snapshot agar data tidak berubah jika user edit alamat nanti)
     $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE address_id='$address_id'");
     $d_addr = mysqli_fetch_assoc($q_addr);
     
-    // Fallback jika alamat dihapus saat checkout
     if(!$d_addr) {
-        echo json_encode(['status' => 'error', 'message' => 'Alamat tidak valid/ditemukan']);
+        echo json_encode(['status' => 'error', 'message' => 'Alamat tidak ditemukan.']);
         exit;
     }
 
+    // Format alamat snapshot yang akan disimpan di tabel orders
     $full_address_snapshot = $d_addr['full_address'] . ", " . $d_addr['village'] . ", " . $d_addr['subdistrict'] . ", " . $d_addr['city'] . " " . $d_addr['postal_code'] . " (" . $d_addr['recipient_name'] . " - " . $d_addr['phone_number'] . ")";
 
-    $invoice_code = "INV/" . date('Ymd') . "/" . strtoupper(substr(md5(time()), 0, 6));
+    // Buat Kode Invoice Unik
+    $invoice_code = "INV/" . date('Ymd') . "/" . strtoupper(substr(md5(time() . rand()), 0, 6));
     $success_count = 0;
 
     foreach ($items as $item) {
-        $prod_id = $item['id'];
-        $shop_id = $item['shop_id'];
-        $price = $item['price'];
+        $prod_id = $item['id'];      // Product ID
+        $shop_id = $item['shop_id']; // Shop ID
+        $price = $item['price'];     // Harga Produk
+        
+        // Total Price = Harga Produk (Ongkir + Admin dianggap dibayar terpisah/info saja di sini untuk simplifikasi)
+        // Atau jika ingin total semua masuk ke DB, sesuaikan logika bisnis. 
+        // Di sini kita simpan Harga Produk sebagai total_price per item order.
         $final_price = $price; 
 
-        $shipping_info = $shipping_method . " (Rp " . number_format($shipping_cost,0,',','.') . ")";
-        
-        // Simpan info pembayaran di shipping_info atau buat kolom baru (disini digabung agar simpel)
-        $full_shipping_info = $shipping_info . " | " . $payment_method;
+        // Gabungkan Info Pengiriman & Pembayaran ke kolom shipping_method (Format: "JNE (Rp 15.000) | Dana")
+        $shipping_info_str = $shipping_method . " (Rp " . number_format($shipping_cost,0,',','.') . ")";
+        $full_shipping_payment_info = $shipping_info_str . " | " . $payment_method;
 
-        $query_order = "INSERT INTO orders (invoice_code, buyer_id, shop_id, product_id, address_id, total_price, shipping_method, shipping_address, status, created_at) 
-                        VALUES ('$invoice_code', '$user_id', '$shop_id', '$prod_id', '$address_id', '$final_price', '$full_shipping_info', '$full_address_snapshot', 'pending', NOW())";
+        // 2. INSERT KE TABEL ORDERS
+        // Kolom 'shipping_address' diisi snapshot alamat
+        // Kolom 'shipping_method' diisi info kurir + pembayaran
+        $query_order = "INSERT INTO orders (invoice_code, buyer_id, shop_id, product_id, address_id, total_price, shipping_method, shipping_address, status, tracking_number, created_at) 
+                        VALUES ('$invoice_code', '$user_id', '$shop_id', '$prod_id', '$address_id', '$final_price', '$full_shipping_payment_info', '$full_address_snapshot', 'pending', '', NOW())";
         
         if (mysqli_query($koneksi, $query_order)) {
             $success_count++;
-            if (isset($item['cart_id'])) {
+            
+            // 3. HAPUS DARI KERANJANG (Jika item berasal dari cart)
+            if (isset($item['cart_id']) && !empty($item['cart_id'])) {
                 $cid = $item['cart_id'];
                 mysqli_query($koneksi, "DELETE FROM cart WHERE cart_id='$cid'");
+            }
+
+            // 4. NOTIFIKASI KE SELLER (Opsional, agar Seller tahu ada order baru)
+            // Cari user_id pemilik toko
+            $q_shop_owner = mysqli_query($koneksi, "SELECT user_id FROM shops WHERE shop_id='$shop_id'");
+            $d_shop_owner = mysqli_fetch_assoc($q_shop_owner);
+            if($d_shop_owner) {
+                $seller_uid = $d_shop_owner['user_id'];
+                $notif_msg = "Pesanan baru #$invoice_code telah masuk. Segera proses pesanan.";
+                mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('$seller_uid', 'Pesanan Baru', '$notif_msg', 0, NOW())");
             }
         }
     }
 
-    if ($success_count > 0) echo json_encode(['status' => 'success']);
-    else echo json_encode(['status' => 'error', 'message' => 'Gagal membuat pesanan']);
+    if ($success_count > 0) {
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan pesanan ke database.']);
+    }
     exit;
 }
 
@@ -78,7 +100,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') {
     exit;
 }
 
-// --- AJAX HANDLERS LAINNYA (Standard) ---
+// --- AJAX HANDLERS LAINNYA ---
 if (isset($_POST['action']) && $_POST['action'] == 'toggle_follow') {
     header('Content-Type: application/json'); $target_shop_id = $_POST['shop_id'];
     $check = mysqli_query($koneksi, "SELECT * FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'");
