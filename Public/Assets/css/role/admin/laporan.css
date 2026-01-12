@@ -1,0 +1,446 @@
+/* --- 1. IMPORT FONT & VARIABLES --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --primary: #ffd700;       /* Emas (Brand Identity) */
+    --primary-hover: #e6c200;
+    --dark: #1e1e1e;          /* Sidebar/Text Utama */
+    --light: #ffffff;         /* Card/Background Putih */
+    --bg-body: #f4f6f9;       /* Background Halaman */
+    --gray: #888888;          /* Text Secondary */
+    --gray-light: #e9ecef;    /* Border/Background Hover */
+    --border: #dee2e6;
+    
+    /* Semantic Colors (Status & Alerts) */
+    --danger: #ff4757;        /* Merah (Rejected/Failed) */
+    --success: #2ecc71;       /* Hijau (Resolved/Success) */
+    --info: #3498db;          /* Biru (Total/Shipping) */
+    --warning: #f1c40f;       /* Kuning (Pending/Warning) */
+
+    /* Effects */
+    --shadow: 0 4px 6px rgba(0,0,0,0.02), 0 10px 15px rgba(0,0,0,0.03);
+    --modal-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    --card-radius: 12px;
+    --btn-radius: 8px;
+    --transition: all 0.3s ease;
+    --sidebar-width: 260px;
+}
+
+/* --- 2. RESET & GLOBAL --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
+    list-style: none;
+    outline: none;
+}
+
+body {
+    background-color: var(--bg-body);
+    display: flex;
+    min-height: 100vh;
+    color: var(--dark);
+}
+
+/* --- 3. SIDEBAR (Kiri) --- */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--dark);
+    color: var(--light);
+    position: fixed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: var(--transition);
+    border-right: 1px solid #333;
+}
+
+.sidebar-header {
+    padding: 2rem 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--light);
+}
+
+.logo i { color: var(--primary); margin-right: 8px; }
+.logo span { color: var(--gray); }
+
+.nav-links {
+    flex: 1;
+    padding: 0 1rem;
+    margin-top: 1rem;
+}
+
+.nav-links li { margin-bottom: 0.5rem; }
+
+.nav-links a {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    color: var(--gray);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-links a i {
+    width: 24px;
+    margin-right: 12px;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.nav-links li:hover a {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--light);
+}
+
+.nav-links li.active a {
+    background-color: rgba(255, 215, 0, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.nav-links li.active a i { color: var(--primary); }
+
+.sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #333;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--danger);
+    font-weight: 600;
+    padding: 10px;
+    border-radius: var(--btn-radius);
+    background: rgba(255, 71, 87, 0.1);
+    transition: var(--transition);
+}
+
+.logout-btn:hover { background: rgba(255, 71, 87, 0.2); }
+
+/* --- 4. MAIN CONTENT (Kanan) --- */
+.main-content {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    padding: 2rem;
+    width: calc(100% - var(--sidebar-width));
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.welcome-text h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; color: var(--dark); }
+.welcome-text p { color: var(--gray); font-size: 0.9rem; }
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    background: var(--light);
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.profile-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+}
+
+/* --- 5. COMPONENT: KPI CARDS (Support Page) --- */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-card {
+    background: var(--light);
+    padding: 1.5rem;
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.kpi-card:hover { transform: translateY(-5px); border-color: var(--primary); }
+
+.kpi-icon {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.kpi-card h3 { font-size: 1.6rem; font-weight: 700; color: var(--dark); line-height: 1; margin-bottom: 4px; }
+.kpi-card p { color: var(--gray); font-size: 0.85rem; font-weight: 500; }
+
+/* KPI Background Colors */
+.bg-warn { background: rgba(241, 196, 15, 0.15); color: #f39c12; }
+.bg-success { background: rgba(46, 204, 113, 0.15); color: var(--success); }
+.bg-primary { background: rgba(52, 152, 219, 0.15); color: var(--info); }
+
+/* --- 6. COMPONENT: FILTER BAR --- */
+.filter-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.filter-select {
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    background: var(--light);
+    font-weight: 500;
+    color: var(--dark);
+    transition: var(--transition);
+    min-width: 200px;
+}
+
+.filter-select:hover { border-color: var(--gray); }
+.filter-select:focus { border-color: var(--primary); }
+
+/* --- 7. TABLE STYLES --- */
+.card-panel {
+    background: var(--light);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+}
+
+.data-table, .product-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.data-table th {
+    text-align: left;
+    padding: 16px;
+    color: var(--gray);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.data-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray-light);
+    vertical-align: middle;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.data-table tr:hover td { background-color: #fafafa; }
+.data-table tr:last-child td { border-bottom: none; }
+
+/* Reason Text Truncation */
+.reason-text {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    vertical-align: middle;
+    cursor: help;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-warning { background: rgba(241, 196, 15, 0.15); color: #b7950b; }
+.status-success { background: rgba(46, 204, 113, 0.15); color: var(--success); }
+.status-danger  { background: rgba(231, 76, 60, 0.15); color: var(--danger); }
+
+/* Action Buttons */
+.btn-action {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-view { background: var(--gray-light); color: var(--dark); }
+.btn-view:hover { background: #dcdcdc; }
+
+/* --- 8. MODAL & EVIDENCE STYLES --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 30, 30, 0.65);
+    backdrop-filter: blur(5px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.open { display: flex; opacity: 1; }
+
+.modal-box {
+    background: var(--light);
+    width: 700px;
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: var(--modal-shadow);
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-overlay.open .modal-box { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.modal-header h3 { font-size: 1.3rem; font-weight: 700; color: var(--dark); }
+.modal-header i { font-size: 1.2rem; cursor: pointer; color: var(--gray); transition: 0.2s; }
+.modal-header i:hover { color: var(--danger); transform: rotate(90deg); }
+
+/* Modal Grid Layout */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr; /* Foto Kiri, Data Kanan */
+    gap: 2rem;
+}
+
+/* Evidence Image */
+.evidence-img-container {
+    width: 100%;
+    height: 250px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px dashed var(--gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.evidence-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
+    transition: transform 0.3s;
+}
+
+.evidence-img:hover { transform: scale(1.05); }
+
+.no-evidence {
+    color: var(--gray);
+    font-style: italic;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Modal Buttons */
+.btn-verify, .btn-reject {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: var(--btn-radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.btn-verify {
+    background: var(--success);
+    color: white;
+}
+.btn-verify:hover { background: #27ae60; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3); }
+
+.btn-reject {
+    background: var(--danger);
+    color: white;
+}
+.btn-reject:hover { background: #c0392b; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3); }
+
+/* Disabled State */
+button:disabled {
+    background: #ccc !important;
+    color: #666 !important;
+    box-shadow: none !important;
+}
+
+/* --- 9. RESPONSIVE --- */
+@media (max-width: 768px) {
+    .sidebar { width: 70px; }
+    .sidebar .logo span, .nav-links span, .logout-btn { display: none; }
+    .sidebar-header { justify-content: center; }
+    .nav-links a { justify-content: center; }
+    .nav-links a i { margin: 0; }
+    
+    .main-content { margin-left: 70px; width: calc(100% - 70px); padding: 1.5rem; }
+    
+    .detail-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+    .evidence-img-container { height: 200px; }
+    .modal-box { width: 90%; padding: 1.5rem; }
+    
+    .table-responsive { overflow-x: auto; }
+}

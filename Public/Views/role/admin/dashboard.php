@@ -5,7 +5,7 @@ include '../../../Auth/koneksi.php';
 
 // Cek Login Admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../../../auth/login.php");
+    header("Location: ../../../Auth/login.php");
     exit();
 }
 
@@ -81,29 +81,29 @@ $q_recent = mysqli_query($koneksi, "
                 <a href="dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
             </li>
             <li>
-                <a href="../produk&stok/produk&stok.php">
+                <a href="produk.php">
                     <i class="fas fa-box"></i> <span>Verifikasi Produk</span>
                     <?php if($pending_products > 0): ?><span class="badge-count"><?php echo $pending_products; ?></span><?php endif; ?>
                 </a>
             </li>
             <li>
-                <a href="../pengguna/pengguna.php"><i class="fas fa-users"></i> <span>Pengguna</span></a>
+                <a href="pengguna.php"><i class="fas fa-users"></i> <span>Pengguna</span></a>
             </li>
             <li>
-                <a href="../transaksi/transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a>
+                <a href="transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a>
             </li>
             <li>
-                <a href="../support/support.php">
+                <a href="laporan.php">
                     <i class="fas fa-headset"></i> <span>Laporan</span>
                     <?php if($active_reports > 0): ?><span class="badge-count danger"><?php echo $active_reports; ?></span><?php endif; ?>
                 </a>
             </li>
             <li>
-                <a href="../pengaturan/pengaturan.php"><i class="fas fa-cog"></i> <span>Pengaturan</span></a>
+                <a href="pengaturan.php"><i class="fas fa-cog"></i> <span>Pengaturan</span></a>
             </li>
         </ul>
         <div class="sidebar-footer">
-            <a href="../../../../auth/logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <a href="../../../Auth/logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </aside>
 

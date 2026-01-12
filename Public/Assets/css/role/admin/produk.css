@@ -1,0 +1,442 @@
+/* --- 1. IMPORT FONT & VARIABLES --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --primary: #ffd700;       /* Emas */
+    --primary-hover: #e6c200;
+    --dark: #1e1e1e;          /* Sidebar/Text Utama */
+    --light: #ffffff;         /* Card/Background Putih */
+    --bg-body: #f5f5f5;       /* Background Halaman */
+    --gray: #888888;          /* Text Secondary */
+    --gray-light: #f0f0f0;    /* Border/Background Hover */
+    --border: #e0e0e0;
+    
+    /* Functional Colors */
+    --danger: #e74c3c;        /* Merah (Delete/Reject) */
+    --success: #2ecc71;       /* Hijau (Verify/Active) */
+    --info: #3498db;          /* Biru */
+
+    /* Effects */
+    --shadow: 0 4px 15px rgba(0,0,0,0.05);
+    --modal-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    --card-radius: 12px;
+    --btn-radius: 8px;
+    --transition: all 0.3s ease;
+    --sidebar-width: 260px;
+}
+
+/* --- 2. RESET & GLOBAL --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
+    list-style: none;
+    outline: none;
+}
+
+body {
+    background-color: var(--bg-body);
+    display: flex;
+    min-height: 100vh;
+    color: var(--dark);
+}
+
+/* --- 3. SIDEBAR (Kiri) --- */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--dark);
+    color: var(--light);
+    position: fixed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: var(--transition);
+}
+
+.sidebar-header {
+    padding: 2rem 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--light);
+}
+
+.logo i { color: var(--primary); margin-right: 8px; }
+.logo span { color: var(--gray); }
+
+.nav-links {
+    flex: 1;
+    padding: 0 1rem;
+    margin-top: 1rem;
+}
+
+.nav-links li { margin-bottom: 0.5rem; }
+
+.nav-links a {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    color: var(--gray);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-links a i {
+    width: 24px;
+    margin-right: 12px;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.nav-links li:hover a {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--light);
+}
+
+.nav-links li.active a {
+    background-color: rgba(255, 215, 0, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.nav-links li.active a i { color: var(--primary); }
+
+.sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #333;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--danger);
+    font-weight: 600;
+    padding: 10px;
+    border-radius: var(--btn-radius);
+    background: rgba(231, 76, 60, 0.1);
+    transition: var(--transition);
+}
+
+.logout-btn:hover { background: rgba(231, 76, 60, 0.2); }
+
+/* --- 4. MAIN CONTENT (Kanan) --- */
+.main-content {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    padding: 2rem;
+    width: calc(100% - var(--sidebar-width));
+}
+
+/* Topbar */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.welcome-text h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+.welcome-text p { color: var(--gray); font-size: 0.9rem; }
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    background: var(--light);
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.profile-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+}
+
+/* --- 5. CARD & TABS (Produk Styles) --- */
+.card-panel {
+    background: var(--light);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    min-height: 500px; /* Agar layout tidak loncat saat kosong */
+}
+
+/* Tabs Container - Modern Style */
+.tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    color: var(--gray);
+    cursor: pointer;
+    font-weight: 600;
+    position: relative;
+    transition: var(--transition);
+    border-radius: var(--btn-radius);
+}
+
+.tab-btn:hover {
+    color: var(--dark);
+    background: var(--gray-light);
+}
+
+/* Active Tab Style (Pill Shape or Underline) */
+.tab-btn.active {
+    color: var(--dark);
+    background: rgba(255, 215, 0, 0.2); /* Soft Gold Background */
+    color: #bfa100; /* Darker Gold Text */
+}
+
+/* Content Animation */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+.tab-content.active { display: block; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 6. TABLE STYLES (Symmetrical & Clean) --- */
+.product-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.product-table th {
+    text-align: left;
+    padding: 16px;
+    color: var(--gray);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.product-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray-light);
+    vertical-align: middle;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.product-table tr:hover td {
+    background-color: #fafafa; /* Highlight row saat hover */
+}
+
+.product-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Product Info inside Table */
+.img-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.product-name {
+    font-weight: 600;
+    color: var(--dark);
+    line-height: 1.2;
+}
+
+.product-table small {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.75rem;
+    color: var(--gray);
+}
+
+/* Action Buttons inside Table */
+.btn-action {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-view {
+    background: var(--gray-light);
+    color: var(--dark);
+}
+
+.btn-view:hover {
+    background: #dcdcdc;
+}
+
+.btn-delete {
+    background: rgba(231, 76, 60, 0.1);
+    color: var(--danger);
+}
+
+.btn-delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* --- 7. MODAL STYLES (Unique & Center) --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 30, 30, 0.6); /* Darker backdrop */
+    backdrop-filter: blur(4px); /* Efek Blur modern */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.open {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-box {
+    background: var(--light);
+    width: 450px;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--modal-shadow);
+    transform: scale(0.8);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy effect */
+}
+
+.modal-overlay.open .modal-box {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 { font-size: 1.2rem; font-weight: 700; }
+.modal-header i { font-size: 1.2rem; color: var(--gray); transition: 0.2s; }
+.modal-header i:hover { color: var(--danger); transform: rotate(90deg); }
+
+.modal-body img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.modal-body h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+/* Info Bar in Modal */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-weight: 600;
+}
+
+#mPrice { color: var(--dark); font-size: 1.1rem; }
+#mCondition { 
+    background: var(--gray-light); 
+    padding: 4px 10px; 
+    border-radius: 4px; 
+    font-size: 0.8rem; 
+    text-transform: capitalize;
+}
+
+/* Modal Actions */
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 1.5rem;
+}
+
+.btn-verify, .btn-reject {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+
+.btn-verify {
+    background: var(--success);
+    color: white;
+}
+
+.btn-verify:hover { background: #27ae60; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3); }
+
+.btn-reject {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-reject:hover { background: #c0392b; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3); }
+
+/* --- 8. RESPONSIVE --- */
+@media (max-width: 768px) {
+    .sidebar { width: 70px; }
+    .sidebar .logo span, .nav-links span, .logout-btn { display: none; }
+    .sidebar-header { justify-content: center; padding: 1.5rem 0; }
+    .nav-links a { justify-content: center; }
+    .nav-links a i { margin: 0; }
+    
+    .main-content { margin-left: 70px; width: calc(100% - 70px); padding: 1.5rem; }
+    .modal-box { width: 90%; margin: 0 20px; }
+}

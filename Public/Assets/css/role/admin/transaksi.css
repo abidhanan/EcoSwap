@@ -1,0 +1,440 @@
+/* --- 1. IMPORT FONT & VARIABLES --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --primary: #ffd700;       /* Emas (Brand Identity) */
+    --primary-hover: #e6c200;
+    --dark: #1e1e1e;          /* Sidebar/Text Utama */
+    --light: #ffffff;         /* Card/Background Putih */
+    --bg-body: #f4f6f9;       /* Background Halaman (Sedikit abu kebiruan agar fresh) */
+    --gray: #888888;          /* Text Secondary */
+    --gray-light: #e9ecef;    /* Border/Background Hover */
+    --border: #dee2e6;
+    
+    /* Semantic Colors (Status) */
+    --danger: #ff4757;        /* Merah (Cancelled/Reject) */
+    --success: #2ecc71;       /* Hijau (Completed/Active) */
+    --info: #3498db;          /* Biru (Shipping) */
+    --warning: #f1c40f;       /* Kuning (Pending/Processed) */
+    --teal: #1abc9c;          /* Cyan (Delivered) */
+
+    /* Effects */
+    --shadow: 0 4px 6px rgba(0,0,0,0.02), 0 10px 15px rgba(0,0,0,0.03);
+    --modal-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    --card-radius: 12px;
+    --btn-radius: 8px;
+    --transition: all 0.3s ease;
+    --sidebar-width: 260px;
+}
+
+/* --- 2. RESET & GLOBAL --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
+    list-style: none;
+    outline: none;
+}
+
+body {
+    background-color: var(--bg-body);
+    display: flex;
+    min-height: 100vh;
+    color: var(--dark);
+}
+
+/* --- 3. SIDEBAR (Kiri) --- */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--dark);
+    color: var(--light);
+    position: fixed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: var(--transition);
+    border-right: 1px solid #333;
+}
+
+.sidebar-header {
+    padding: 2rem 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--light);
+}
+
+.logo i { color: var(--primary); margin-right: 8px; }
+.logo span { color: var(--gray); }
+
+.nav-links {
+    flex: 1;
+    padding: 0 1rem;
+    margin-top: 1rem;
+}
+
+.nav-links li { margin-bottom: 0.5rem; }
+
+.nav-links a {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    color: var(--gray);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-links a i {
+    width: 24px;
+    margin-right: 12px;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.nav-links li:hover a {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--light);
+}
+
+.nav-links li.active a {
+    background-color: rgba(255, 215, 0, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.nav-links li.active a i { color: var(--primary); }
+
+.sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #333;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--danger);
+    font-weight: 600;
+    padding: 10px;
+    border-radius: var(--btn-radius);
+    background: rgba(255, 71, 87, 0.1);
+    transition: var(--transition);
+}
+
+.logout-btn:hover { background: rgba(255, 71, 87, 0.2); }
+
+/* --- 4. MAIN CONTENT (Kanan) --- */
+.main-content {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    padding: 2rem;
+    width: calc(100% - var(--sidebar-width));
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.welcome-text h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; color: var(--dark); }
+.welcome-text p { color: var(--gray); font-size: 0.9rem; }
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    background: var(--light);
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.profile-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+}
+
+/* --- 5. COMPONENT: FILTER BAR (Untuk Transaksi) --- */
+.filter-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    background: var(--light);
+    padding: 1.2rem;
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background: var(--bg-body);
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+    background: var(--light);
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+.filter-select {
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    background: var(--light);
+    font-weight: 500;
+    color: var(--dark);
+    transition: var(--transition);
+}
+
+.filter-select:hover { border-color: var(--gray); }
+.filter-select:focus { border-color: var(--primary); }
+
+/* --- 6. CARD & TABLE STYLES --- */
+.card-panel {
+    background: var(--light);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+}
+
+.user-header, .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--gray-light);
+    padding-bottom: 15px;
+}
+
+.user-header h3, .card-header h3, .transaction-list-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* Table General */
+.transaction-table, .product-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.transaction-table th, .product-table th {
+    text-align: left;
+    padding: 16px;
+    color: var(--gray);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.transaction-table td, .product-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray-light);
+    vertical-align: middle;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.transaction-table tr:hover td { background-color: #fafafa; }
+.transaction-table tr:last-child td { border-bottom: none; }
+
+/* Status Badges (Unified) */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+/* Badge Variants */
+.status-processed { background: rgba(241, 196, 15, 0.15); color: #b7950b; } /* Kuning Gelap */
+.status-shipping  { background: rgba(52, 152, 219, 0.15); color: var(--info); }
+.status-delivered { background: rgba(26, 188, 156, 0.15); color: var(--teal); }
+.status-completed { background: rgba(46, 204, 113, 0.15); color: var(--success); }
+.status-reviewed  { background: rgba(46, 204, 113, 0.15); color: var(--success); }
+.status-cancelled { background: rgba(231, 76, 60, 0.15); color: var(--danger); }
+.status-pending   { background: var(--gray-light); color: var(--gray); }
+
+/* Buttons inside Table */
+.btn-action {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-view { background: var(--gray-light); color: var(--dark); }
+.btn-view:hover { background: #dcdcdc; }
+
+/* --- 7. MODAL STYLES (Advanced) --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 30, 30, 0.65);
+    backdrop-filter: blur(5px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.open { display: flex; opacity: 1; }
+
+.modal-box {
+    background: var(--light);
+    width: 600px; /* Lebar modal lebih besar untuk detail transaksi */
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: var(--modal-shadow);
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-overlay.open .modal-box { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.modal-header h3 { font-size: 1.3rem; font-weight: 700; color: var(--dark); }
+.modal-header i { font-size: 1.2rem; cursor: pointer; color: var(--gray); transition: 0.2s; }
+.modal-header i:hover { color: var(--danger); transform: rotate(90deg); }
+
+/* Modal Grid Layout */
+.modal-body-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr; /* Kolom Kiri: Foto, Kanan: Info */
+    gap: 2rem;
+}
+
+.modal-img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+/* Detail Items inside Modal */
+.detail-info-column h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--dark);
+    line-height: 1.4;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+}
+
+.detail-item:last-child { border-bottom: none; }
+
+.detail-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--gray);
+}
+
+.detail-val {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dark);
+    text-align: right;
+}
+
+/* Resi Box (Tampilan Khusus) */
+.resi-box {
+    background: #f8f9fa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace; /* Monospace agar seperti kode */
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    color: var(--dark);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.modal-actions { margin-top: 2rem; }
+.btn-verify {
+    width: 100%;
+    padding: 12px;
+    background: var(--dark);
+    color: var(--primary);
+    border: none;
+    border-radius: var(--btn-radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-verify:hover { background: #333; }
+
+/* --- 8. RESPONSIVE --- */
+@media (max-width: 768px) {
+    .sidebar { width: 70px; }
+    .sidebar .logo span, .nav-links span, .logout-btn { display: none; }
+    .sidebar-header { justify-content: center; }
+    .nav-links a { justify-content: center; }
+    .nav-links a i { margin: 0; }
+    
+    .main-content { margin-left: 70px; width: calc(100% - 70px); padding: 1.5rem; }
+    
+    /* Responsive Modal & Filter */
+    .filter-controls { flex-direction: column; align-items: stretch; gap: 10px; }
+    .modal-box { width: 90%; padding: 1.5rem; }
+    .modal-body-grid { grid-template-columns: 1fr; gap: 1rem; } /* Stack ke bawah */
+    .modal-img { height: 180px; }
+    .table-responsive { overflow-x: auto; }
+}

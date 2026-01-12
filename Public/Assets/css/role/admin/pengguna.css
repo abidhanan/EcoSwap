@@ -1,0 +1,395 @@
+/* --- 1. IMPORT FONT & VARIABLES --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --primary: #ffd700;       /* Emas (Brand Color) */
+    --primary-hover: #e6c200;
+    --dark: #1e1e1e;          /* Sidebar/Text Utama */
+    --light: #ffffff;         /* Card/Background Putih */
+    --bg-body: #f5f5f5;       /* Background Halaman */
+    --gray: #888888;          /* Text Secondary */
+    --gray-light: #f0f0f0;    /* Border/Background Hover */
+    --border: #e0e0e0;
+    
+    /* Functional Colors */
+    --danger: #ff4757;        /* Merah Soft */
+    --success: #2ecc71;       /* Hijau */
+    --info: #3498db;          /* Biru */
+    --warning: #ffa502;       /* Oranye */
+
+    /* Effects */
+    --shadow: 0 4px 15px rgba(0,0,0,0.05);
+    --modal-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    --card-radius: 12px;
+    --btn-radius: 8px;
+    --transition: all 0.3s ease;
+    --sidebar-width: 260px;
+}
+
+/* --- 2. RESET & GLOBAL --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
+    list-style: none;
+    outline: none;
+}
+
+body {
+    background-color: var(--bg-body);
+    display: flex;
+    min-height: 100vh;
+    color: var(--dark);
+}
+
+/* --- 3. SIDEBAR (Kiri) --- */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--dark);
+    color: var(--light);
+    position: fixed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: var(--transition);
+}
+
+.sidebar-header {
+    padding: 2rem 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--light);
+}
+
+.logo i { color: var(--primary); margin-right: 8px; }
+.logo span { color: var(--gray); }
+
+.nav-links {
+    flex: 1;
+    padding: 0 1rem;
+    margin-top: 1rem;
+}
+
+.nav-links li { margin-bottom: 0.5rem; }
+
+.nav-links a {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    color: var(--gray);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-links a i {
+    width: 24px;
+    margin-right: 12px;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.nav-links li:hover a {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--light);
+}
+
+.nav-links li.active a {
+    background-color: rgba(255, 215, 0, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.nav-links li.active a i { color: var(--primary); }
+
+.sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #333;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--danger);
+    font-weight: 600;
+    padding: 10px;
+    border-radius: var(--btn-radius);
+    background: rgba(255, 71, 87, 0.1);
+    transition: var(--transition);
+}
+
+.logout-btn:hover { background: rgba(255, 71, 87, 0.2); }
+
+/* --- 4. MAIN CONTENT (Kanan) --- */
+.main-content {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    padding: 2rem;
+    width: calc(100% - var(--sidebar-width));
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.welcome-text h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+.welcome-text p { color: var(--gray); font-size: 0.9rem; }
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    background: var(--light);
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.profile-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+}
+
+/* --- 5. CARD & CONTENT STYLES --- */
+.card-panel {
+    background: var(--light);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+}
+
+/* Header di dalam Card (Contoh: "Daftar Admin" + Tombol) */
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--gray-light);
+    padding-bottom: 15px;
+}
+
+.user-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* Button: Add Admin */
+.btn-add-admin {
+    background-color: var(--dark);
+    color: var(--primary);
+    padding: 10px 20px;
+    border-radius: var(--btn-radius);
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.btn-add-admin:hover {
+    background-color: transparent;
+    color: var(--dark);
+}
+
+/* --- 6. TABLE STYLES --- */
+.product-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.product-table th {
+    text-align: left;
+    padding: 16px;
+    color: var(--gray);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.product-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray-light);
+    vertical-align: middle;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.product-table tr:hover td { background-color: #fafafa; }
+.product-table tr:last-child td { border-bottom: none; }
+
+/* User Info Cell */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+/* Role Badges */
+.role-badge {
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-admin { background: rgba(30, 30, 30, 0.1); color: var(--dark); border: 1px solid var(--dark); }
+.role-seller { background: rgba(255, 215, 0, 0.15); color: #bfa100; border: 1px solid rgba(255, 215, 0, 0.3); }
+.role-buyer { background: rgba(46, 204, 113, 0.1); color: var(--success); border: 1px solid rgba(46, 204, 113, 0.2); }
+
+/* Buttons inside Table */
+.btn-action {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    margin-right: 5px;
+}
+
+.btn-view { background: var(--gray-light); color: var(--dark); font-weight: 500; }
+.btn-view:hover { background: #dcdcdc; }
+
+.btn-delete { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
+.btn-delete:hover { background: var(--danger); color: white; }
+
+/* --- 7. MODAL & FORM STYLES --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(5px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.open { display: flex; opacity: 1; }
+
+.modal-box {
+    background: var(--light);
+    width: 450px;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--modal-shadow);
+    transform: scale(0.8);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-overlay.open .modal-box { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 { font-size: 1.2rem; font-weight: 700; color: var(--dark); }
+.modal-header i { cursor: pointer; color: var(--gray); transition: 0.2s; font-size: 1.2rem; }
+.modal-header i:hover { color: var(--danger); }
+
+/* Form Elements */
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark); font-size: 0.9rem; }
+.form-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background: #fafafa;
+}
+
+.form-input:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+/* Detail User Row */
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--border);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label { color: var(--gray); font-size: 0.9rem; }
+.detail-value { font-weight: 600; color: var(--dark); font-size: 0.95rem; }
+
+/* Modal Actions */
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 1.5rem;
+}
+
+.btn-verify {
+    flex: 1;
+    background: var(--primary);
+    color: var(--dark);
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+.btn-verify:hover { background: var(--primary-hover); }
+
+/* --- 8. RESPONSIVE --- */
+@media (max-width: 768px) {
+    .sidebar { width: 70px; }
+    .sidebar .logo span, .nav-links span, .logout-btn { display: none; }
+    .sidebar-header { justify-content: center; }
+    .nav-links a { justify-content: center; }
+    .nav-links a i { margin: 0; }
+    
+    .main-content { margin-left: 70px; width: calc(100% - 70px); padding: 1.5rem; }
+    .modal-box { width: 90%; }
+    
+    .table-responsive { overflow-x: auto; } /* Opsional jika tabel terlalu lebar */
+}
