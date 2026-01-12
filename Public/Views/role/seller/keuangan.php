@@ -1,14 +1,9 @@
 <?php
 session_start();
-
-// Koneksi Database
 include '../../../Auth/koneksi.php';
 
 // Cek Login
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../../auth/login.php");
-    exit();
-}
+if (!isset($_SESSION['user_id'])) { header("Location: ../../auth/login.php"); exit(); }
 $user_id = $_SESSION['user_id'];
 
 // Cek Toko & Ambil Data
@@ -51,7 +46,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'withdraw') {
         mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
                                 VALUES ('$shop_id', 'out', '$amount', '$desc', NOW())");
         
-        // Catat Biaya Admin (Opsional, agar transparan)
+        // Catat Biaya Admin (Agar transparan)
         $desc_fee = "Biaya Admin Penarikan";
         mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
                                 VALUES ('$shop_id', 'out', '$withdraw_fee', '$desc_fee', NOW())");

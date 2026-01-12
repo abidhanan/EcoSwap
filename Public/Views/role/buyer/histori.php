@@ -17,14 +17,14 @@ $user_id = $_SESSION['user_id'];
 if (isset($_POST['action']) && $_POST['action'] == 'confirm_received') {
     $oid = $_POST['order_id'];
     
-    // Ambil Data Pesanan (Total Harga & Toko Terkait)
-    $q_ord = mysqli_query($koneksi, "SELECT o.invoice_code, o.shop_id, o.total_price, s.user_id as seller_id 
+    // Ambil Data Pesanan Lengkap
+    $q_ord = mysqli_query($koneksi, "SELECT o.invoice_code, o.shop_id, o.total_price, o.shipping_method, s.user_id as seller_id 
                                      FROM orders o JOIN shops s ON o.shop_id = s.shop_id 
                                      WHERE o.order_id='$oid'");
     $d_ord = mysqli_fetch_assoc($q_ord);
 
     if ($d_ord) {
-        // Mulai Transaksi Database (Opsional untuk keamanan data)
+        // Mulai Transaksi Database
         mysqli_begin_transaction($koneksi);
 
         try {
@@ -32,19 +32,31 @@ if (isset($_POST['action']) && $_POST['action'] == 'confirm_received') {
             mysqli_query($koneksi, "UPDATE orders SET status='completed' WHERE order_id='$oid' AND buyer_id='$user_id'");
             
             // 2. Kirim Notif ke Penjual
-            $msg = "Pesanan #{$d_ord['invoice_code']} telah diterima pembeli. Dana telah diteruskan ke saldo Anda.";
+            $msg = "Pesanan #{$d_ord['invoice_code']} telah diterima pembeli. Dana diteruskan ke saldo Anda.";
             mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('{$d_ord['seller_id']}', 'Pesanan Selesai', '$msg', 0, NOW())");
             
-            // 3. Tambah Saldo Seller (Total Harga - Biaya Admin Rp 1.000)
+            // 3. HITUNG SALDO YANG MASUK KE SELLER
+            // a. Harga Produk (total_price di DB)
+            $product_price = (int)$d_ord['total_price'];
+            
+            // b. Ekstrak Biaya Ongkir dari string "JNE (Rp 15.000) | Dana"
+            $shipping_cost = 0;
+            if (preg_match('/\(Rp ([\d\.]+)\)/', $d_ord['shipping_method'], $matches)) {
+                $shipping_cost = (int)str_replace('.', '', $matches[1]);
+            }
+            
+            // c. Biaya Admin
             $admin_fee = 1000; 
-            $net_income = $d_ord['total_price'] - $admin_fee;
+
+            // d. Total Masuk Saldo = (Produk + Ongkir) - Admin
+            $net_income = ($product_price + $shipping_cost) - $admin_fee;
             
             if ($net_income > 0) {
                 // Update Saldo Toko
                 mysqli_query($koneksi, "UPDATE shops SET balance = balance + $net_income WHERE shop_id='{$d_ord['shop_id']}'");
                 
                 // Catat di Riwayat Transaksi Toko
-                $desc = "Pendapatan dari pesanan #{$d_ord['invoice_code']}";
+                $desc = "Pendapatan #{$d_ord['invoice_code']} (Produk + Ongkir)";
                 mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
                                         VALUES ('{$d_ord['shop_id']}', 'in', '$net_income', '$desc', NOW())");
             }
@@ -177,6 +189,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     ];
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -240,6 +253,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             </ul>
             <div class="sidebar-footer"><a href="../../../../index.php" class="logout-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></div>
         </aside>
+
         <main class="main-content-wrapper">
             <div class="header"><div class="page-title">Histori Aktivitas</div></div>
             <div class="content">
@@ -277,6 +291,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             </div>
         </main>
     </div>
+
     <div id="detailModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header"><div class="modal-title">Detail Transaksi</div><button class="close-modal" onclick="closeModal('detailModal')">&times;</button></div>
@@ -284,45 +299,36 @@ while ($row = mysqli_fetch_assoc($result)) {
             <button class="btn-submit" style="background:#eee; color:#333;" onclick="closeModal('detailModal')">Tutup</button>
         </div>
     </div>
-    <div id="reviewModal" class="modal-overlay">
-        <div class="modal-container">
-            <div class="modal-header"><div class="modal-title">Beri Ulasan</div><button class="close-modal" onclick="closeModal('reviewModal')">&times;</button></div>
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="submit_review"><input type="hidden" name="order_id" id="revOrderId"><input type="hidden" name="product_id" id="revProductId">
-                <div class="form-group" style="text-align:center;"><label class="form-label">Berikan Rating</label><div class="rating-input"><input type="radio" id="star5" name="rating" value="5" required><label for="star5" title="Sempurna"><i class="fas fa-star"></i></label><input type="radio" id="star4" name="rating" value="4"><label for="star4" title="Bagus"><i class="fas fa-star"></i></label><input type="radio" id="star3" name="rating" value="3"><label for="star3" title="Cukup"><i class="fas fa-star"></i></label><input type="radio" id="star2" name="rating" value="2"><label for="star2" title="Buruk"><i class="fas fa-star"></i></label><input type="radio" id="star1" name="rating" value="1"><label for="star1" title="Sangat Buruk"><i class="fas fa-star"></i></label></div></div>
-                <div class="form-group"><label class="form-label">Komentar</label><textarea name="comment" class="form-input" rows="3" placeholder="Bagaimana kualitas produk ini?" required></textarea></div>
-                <div class="form-group"><label class="form-label">Foto Produk (Opsional)</label><div class="file-upload-box" onclick="document.getElementById('reviewPhotoInput').click()"><i class="fas fa-camera" style="font-size:1.2rem; color:#888;"></i><br><span style="font-size:0.85rem; color:#666;">Klik untuk upload foto</span></div><input type="file" id="reviewPhotoInput" name="review_photo" accept="image/*" style="display:none;"></div>
-                <button type="submit" class="btn-submit" style="background:var(--primary); color:#000;">Kirim Ulasan</button>
-            </form>
-        </div>
-    </div>
-    <div id="reportModal" class="modal-overlay">
-        <div class="modal-container">
-            <div class="modal-header"><div class="modal-title" style="color:#dc3545;">Laporkan Penjual</div><button class="close-modal" onclick="closeModal('reportModal')">&times;</button></div>
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="report_seller"><input type="hidden" name="order_id" id="repOrderId"><input type="hidden" name="shop_id" id="repShopId">
-                <div style="background:#fff5f5; border:1px solid #feb2b2; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85rem; color:#c53030;"><i class="fas fa-exclamation-triangle"></i> Laporan palsu dapat menyebabkan akun Anda dibekukan.</div>
-                <div class="form-group"><label class="form-label">Alasan Pelaporan</label><textarea name="reason" class="form-input" rows="4" placeholder="Jelaskan masalah Anda..." required></textarea></div>
-                <div class="form-group"><label class="form-label">Bukti Foto (Wajib)</label><div class="file-upload-box" onclick="document.getElementById('reportProofInput').click()"><i class="fas fa-cloud-upload-alt" style="font-size:1.2rem; color:#888;"></i><br><span style="font-size:0.85rem; color:#666;">Upload bukti foto</span></div><input type="file" id="reportProofInput" name="report_proof" accept="image/*" style="display:none;" required></div>
-                <button type="submit" class="btn-submit" style="background:#dc3545; color:white;">Kirim Laporan</button>
-            </form>
-        </div>
-    </div>
+
+    <div id="reviewModal" class="modal-overlay"><div class="modal-container"><div class="modal-header"><div class="modal-title">Beri Ulasan</div><button class="close-modal" onclick="closeModal('reviewModal')">&times;</button></div><form method="POST" enctype="multipart/form-data"><input type="hidden" name="action" value="submit_review"><input type="hidden" name="order_id" id="revOrderId"><input type="hidden" name="product_id" id="revProductId"><div class="form-group" style="text-align:center;"><label class="form-label">Berikan Rating</label><div class="rating-input"><input type="radio" id="star5" name="rating" value="5" required><label for="star5" title="Sempurna"><i class="fas fa-star"></i></label><input type="radio" id="star4" name="rating" value="4"><label for="star4" title="Bagus"><i class="fas fa-star"></i></label><input type="radio" id="star3" name="rating" value="3"><label for="star3" title="Cukup"><i class="fas fa-star"></i></label><input type="radio" id="star2" name="rating" value="2"><label for="star2" title="Buruk"><i class="fas fa-star"></i></label><input type="radio" id="star1" name="rating" value="1"><label for="star1" title="Sangat Buruk"><i class="fas fa-star"></i></label></div></div><div class="form-group"><label class="form-label">Komentar</label><textarea name="comment" class="form-input" rows="3" placeholder="Bagaimana kualitas produk ini?" required></textarea></div><div class="form-group"><label class="form-label">Foto Produk (Opsional)</label><div class="file-upload-box" onclick="document.getElementById('reviewPhotoInput').click()"><i class="fas fa-camera" style="font-size:1.2rem; color:#888;"></i><br><span style="font-size:0.85rem; color:#666;">Klik untuk upload foto</span></div><input type="file" id="reviewPhotoInput" name="review_photo" accept="image/*" style="display:none;"></div><button type="submit" class="btn-submit" style="background:var(--primary); color:#000;">Kirim Ulasan</button></form></div></div>
+    <div id="reportModal" class="modal-overlay"><div class="modal-container"><div class="modal-header"><div class="modal-title" style="color:#dc3545;">Laporkan Penjual</div><button class="close-modal" onclick="closeModal('reportModal')">&times;</button></div><form method="POST" enctype="multipart/form-data"><input type="hidden" name="action" value="report_seller"><input type="hidden" name="order_id" id="repOrderId"><input type="hidden" name="shop_id" id="repShopId"><div style="background:#fff5f5; border:1px solid #feb2b2; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85rem; color:#c53030;"><i class="fas fa-exclamation-triangle"></i> Laporan palsu dapat menyebabkan akun Anda dibekukan.</div><div class="form-group"><label class="form-label">Alasan Pelaporan</label><textarea name="reason" class="form-input" rows="4" placeholder="Jelaskan masalah Anda..." required></textarea></div><div class="form-group"><label class="form-label">Bukti Foto (Wajib)</label><div class="file-upload-box" onclick="document.getElementById('reportProofInput').click()"><i class="fas fa-cloud-upload-alt" style="font-size:1.2rem; color:#888;"></i><br><span style="font-size:0.85rem; color:#666;">Upload bukti foto</span></div><input type="file" id="reportProofInput" name="report_proof" accept="image/*" style="display:none;" required></div><button type="submit" class="btn-submit" style="background:#dc3545; color:white;">Kirim Laporan</button></form></div></div>
+
     <script>
         const historyData = <?php echo json_encode($history_data); ?>;
+
         function goToDashboard() { window.location.href = '../seller/dashboard.php'; }
+
         function openDetail(id) {
             const data = historyData.find(item => parseInt(item.id) === id);
             if (data) {
                 const content = document.getElementById('modalContent');
-                content.innerHTML = `<div class="detail-row"><span class="detail-label">Nama Barang</span><span class="detail-value">${data.item}</span></div><div class="detail-row"><span class="detail-label">Harga Barang</span><span class="detail-value">${data.price_product_fmt}</span></div><div class="detail-row"><span class="detail-label">Metode Kirim</span><span class="detail-value" style="font-size:0.85rem;">${data.shipping}</span></div><div class="detail-row"><span class="detail-label">Biaya Ongkir</span><span class="detail-value">${data.price_shipping_fmt}</span></div><div class="detail-row"><span class="detail-label">Biaya Admin</span><span class="detail-value">${data.price_admin_fmt}</span></div><div style="border-top:1px dashed #ddd; margin:15px 0;"></div><div class="detail-row"><span class="detail-label" style="font-weight:700;">Total Keseluruhan</span><span class="detail-value" style="font-size:1.1rem; color:var(--primary); font-weight:800;">${data.price_total_fmt}</span></div><div style="background:#f9f9f9; padding:10px; border-radius:8px; margin-top:15px;"><div class="detail-row" style="margin-bottom:5px;"><span class="detail-label">Pembayaran</span><span class="detail-value" style="color:var(--primary); font-weight:bold;">${data.payment}</span></div><div class="detail-row" style="margin-bottom:5px;"><span class="detail-label">No. Resi</span><span class="detail-value" style="font-weight:bold; letter-spacing:1px;">${data.tracking}</span></div><div class="detail-row"><span class="detail-label">Penjual</span><span class="detail-value">${data.counterparty}</span></div></div>`;
+                content.innerHTML = `
+                    <div class="detail-row"><span class="detail-label">Nama Barang</span><span class="detail-value">${data.item}</span></div>
+                    <div class="detail-row"><span class="detail-label">Harga Barang</span><span class="detail-value">${data.price_product_fmt}</span></div>
+                    <div class="detail-row"><span class="detail-label">Metode Kirim</span><span class="detail-value" style="font-size:0.85rem;">${data.shipping}</span></div>
+                    <div class="detail-row"><span class="detail-label">Biaya Ongkir</span><span class="detail-value">${data.price_shipping_fmt}</span></div>
+                    <div class="detail-row"><span class="detail-label">Biaya Admin</span><span class="detail-value">${data.price_admin_fmt}</span></div>
+                    <div style="border-top:1px dashed #ddd; margin:15px 0;"></div>
+                    <div class="detail-row"><span class="detail-label" style="font-weight:700;">Total Keseluruhan</span><span class="detail-value" style="font-size:1.1rem; color:var(--primary); font-weight:800;">${data.price_total_fmt}</span></div>
+                    <div style="background:#f9f9f9; padding:10px; border-radius:8px; margin-top:15px;"><div class="detail-row" style="margin-bottom:5px;"><span class="detail-label">Pembayaran</span><span class="detail-value" style="color:var(--primary); font-weight:bold;">${data.payment}</span></div><div class="detail-row" style="margin-bottom:5px;"><span class="detail-label">No. Resi</span><span class="detail-value" style="font-weight:bold; letter-spacing:1px;">${data.tracking}</span></div><div class="detail-row"><span class="detail-label">Penjual</span><span class="detail-value">${data.counterparty}</span></div></div>
+                `;
                 document.getElementById('detailModal').classList.add('open');
             }
         }
         function openReviewModal(oid, pid) { document.getElementById('revOrderId').value = oid; document.getElementById('revProductId').value = pid; document.getElementById('reviewModal').classList.add('open'); }
         function openReportModal(oid, sid) { document.getElementById('repOrderId').value = oid; document.getElementById('repShopId').value = sid; document.getElementById('reportModal').classList.add('open'); }
-        function closeModal(modalId) { document.getElementById(modalId).classList.remove('open'); }
-        window.onclick = function(event) { if (event.target.classList.contains('modal-overlay')) { event.target.classList.remove('open'); } }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        window.onclick = function(e) { if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open'); }
     </script>
 </body>
 </html>
