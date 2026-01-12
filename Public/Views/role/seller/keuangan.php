@@ -1,9 +1,14 @@
 <?php
 session_start();
+
+// Koneksi Database
 include '../../../Auth/koneksi.php';
 
 // Cek Login
-if (!isset($_SESSION['user_id'])) { header("Location: ../../auth/login.php"); exit(); }
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../../auth/login.php");
+    exit();
+}
 $user_id = $_SESSION['user_id'];
 
 // Cek Toko & Ambil Data
@@ -32,28 +37,22 @@ if (isset($_POST['action']) && $_POST['action'] == 'save_settings') {
 // --- LOGIKA TARIK SALDO (BARU) ---
 if (isset($_POST['action']) && $_POST['action'] == 'withdraw') {
     $amount = (int)$_POST['amount'];
-    $method = $_POST['destination_method']; // Dana, BCA, dll
+    $method = $_POST['destination_method']; 
     $account = $_POST['account_number'];
-    $withdraw_fee = 2500;
-    $total_deduction = $amount + $withdraw_fee;
-
-    if ($balance >= $total_deduction) {
+    
+    // Validasi
+    if ($amount > $balance) {
+        echo "<script>alert('Saldo tidak mencukupi.');</script>";
+    } else {
         // Kurangi Saldo
-        mysqli_query($koneksi, "UPDATE shops SET balance = balance - $total_deduction WHERE shop_id='$shop_id'");
+        mysqli_query($koneksi, "UPDATE shops SET balance = balance - $amount WHERE shop_id='$shop_id'");
         
         // Catat Transaksi (Penarikan)
         $desc = "Penarikan ke $method ($account)";
         mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
                                 VALUES ('$shop_id', 'out', '$amount', '$desc', NOW())");
         
-        // Catat Biaya Admin (Agar transparan)
-        $desc_fee = "Biaya Admin Penarikan";
-        mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
-                                VALUES ('$shop_id', 'out', '$withdraw_fee', '$desc_fee', NOW())");
-
         echo "<script>alert('Penarikan berhasil diproses!'); window.location.href='keuangan.php';</script>";
-    } else {
-        echo "<script>alert('Saldo tidak mencukupi (termasuk biaya admin).');</script>";
     }
 }
 
@@ -208,7 +207,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'summary';
                         <input type="number" name="amount" class="form-input has-prefix" placeholder="0" required>
                     </div>
                 </div>
-                <div class="withdraw-note"><i class="fas fa-info-circle"></i> Biaya admin Rp 2.500 akan dipotong dari saldo.</div>
+                <div class="withdraw-note"><i class="fas fa-info-circle"></i> Penarikan tidak dikenakan biaya admin.</div>
                 <button type="submit" class="btn-submit">Konfirmasi Penarikan</button>
             </form>
         </div>
