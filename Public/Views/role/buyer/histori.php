@@ -421,7 +421,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <script>
         const historyData = <?php echo json_encode($history_data); ?>;
 
-        function goToDashboard() { window.location.href = '../seller/dashboard.php'; }
+        function goToDashboard() { window.location.href = '../buyer/dashboard.php'; }
 
         function openDetail(id) {
             const data = historyData.find(item => parseInt(item.id) === id);
