@@ -34,10 +34,42 @@ for ($i = 5; $i >= 0; $i--) {
     $chart_labels[] = $month_name; $chart_data[] = $d_chart['total'];
 }
 
-// --- PESANAN TERBARU ---
+// --- PESANAN TERBARU (Updated Logic) ---
 $recent_orders = [];
-$q_recent = mysqli_query($koneksi, "SELECT o.invoice_code, o.total_price, o.status, u.name as buyer_name, s.shop_name FROM orders o JOIN users u ON o.buyer_id = u.user_id JOIN shops s ON o.shop_id = s.shop_id ORDER BY o.created_at DESC LIMIT 5");
-while($row = mysqli_fetch_assoc($q_recent)) { $recent_orders[] = $row; }
+// Query diupdate: Mengambil s.shop_image sebagai seller_pic dan o.shipping_method untuk hitung ongkir
+$q_recent = mysqli_query($koneksi, "
+    SELECT o.invoice_code, o.total_price, o.status, o.shipping_method,
+           u1.name as buyer_name, u1.profile_picture as buyer_pic,
+           s.shop_name, s.shop_image as seller_pic 
+    FROM orders o 
+    JOIN users u1 ON o.buyer_id = u1.user_id 
+    JOIN shops s ON o.shop_id = s.shop_id 
+    ORDER BY o.created_at DESC LIMIT 5
+");
+
+while($row = mysqli_fetch_assoc($q_recent)) {
+    // 1. Handle Foto Profil (Default jika kosong)
+    $row['buyer_pic'] = !empty($row['buyer_pic']) ? $row['buyer_pic'] : "https://ui-avatars.com/api/?name=" . urlencode($row['buyer_name']);
+    $row['seller_pic'] = !empty($row['seller_pic']) ? $row['seller_pic'] : "https://ui-avatars.com/api/?name=" . urlencode($row['shop_name']);
+
+    // 2. Hitung Total Keseluruhan (Produk + Ongkir + Admin)
+    // Parse Ongkir dari string "JNE (Rp 15.000) | Dana"
+    $parts = explode(' | ', $row['shipping_method']);
+    $ship_lbl_full = $parts[0]; 
+    $shipping_cost = 0;
+    if (preg_match('/\(Rp ([\d\.]+)\)/', $ship_lbl_full, $matches)) {
+        $shipping_cost = (int)str_replace('.', '', $matches[1]);
+    }
+
+    $product_price = (int)$row['total_price'];
+    $admin_fee = 1000;
+    $grand_total = $product_price + $shipping_cost + $admin_fee;
+
+    // Simpan grand_total ke array row untuk ditampilkan
+    $row['grand_total'] = $grand_total;
+
+    $recent_orders[] = $row;
+}
 ?>
 
 <!DOCTYPE html>
@@ -47,8 +79,26 @@ while($row = mysqli_fetch_assoc($q_recent)) { $recent_orders[] = $row; }
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - EcoSwap</title>
     <link rel="stylesheet" href="../../../Assets/css/role/admin/dashboard.css">
-    <link rel="stylesheet" href="../../../Assets/css/role/admin/notifikasi.css"> <link rel="stylesheet" href="../../../Assets/css/role/admin/profil.css">     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../../../Assets/css/role/admin/notifikasi.css">
+    <link rel="stylesheet" href="../../../Assets/css/role/admin/profil.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS Khusus Tabel User & Alignment */
+        .simple-table th { padding: 15px; font-size: 0.85rem; color: #888; font-weight: 600; text-align: left; border-bottom: 1px solid #eee; }
+        .simple-table td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #f9f9f9; }
+        .simple-table td:last-child, .simple-table th:last-child { text-align: right; }
+        
+        .user-flex { display: flex; align-items: center; gap: 10px; }
+        .user-avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+        .user-text { display: flex; flex-direction: column; line-height: 1.2; }
+        .user-name { font-size: 0.9rem; font-weight: 600; color: #333; }
+        .user-role { font-size: 0.75rem; color: #888; }
+
+        /* Hapus margin atas grafik karena sudah dihapus */
+        .content-grid { display: block; } 
+        .recent-orders { margin-top: 0; }
+    </style>
 </head>
 <body>
 
@@ -58,20 +108,20 @@ while($row = mysqli_fetch_assoc($q_recent)) { $recent_orders[] = $row; }
         </div>
         <ul class="nav-links">
             <li class="active"><a href="dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a></li>
-            <li><a href="produk.php"><i class="fas fa-box"></i> <span>Verifikasi Produk</span> <?php if($pending_products > 0): ?><span class="badge-count"><?php echo $pending_products; ?></span><?php endif; ?></a></li>
+            <li><a href="produk.php"><i class="fas fa-box"></i> <span>Produk</span> <?php if($pending_products > 0): ?><span class="badge-count"><?php echo $pending_products; ?></span><?php endif; ?></a></li>
             <li><a href="pengguna.php"><i class="fas fa-users"></i> <span>Pengguna</span></a></li>
             <li><a href="transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a></li>
             <li><a href="laporan.php"><i class="fas fa-headset"></i> <span>Laporan</span> <?php if($active_reports > 0): ?><span class="badge-count danger"><?php echo $active_reports; ?></span><?php endif; ?></a></li>
         </ul>
         <div class="sidebar-footer">
-            <a href="../../../../auth/logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <a href="../../../../index.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </aside>
 
     <main class="main-content">
         <header class="topbar">
             <div class="welcome-text">
-                <h2>Dashboard Overview</h2>
+                <h2>Dashboard Admin</h2>
                 <p>Selamat datang, <strong><?php echo htmlspecialchars($d_admin['name']); ?></strong> 👋</p>
             </div>
             <div class="user-profile">
@@ -84,30 +134,61 @@ while($row = mysqli_fetch_assoc($q_recent)) { $recent_orders[] = $row; }
         </header>
 
         <section class="stats-grid">
+            <div class="stat-card"><div class="stat-icon black-bg"><i class="fas fa-box-open"></i></div><div class="stat-details"><h3>Perlu Verifikasi</h3><p class="number"><?php echo number_format($pending_products); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon yellow-bg"><i class="fas fa-users"></i></div><div class="stat-details"><h3>Total Pengguna</h3><p class="number"><?php echo number_format($total_users); ?></p></div></div>
-            <div class="stat-card"><div class="stat-icon black-bg"><i class="fas fa-box-open"></i></div><div class="stat-details"><h3>Produk Pending</h3><p class="number"><?php echo number_format($pending_products); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon gray-bg"><i class="fas fa-wallet"></i></div><div class="stat-details"><h3>Pendapatan</h3><p class="number">Rp <?php echo number_format($admin_revenue, 0, ',', '.'); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon red-bg"><i class="fas fa-exclamation-circle"></i></div><div class="stat-details"><h3>Laporan</h3><p class="number"><?php echo number_format($active_reports); ?></p></div></div>
         </section>
 
         <section class="content-grid">
-            <div class="chart-container card-panel">
-                <div class="card-header"><h3>Statistik Transaksi</h3></div>
-                <div class="chart-wrapper"><canvas id="transactionChart"></canvas></div>
-            </div>
-            <div class="recent-orders card-panel">
-                <div class="card-header"><h3>Transaksi Terbaru</h3><a href="../transaksi/transaksi.php" class="view-all">Lihat Semua</a></div>
+            <div class="recent-orders card-panel" style="width: 100%;">
+                <div class="card-header">
+                    <h3>Transaksi Terbaru</h3>
+                    <a href="transaksi.php" class="view-all">Lihat Semua</a>
+                </div>
                 <table class="simple-table">
-                    <thead><tr><th>Invoice</th><th>Pembeli</th><th>Status</th><th class="text-right">Total</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th width="20%">Invoice</th>
+                            <th width="25%">Pembeli</th>
+                            <th width="25%">Penjual</th>
+                            <th width="15%">Status</th>
+                            <th width="15%">Total</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <?php foreach($recent_orders as $ro): ?>
                         <tr>
-                            <td class="font-bold"><?php echo $ro['invoice_code']; ?></td>
-                            <td><div class="user-cell"><span><?php echo $ro['buyer_name']; ?></span><small><?php echo $ro['shop_name']; ?></small></div></td>
-                            <td><span class="status-badge badge-<?php echo ($ro['status']=='completed')?'green':'yellow'; ?>"><?php echo ucfirst($ro['status']); ?></span></td>
-                            <td class="text-right font-bold">Rp <?php echo number_format($ro['total_price'], 0, ',', '.'); ?></td>
+                            <td class="font-bold" style="color:#555;"><?php echo $ro['invoice_code']; ?></td>
+                            <td>
+                                <div class="user-flex">
+                                    <img src="<?php echo $ro['buyer_pic']; ?>" class="user-avatar-sm">
+                                    <div class="user-text">
+                                        <span class="user-name"><?php echo $ro['buyer_name']; ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="user-flex">
+                                    <img src="<?php echo $ro['seller_pic']; ?>" class="user-avatar-sm">
+                                    <div class="user-text">
+                                        <span class="user-name"><?php echo $ro['shop_name']; ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <?php 
+                                    $st = $ro['status']; 
+                                    $badge = ($st == 'completed' || $st == 'reviewed') ? 'badge-green' : (($st == 'pending') ? 'badge-yellow' : 'badge-blue'); 
+                                ?>
+                                <span class="status-badge <?php echo $badge; ?>"><?php echo ucfirst($st); ?></span>
+                            </td>
+                            <td class="text-right font-bold">Rp <?php echo number_format($ro['grand_total'], 0, ',', '.'); ?></td>
                         </tr>
                         <?php endforeach; ?>
+                        <?php if(empty($recent_orders)): ?>
+                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Belum ada transaksi terbaru.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -116,10 +197,5 @@ while($row = mysqli_fetch_assoc($q_recent)) { $recent_orders[] = $row; }
 
     <?php include 'profil.php'; ?>
 
-    <script>
-        const ctx = document.getElementById('transactionChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 400); gradient.addColorStop(0, 'rgba(255, 215, 0, 0.5)'); gradient.addColorStop(1, 'rgba(255, 215, 0, 0.0)');
-        new Chart(ctx, { type: 'line', data: { labels: <?php echo json_encode($chart_labels); ?>, datasets: [{ label: 'Transaksi', data: <?php echo json_encode($chart_data); ?>, borderColor: '#FFD700', backgroundColor: gradient, borderWidth: 2, fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4], color: '#eee' } }, x: { grid: { display: false } } } } });
-    </script>
 </body>
 </html>
