@@ -8,11 +8,34 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// --- LOGIKA UPDATE BIAYA ADMIN ---
+if (isset($_POST['action']) && $_POST['action'] == 'update_fee') {
+    $new_fee = mysqli_real_escape_string($koneksi, $_POST['admin_fee']);
+    
+    // Cek apakah key sudah ada
+    $check = mysqli_query($koneksi, "SELECT * FROM system_settings WHERE setting_key = 'admin_fee'");
+    if (mysqli_num_rows($check) > 0) {
+        $q = "UPDATE system_settings SET setting_value = '$new_fee' WHERE setting_key = 'admin_fee'";
+    } else {
+        $q = "INSERT INTO system_settings (setting_key, setting_value) VALUES ('admin_fee', '$new_fee')";
+    }
+    
+    if (mysqli_query($koneksi, $q)) {
+        echo "<script>alert('Biaya admin aplikasi berhasil diperbarui!'); window.location.href='transaksi.php';</script>";
+    }
+}
+
+// Ambil Biaya Admin Saat Ini
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$d_fee = mysqli_fetch_assoc($q_fee);
+$current_admin_fee = isset($d_fee['setting_value']) ? $d_fee['setting_value'] : 1000;
+
 // FILTER LOGIKA
-$where_clause = "WHERE 1=1"; // Default semua data
-if (isset($_GET['status']) && $_GET['status'] != 'all') {
-    $status = mysqli_real_escape_string($koneksi, $_GET['status']);
-    // Mapping status frontend ke database
+$where_clause = "WHERE 1=1"; 
+$status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
+
+if ($status_filter != 'all') {
+    $status = mysqli_real_escape_string($koneksi, $status_filter);
     if ($status == 'dikemas') {
         $where_clause .= " AND o.status = 'processed'";
     } elseif ($status == 'dikirim') {
@@ -21,11 +44,11 @@ if (isset($_GET['status']) && $_GET['status'] != 'all') {
         $where_clause .= " AND (o.status = 'completed' OR o.status = 'reviewed')";
     }
 } else {
-    // Default: Tampilkan yang sedang berjalan atau selesai (exclude pending/cancelled agar lebih bersih, atau sesuaikan kebutuhan)
+    // Exclude pending/cancelled agar tabel bersih
     $where_clause .= " AND o.status != 'pending' AND o.status != 'cancelled'";
 }
 
-// AMBIL DATA TRANSAKSI (LOGISTIK)
+// AMBIL DATA TRANSAKSI
 $logistics = [];
 $query = "SELECT o.*, p.name as item_name, p.image, p.description, 
                  s.shop_name as seller_name, u.name as buyer_name 
@@ -51,25 +74,68 @@ while($row = mysqli_fetch_assoc($q_log)) {
     <link rel="stylesheet" href="../../../Assets/css/role/admin/transaksi.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* CSS Khusus Halaman Transaksi */
-        .filter-controls { display: flex; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .search-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        .filter-select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; }
+        /* --- CSS Layout & Filter --- */
+        .toolbar-container {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+            background: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .search-box { flex: 1; margin-right: 15px; position: relative; }
+        .search-box i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; }
+        .search-input { width: 100%; padding: 12px 15px 12px 40px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 0.9rem; transition: 0.3s; }
+        .search-input:focus { border-color: #4e73df; outline: none; }
+
+        .filter-group { display: flex; gap: 10px; align-items: center; }
+        .filter-select { padding: 12px 15px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; background: #fff; font-size: 0.9rem; color: #555; }
+        .btn-fee { background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; border: none; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-fee:hover { background: #000; }
+
+        /* --- Table Styles --- */
+        .transaction-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .transaction-table th { text-align: left; padding: 15px; font-size: 0.85rem; color: #888; font-weight: 600; border-bottom: 1px solid #eee; }
+        .transaction-table td { padding: 15px; border-bottom: 1px solid #f9f9f9; vertical-align: middle; color: #444; font-size: 0.9rem; }
         
-        .transaction-table th, .transaction-table td { padding: 15px; font-size: 0.9rem; }
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-        .status-processed { background: #fff3cd; color: #856404; } /* Kuning */
-        .status-shipping { background: #cce5ff; color: #004085; } /* Biru */
-        .status-delivered { background: #d1ecf1; color: #0c5460; } /* Cyan */
-        .status-completed, .status-reviewed { background: #d4edda; color: #155724; } /* Hijau */
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-processed { background: #fff3cd; color: #856404; }
+        .status-shipping { background: #cce5ff; color: #004085; }
+        .status-delivered { background: #d1ecf1; color: #0c5460; }
+        .status-completed, .status-reviewed { background: #d4edda; color: #155724; }
+
+        .btn-view { padding: 8px 16px; background: #f0f4ff; color: #4e73df; border: 1px solid #d1e3ff; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
+        .btn-view:hover { background: #4e73df; color: #fff; border-color: #4e73df; }
+
+        /* --- Modal Styles --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(3px); }
+        .modal-overlay.open { display: flex; }
         
-        /* Modal Styles */
-        .modal-body-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
-        .modal-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
-        .detail-item { margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
-        .detail-label { font-weight: 600; color: #666; font-size: 0.85rem; display: block; }
-        .detail-val { color: #333; font-weight: 500; }
-        .resi-box { background: #f8f9fa; padding: 5px 10px; border-radius: 4px; font-family: monospace; letter-spacing: 1px; border: 1px solid #ddd; }
+        .modal-box { background: white; width: 650px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; animation: slideUp 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
+        .modal-box-small { width: 400px; } /* Untuk modal fee */
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-header { padding: 20px 25px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+        .modal-header h3 { margin: 0; font-size: 1.1rem; color: #333; font-weight: 700; }
+        .close-modal { cursor: pointer; font-size: 1.2rem; color: #999; transition: 0.2s; }
+        .close-modal:hover { color: #333; }
+
+        .modal-body-grid { padding: 25px; display: grid; grid-template-columns: 220px 1fr; gap: 30px; }
+        
+        .modal-img-wrapper { text-align: center; }
+        .modal-img { width: 100%; height: 220px; object-fit: cover; border-radius: 10px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .seller-badge { margin-top: 10px; font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 5px 10px; border-radius: 20px; display: inline-block; }
+
+        .info-group { margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 10px; }
+        .info-group:last-child { border: none; }
+        .info-label { font-size: 0.8rem; color: #888; font-weight: 600; display: block; margin-bottom: 3px; text-transform: uppercase; }
+        .info-val { font-size: 1rem; color: #333; font-weight: 500; }
+        .info-highlight { color: #4e73df; font-weight: 700; }
+
+        .resi-display { background: #eef2f7; padding: 8px 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 1px; color: #333; border: 1px solid #dce4ec; display: inline-block; margin-top: 5px; }
+
+        .modal-actions { padding: 20px 25px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-close-modal { padding: 10px 25px; background: #333; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-save-modal { padding: 10px 25px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+
+        /* Form di Modal Small */
+        .form-input-fee { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -80,14 +146,13 @@ while($row = mysqli_fetch_assoc($q_log)) {
         </div>
         <ul class="nav-links">
             <li><a href="dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a></li>
-            <li><a href="produk.php"><i class="fas fa-box"></i> <span>Verifikasi Produk</span></a></li>
+            <li><a href="produk.php"><i class="fas fa-box"></i> <span>Produk</span></a></li>
             <li><a href="pengguna.php"><i class="fas fa-users"></i> <span>Pengguna</span></a></li>
             <li class="active"><a href="transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a></li>
             <li><a href="laporan.php"><i class="fas fa-headset"></i> <span>Laporan</span></a></li>
-            <li><a href="pengaturan.php"><i class="fas fa-cog"></i> <span>Pengaturan</span></a></li>
         </ul>
         <div class="sidebar-footer">
-            <a href="../../../Auth/logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <a href="../../../../index.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </aside>
 
@@ -95,126 +160,143 @@ while($row = mysqli_fetch_assoc($q_log)) {
         <header class="topbar">
             <div class="welcome-text">
                 <h2>Manajemen Transaksi</h2>
-                <p>Pantau status pengiriman dan riwayat pesanan.</p>
-            </div>
-            <div class="user-profile">
-                <div class="profile-info"><img src="https://ui-avatars.com/api/?name=Admin" alt="Admin"></div>
+                <p>Pantau status logistik dan atur biaya admin aplikasi.</p>
             </div>
         </header>
         
-        <section class="filter-controls">
-            <input type="text" id="searchInput" placeholder="Cari ID Transaksi, Barang, atau Resi..." class="search-input" onkeyup="searchTable()">
-            <select class="filter-select" onchange="window.location.href='transaksi.php?status='+this.value">
-                <option value="all" <?php echo (!isset($_GET['status']) || $_GET['status']=='all') ? 'selected' : ''; ?>>Semua Status</option>
-                <option value="dikemas" <?php echo (isset($_GET['status']) && $_GET['status']=='dikemas') ? 'selected' : ''; ?>>Dikemas (Processed)</option>
-                <option value="dikirim" <?php echo (isset($_GET['status']) && $_GET['status']=='dikirim') ? 'selected' : ''; ?>>Dikirim (Shipping)</option>
-                <option value="selesai" <?php echo (isset($_GET['status']) && $_GET['status']=='selesai') ? 'selected' : ''; ?>>Selesai</option>
-            </select>
-        </section>
+        <div class="toolbar-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Cari ID Invoice, Nama Barang..." class="search-input" onkeyup="searchTable()">
+            </div>
+            
+            <div class="filter-group">
+                <button class="btn-fee" onclick="openFeeModal()">
+                    <i class="fas fa-cog"></i> Fee: Rp <?php echo number_format($current_admin_fee, 0, ',', '.'); ?>
+                </button>
+                <select class="filter-select" onchange="window.location.href='transaksi.php?status='+this.value">
+                    <option value="all" <?php echo ($status_filter=='all') ? 'selected' : ''; ?>>Semua Status</option>
+                    <option value="dikemas" <?php echo ($status_filter=='dikemas') ? 'selected' : ''; ?>>Dikemas</option>
+                    <option value="dikirim" <?php echo ($status_filter=='dikirim') ? 'selected' : ''; ?>>Dikirim</option>
+                    <option value="selesai" <?php echo ($status_filter=='selesai') ? 'selected' : ''; ?>>Selesai</option>
+                </select>
+            </div>
+        </div>
 
         <section class="card-panel">
-            <div class="transaction-list-card">
-                <h3>Daftar Barang dalam Pengiriman</h3>
-                <table class="data-table transaction-table" id="trxTable">
-                    <thead>
-                        <tr>
-                            <th>ID Transaksi</th>
-                            <th>Nama Item</th>
-                            <th>Penjual</th>
-                            <th>Pembeli</th>
-                            <th>Status</th>
-                            <th>Aksi</th>
+            <table class="transaction-table" id="trxTable">
+                <thead>
+                    <tr>
+                        <th width="15%">ID Transaksi</th>
+                        <th width="25%">Nama Item</th>
+                        <th width="20%">Penjual</th>
+                        <th width="20%">Pembeli</th>
+                        <th width="10%">Status</th>
+                        <th width="10%">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($logistics)): ?>
+                        <tr><td colspan="6" align="center" style="padding: 40px; color: #888;">Tidak ada data transaksi.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($logistics as $log): 
+                            // Parse kurir
+                            $parts = explode(' | ', $log['shipping_method']);
+                            $kurir_full = $parts[0]; 
+                            $kurir_name = explode(' (', $kurir_full)[0];
+                        ?>
+                        <tr data-id="<?php echo $log['invoice_code']; ?>" 
+                            data-item="<?php echo $log['item_name']; ?>" 
+                            data-resi="<?php echo $log['tracking_number'] ? $log['tracking_number'] : '-'; ?>" 
+                            data-kurir="<?php echo $kurir_name; ?>" 
+                            data-deskripsi="<?php echo htmlspecialchars($log['description']); ?>" 
+                            data-foto="<?php echo $log['image']; ?>" 
+                            data-penerima="<?php echo $log['buyer_name']; ?>"
+                            data-penjual="<?php echo $log['seller_name']; ?>"
+                            data-status="<?php echo ucfirst($log['status']); ?>">
+                            
+                            <td style="font-weight:bold; color:#555;"><?php echo $log['invoice_code']; ?></td>
+                            <td><?php echo $log['item_name']; ?></td>
+                            <td><?php echo $log['seller_name']; ?></td>
+                            <td><?php echo $log['buyer_name']; ?></td>
+                            <td><span class="status-badge status-<?php echo $log['status']; ?>"><?php echo ucfirst($log['status']); ?></span></td>
+                            <td>
+                                <button class="btn-view" onclick='openModal(this)'><i class="fas fa-eye"></i> Detail</button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <?php if(empty($logistics)): ?>
-                            <tr><td colspan="6" align="center">Tidak ada data transaksi.</td></tr>
-                        <?php else: ?>
-                            <?php foreach($logistics as $log): 
-                                // Parse kurir dari string "JNE (15k) | Dana"
-                                $parts = explode(' | ', $log['shipping_method']);
-                                $kurir_full = $parts[0]; // JNE (Rp 15.000)
-                                $kurir_name = explode(' (', $kurir_full)[0];
-                            ?>
-                            <tr data-id="<?php echo $log['invoice_code']; ?>" 
-                                data-item="<?php echo $log['item_name']; ?>" 
-                                data-resi="<?php echo $log['tracking_number'] ? $log['tracking_number'] : '-'; ?>" 
-                                data-kurir="<?php echo $kurir_name; ?>" 
-                                data-deskripsi="<?php echo htmlspecialchars($log['description']); ?>" 
-                                data-foto="<?php echo $log['image']; ?>" 
-                                data-penerima="<?php echo $log['buyer_name']; ?>"
-                                data-penjual="<?php echo $log['seller_name']; ?>"
-                                data-status="<?php echo ucfirst($log['status']); ?>">
-                                
-                                <td><?php echo $log['invoice_code']; ?></td>
-                                <td><?php echo $log['item_name']; ?></td>
-                                <td><?php echo $log['seller_name']; ?></td>
-                                <td><?php echo $log['buyer_name']; ?></td>
-                                <td><span class="status-badge status-<?php echo $log['status']; ?>"><?php echo ucfirst($log['status']); ?></span></td>
-                                <td>
-                                    <button class="btn-action btn-view" onclick='openModal(this)'><i class="fas fa-eye"></i> Detail</button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </section>
     </main>
     
     <div class="modal-overlay" id="logisticDetailModal">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>Detail Transaksi Logistik</h3>
-                <i class="fas fa-times" onclick="closeModal()" style="cursor:pointer;"></i>
+                <h3>Detail Pengiriman</h3>
+                <i class="fas fa-times close-modal" onclick="closeModal()"></i>
             </div>
             
-            <div class="modal-body modal-body-grid">
-                <div class="detail-photo-column">
+            <div class="modal-body-grid">
+                <div class="modal-img-wrapper">
                     <img id="modal-item-photo" src="" alt="Foto Barang" class="modal-img">
-                    <p style="margin-top:10px; font-size:0.9rem; text-align:center;">
-                        Penjual: <strong id="modal-seller-name"></strong>
-                    </p>
+                    <div class="seller-badge"><i class="fas fa-store"></i> <span id="modal-seller-name"></span></div>
                 </div>
 
                 <div class="detail-info-column">
-                    <h3 id="modal-item-name" style="margin-bottom:15px; color:#333;"></h3>
+                    <h2 id="modal-item-name" style="margin: 0 0 20px 0; color:#333; font-size:1.4rem; line-height:1.2;"></h2>
                     
-                    <div class="detail-item">
-                        <span class="detail-label">ID Transaksi (Invoice)</span>
-                        <span class="detail-val" id="modal-trx-id"></span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Penerima</span>
-                        <span class="detail-val" id="modal-penerima"></span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Status Saat Ini</span>
-                        <span class="detail-val" id="modal-status" style="font-weight:bold; color:var(--primary);"></span>
+                    <div class="info-group">
+                        <span class="info-label">Invoice & Status</span>
+                        <span class="info-val" id="modal-trx-id"></span>
+                        <span class="info-val" style="margin: 0 5px;">•</span>
+                        <span class="info-highlight" id="modal-status"></span>
                     </div>
 
-                    <div style="margin-top:20px;">
-                        <h4 style="font-size:0.95rem; margin-bottom:5px;">Info Logistik</h4>
-                        <div class="detail-item">
-                            <span class="detail-label">Jasa Kirim</span>
-                            <span class="detail-val" id="modal-kurir"></span>
-                        </div>
-                        <div class="detail-item" style="border:none;">
-                            <span class="detail-label">Nomor Resi</span>
-                            <span class="resi-box" id="modal-resi"></span>
-                        </div>
+                    <div class="info-group">
+                        <span class="info-label">Penerima</span>
+                        <span class="info-val" id="modal-penerima"></span>
+                    </div>
+
+                    <div class="info-group">
+                        <span class="info-label">Logistik</span>
+                        <span class="info-val" id="modal-kurir"></span>
+                        <br>
+                        <div class="resi-display" id="modal-resi"></div>
                     </div>
                 </div>
             </div>
             
-            <div class="modal-actions" style="margin-top:20px;">
-                <button type="button" class="btn-verify" style="width:100%; background:#333;" onclick="closeModal()">Tutup</button>
+            <div class="modal-actions">
+                <button type="button" class="btn-close-modal" onclick="closeModal()">Tutup</button>
             </div>
         </div>
     </div>
 
+    <div class="modal-overlay" id="feeModal">
+        <div class="modal-box modal-box-small">
+            <div class="modal-header">
+                <h3>Atur Biaya Admin</h3>
+                <i class="fas fa-times close-modal" onclick="closeFeeModal()"></i>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="update_fee">
+                <div class="modal-body" style="padding: 30px;">
+                    <label style="display:block; margin-bottom:10px; color:#555;">Jumlah Biaya (Rp)</label>
+                    <input type="number" name="admin_fee" class="form-input-fee" value="<?php echo $current_admin_fee; ?>" required>
+                    <p style="margin-top:10px; font-size:0.85rem; color:#888;">Biaya ini akan dikenakan ke setiap transaksi pembeli.</p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-close-modal" style="background:#eee; color:#333;" onclick="closeFeeModal()">Batal</button>
+                    <button type="submit" class="btn-save-modal">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // --- MODAL DETAIL ---
         const modal = document.getElementById("logisticDetailModal");
 
         function openModal(btn) {
@@ -237,32 +319,37 @@ while($row = mysqli_fetch_assoc($q_log)) {
             modal.classList.remove("open");
         }
 
-        // Fitur Pencarian Sederhana JS
+        // --- MODAL FEE ---
+        const feeModal = document.getElementById("feeModal");
+        function openFeeModal() { feeModal.classList.add("open"); }
+        function closeFeeModal() { feeModal.classList.remove("open"); }
+
+        // --- SEARCH ---
         function searchTable() {
             const input = document.getElementById("searchInput");
             const filter = input.value.toUpperCase();
             const table = document.getElementById("trxTable");
             const tr = table.getElementsByTagName("tr");
 
-            for (let i = 1; i < tr.length; i++) { // Mulai dari 1 (skip header)
-                // Cari di kolom ID (0), Item (1), Resi (di data attribute)
+            for (let i = 1; i < tr.length; i++) { 
                 const tdId = tr[i].getElementsByTagName("td")[0];
                 const tdItem = tr[i].getElementsByTagName("td")[1];
-                const resi = tr[i].getAttribute("data-resi");
                 
                 if (tdId || tdItem) {
                     const txtId = tdId.textContent || tdId.innerText;
                     const txtItem = tdItem.textContent || tdItem.innerText;
-                    
-                    if (txtId.toUpperCase().indexOf(filter) > -1 || 
-                        txtItem.toUpperCase().indexOf(filter) > -1 || 
-                        resi.toUpperCase().indexOf(filter) > -1) {
+                    if (txtId.toUpperCase().indexOf(filter) > -1 || txtItem.toUpperCase().indexOf(filter) > -1) {
                         tr[i].style.display = "";
                     } else {
                         tr[i].style.display = "none";
                     }
                 }       
             }
+        }
+
+        window.onclick = function(e) {
+            if (e.target == modal) closeModal();
+            if (e.target == feeModal) closeFeeModal();
         }
     </script>
 </body>
