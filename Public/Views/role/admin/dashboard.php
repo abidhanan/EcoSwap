@@ -16,27 +16,37 @@ $q_admin = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$admin_i
 $d_admin = mysqli_fetch_assoc($q_admin);
 $admin_foto = !empty($d_admin['profile_picture']) ? $d_admin['profile_picture'] : "https://ui-avatars.com/api/?name=" . urlencode($d_admin['name']);
 
+// --- AMBIL BIAYA ADMIN DARI DB (Untuk perhitungan akurat) ---
+// Jika belum ada tabel system_settings, fallback ke 1000
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$d_fee = mysqli_fetch_assoc($q_fee);
+$fee_per_trx = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
+
 // --- STATISTIK UTAMA ---
+// 1. Total User (Buyer & Seller)
 $total_users = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users WHERE role != 'admin'"))['total'];
+
+// 2. Produk Pending
 $pending_products = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'pending'"))['total'];
+
+// 3. Laporan Pending
 $active_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
-$total_sales_count = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed'"))['total'];
-$admin_revenue = $total_sales_count * 1000;
 
-// --- DATA GRAFIK ---
-$chart_labels = []; $chart_data = [];
-for ($i = 5; $i >= 0; $i--) {
-    $month_start = date('Y-m-01', strtotime("-$i months"));
-    $month_end   = date('Y-m-t', strtotime("-$i months"));
-    $month_name  = date('M', strtotime("-$i months"));
-    $q_chart = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status='completed' AND created_at BETWEEN '$month_start 00:00:00' AND '$month_end 23:59:59'");
-    $d_chart = mysqli_fetch_assoc($q_chart);
-    $chart_labels[] = $month_name; $chart_data[] = $d_chart['total'];
-}
+// 4. Hitung Pendapatan Murni Admin (Hanya Fee Aplikasi)
+// Hitung jumlah transaksi 'completed' lalu kalikan dengan fee per transaksi
+$q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed'");
+$d_sales = mysqli_fetch_assoc($q_sales);
+$total_sales_count = $d_sales['total'];
 
-// --- PESANAN TERBARU (Updated Logic) ---
+$admin_revenue = $total_sales_count * $fee_per_trx;
+
+// --- NOTIFIKASI BARU ---
+$pending_count = $pending_products;
+$report_count = $active_reports;
+$has_notif = ($pending_count > 0 || $report_count > 0);
+
+// --- PESANAN TERBARU ---
 $recent_orders = [];
-// Query diupdate: Mengambil s.shop_image sebagai seller_pic dan o.shipping_method untuk hitung ongkir
 $q_recent = mysqli_query($koneksi, "
     SELECT o.invoice_code, o.total_price, o.status, o.shipping_method,
            u1.name as buyer_name, u1.profile_picture as buyer_pic,
@@ -48,12 +58,11 @@ $q_recent = mysqli_query($koneksi, "
 ");
 
 while($row = mysqli_fetch_assoc($q_recent)) {
-    // 1. Handle Foto Profil (Default jika kosong)
+    // Foto Profil
     $row['buyer_pic'] = !empty($row['buyer_pic']) ? $row['buyer_pic'] : "https://ui-avatars.com/api/?name=" . urlencode($row['buyer_name']);
     $row['seller_pic'] = !empty($row['seller_pic']) ? $row['seller_pic'] : "https://ui-avatars.com/api/?name=" . urlencode($row['shop_name']);
 
-    // 2. Hitung Total Keseluruhan (Produk + Ongkir + Admin)
-    // Parse Ongkir dari string "JNE (Rp 15.000) | Dana"
+    // Hitung Grand Total (Produk + Ongkir + Admin Fee) untuk tampilan tabel
     $parts = explode(' | ', $row['shipping_method']);
     $ship_lbl_full = $parts[0]; 
     $shipping_cost = 0;
@@ -62,12 +71,11 @@ while($row = mysqli_fetch_assoc($q_recent)) {
     }
 
     $product_price = (int)$row['total_price'];
-    $admin_fee = 1000;
-    $grand_total = $product_price + $shipping_cost + $admin_fee;
+    // Gunakan fee yang berlaku saat ini (atau idealnya fee yang tersimpan di order history jika ada kolom admin_fee di tabel orders)
+    // Untuk simplifikasi dashboard, kita pakai fee saat ini.
+    $grand_total = $product_price + $shipping_cost + $fee_per_trx;
 
-    // Simpan grand_total ke array row untuk ditampilkan
     $row['grand_total'] = $grand_total;
-
     $recent_orders[] = $row;
 }
 ?>
@@ -95,7 +103,6 @@ while($row = mysqli_fetch_assoc($q_recent)) {
         .user-name { font-size: 0.9rem; font-weight: 600; color: #333; }
         .user-role { font-size: 0.75rem; color: #888; }
 
-        /* Hapus margin atas grafik karena sudah dihapus */
         .content-grid { display: block; } 
         .recent-orders { margin-top: 0; }
     </style>
@@ -134,7 +141,7 @@ while($row = mysqli_fetch_assoc($q_recent)) {
         </header>
 
         <section class="stats-grid">
-            <div class="stat-card"><div class="stat-icon black-bg"><i class="fas fa-box-open"></i></div><div class="stat-details"><h3>Perlu Verifikasi</h3><p class="number"><?php echo number_format($pending_products); ?></p></div></div>
+            <div class="stat-card"><div class="stat-icon black-bg"><i class="fas fa-box-open"></i></div><div class="stat-details"><h3>Perlu Persetujuan</h3><p class="number"><?php echo number_format($pending_products); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon yellow-bg"><i class="fas fa-users"></i></div><div class="stat-details"><h3>Total Pengguna</h3><p class="number"><?php echo number_format($total_users); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon gray-bg"><i class="fas fa-wallet"></i></div><div class="stat-details"><h3>Pendapatan</h3><p class="number">Rp <?php echo number_format($admin_revenue, 0, ',', '.'); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon red-bg"><i class="fas fa-exclamation-circle"></i></div><div class="stat-details"><h3>Laporan</h3><p class="number"><?php echo number_format($active_reports); ?></p></div></div>
@@ -151,7 +158,7 @@ while($row = mysqli_fetch_assoc($q_recent)) {
                         <tr>
                             <th width="20%">Invoice</th>
                             <th width="25%">Pembeli</th>
-                            <th width="25%">Penjual</th>
+                            <th width="25%">Penjual (Toko)</th>
                             <th width="15%">Status</th>
                             <th width="15%">Total</th>
                         </tr>
