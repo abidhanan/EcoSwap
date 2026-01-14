@@ -74,7 +74,6 @@ while($row = mysqli_fetch_assoc($q_rej)) { $rejected_prods[] = $row; }
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Verifikasi Produk</title>
     <link rel="stylesheet" href="../../../Assets/css/role/admin/produk.css">
-    <link rel="stylesheet" href="../../../Assets/css/role/admin/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* CSS Khusus Halaman Ini */
@@ -122,7 +121,7 @@ while($row = mysqli_fetch_assoc($q_rej)) { $rejected_prods[] = $row; }
         </div>
         <ul class="nav-links">
             <li><a href="dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a></li>
-            <li class="active"><a href="stok.php"><i class="fas fa-box"></i> <span>Verifikasi Produk</span> <?php if(count($pending_prods) > 0): ?><span class="badge-count"><?php echo count($pending_prods); ?></span><?php endif; ?></a></li>
+            <li class="active"><a href="stok.php"><i class="fas fa-box"></i> <span>Produk</span> <?php if(count($pending_prods) > 0): ?><span class="badge-count"><?php echo count($pending_prods); ?></span><?php endif; ?></a></li>
             <li><a href="pengguna.php"><i class="fas fa-users"></i> <span>Pengguna</span></a></li>
             <li><a href="transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a></li>
             <li><a href="laporan.php"><i class="fas fa-headset"></i> <span>Laporan</span></a></li>

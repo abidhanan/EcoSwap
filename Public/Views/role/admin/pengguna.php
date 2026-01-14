@@ -83,7 +83,7 @@ while($row = mysqli_fetch_assoc($q_buyer)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Manajemen Pengguna</title>
-    <link rel="stylesheet" href="../../../Assets/css/role/admin/dashboard.css">
+    <link rel="stylesheet" href="../../../Assets/css/role/admin/pengguna.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body.no-scroll { overflow: hidden; }
@@ -140,13 +140,13 @@ while($row = mysqli_fetch_assoc($q_buyer)) {
     <aside class="sidebar">
         <div class="sidebar-header"><div class="logo"><i class="fas fa-recycle"></i> ECO<span>SWAP</span></div></div>
         <ul class="nav-links">
-            <li><a href="../dashboard/dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a></li>
-            <li><a href="../produk&stok/produk&stok.php"><i class="fas fa-box"></i> <span>Verifikasi Produk</span></a></li>
+            <li><a href="dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a></li>
+            <li><a href="produk.php"><i class="fas fa-box"></i> <span>Produk</span></a></li>
             <li class="active"><a href="pengguna.php"><i class="fas fa-users"></i> <span>Pengguna</span></a></li>
-            <li><a href="../transaksi/transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a></li>
-            <li><a href="../support/support.php"><i class="fas fa-headset"></i> <span>Laporan</span></a></li>
+            <li><a href="transaksi.php"><i class="fas fa-exchange-alt"></i> <span>Transaksi</span></a></li>
+            <li><a href="laporan.php"><i class="fas fa-headset"></i> <span>Laporan</span></a></li>
         </ul>
-        <div class="sidebar-footer"><a href="../../../../auth/logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+        <div class="sidebar-footer"><a href="../../../../index.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
     </aside>
 
     <main class="main-content">
