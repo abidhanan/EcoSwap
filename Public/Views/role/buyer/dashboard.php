@@ -53,11 +53,18 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
         if (mysqli_query($koneksi, $query_order)) {
             $success_count++;
             
+            // --- PERBAIKAN DI SINI: UBAH STATUS PRODUK JADI 'sold' ---
+            // Ini akan membuat produk hilang dari dashboard buyer (karena filter active)
+            // Dan otomatis pindah ke tab "Terjual" di halaman seller
+            mysqli_query($koneksi, "UPDATE products SET status = 'sold' WHERE product_id = '$prod_id'");
+
+            // Hapus dari keranjang jika ada
             if (isset($item['cart_id']) && !empty($item['cart_id'])) {
                 $cid = $item['cart_id'];
                 mysqli_query($koneksi, "DELETE FROM cart WHERE cart_id='$cid'");
             }
 
+            // Notifikasi ke Seller
             $q_shop_owner = mysqli_query($koneksi, "SELECT user_id FROM shops WHERE shop_id='$shop_id'");
             $d_shop_owner = mysqli_fetch_assoc($q_shop_owner);
             if($d_shop_owner) {
@@ -76,9 +83,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     exit;
 }
 
-// ... (AJAX HANDLER LAIN TETAP SAMA SEPERTI KODE ASLI) ...
-// (Bagian mark_read, get_shop_settings, toggle_follow, send_message, filter_products, add_to_cart, delete_item JANGAN DIUBAH)
-// ...
+// ... (SISA KODE KE BAWAH TETAP SAMA TIDAK PERLU DIUBAH) ...
 
 if (isset($_POST['action']) && $_POST['action'] == 'mark_read') {
     $nid = $_POST['notif_id'];
@@ -107,7 +112,10 @@ if (isset($_POST['action']) && $_POST['action'] == 'send_message') {
 }
 if (isset($_GET['action']) && $_GET['action'] == 'filter_products') {
     header('Content-Type: application/json'); $category_filter = isset($_GET['category']) ? $_GET['category'] : 'Semua';
+    
+    // Pastikan hanya mengambil produk yang ACTIVE
     $where_clause = "WHERE p.status = 'active'";
+    
     if ($category_filter != 'Semua') { $safe_cat = mysqli_real_escape_string($koneksi, $category_filter);
         if ($safe_cat == 'Fashion') $where_clause .= " AND (p.category = 'Fashion Pria' OR p.category = 'Fashion Wanita')"; elseif ($safe_cat == 'Hobi') $where_clause .= " AND p.category = 'Hobi & Koleksi'"; else $where_clause .= " AND p.category = '$safe_cat'"; }
     $query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 $where_clause ORDER BY p.created_at DESC");
@@ -132,6 +140,7 @@ $q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'
 $user_name = !empty($d_user['name']) ? $d_user['name'] : explode('@', $d_user['email'])[0];
 $user_avatar = !empty($d_user['profile_picture']) ? $d_user['profile_picture'] : "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($user_name);
 
+// Pastikan query awal juga hanya mengambil status ACTIVE
 $query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 WHERE p.status = 'active' ORDER BY p.created_at DESC");
 $all_products = [];
 while($row = mysqli_fetch_assoc($query_prod)) {
@@ -141,7 +150,8 @@ while($row = mysqli_fetch_assoc($query_prod)) {
 }
 
 $cart_items = []; $cart_total = 0;
-$q_cart = mysqli_query($koneksi, "SELECT c.cart_id, p.product_id, p.name, p.price, p.image, p.shop_id FROM cart c JOIN products p ON c.product_id = p.product_id WHERE c.user_id = '$user_id' ORDER BY c.created_at DESC");
+// Di keranjang, kita mungkin perlu cek status juga agar tidak bisa checkout barang terjual (opsional, tapi disarankan)
+$q_cart = mysqli_query($koneksi, "SELECT c.cart_id, p.product_id, p.name, p.price, p.image, p.shop_id, p.status FROM cart c JOIN products p ON c.product_id = p.product_id WHERE c.user_id = '$user_id' AND p.status = 'active' ORDER BY c.created_at DESC");
 while($row = mysqli_fetch_assoc($q_cart)){ $cart_items[] = $row; $cart_total += $row['price']; }
 $cart_count = count($cart_items);
 
