@@ -74,7 +74,11 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 
     $parts = explode(' | ', $row['shipping_method']);
-    $ship_lbl_full = $parts[0]; 
+    $ship_lbl_full = $parts[0]; // Contoh: "JNE (Rp 15.000)"
+    
+    // Bersihkan nama kurir untuk modal (hilangkan harga dalam kurung)
+    $ship_name_clean = preg_replace('/\s*\(Rp.*?\)/', '', $ship_lbl_full);
+
     $pay_lbl = isset($parts[1]) ? $parts[1] : 'Manual/COD';
     
     $shipping_cost = 0;
@@ -96,8 +100,9 @@ while ($row = mysqli_fetch_assoc($result)) {
         'shop_id' => $row['shop_id'],
         'status_raw' => $row['status'],
         'item' => $row['product_name'],
-        'price' => 'Rp ' . number_format($product_price, 0, ',', '.'), 
+        'price' => 'Rp ' . number_format($grand_total, 0, ',', '.'), // TAMPILKAN GRAND TOTAL
         'shipping' => $ship_lbl_full,
+        'shipping_clean' => $ship_name_clean, // Nama kurir bersih
         'payment' => $pay_lbl,
         'tracking' => $row['tracking_number'] ? $row['tracking_number'] : '-',
         'counterparty' => $row['shop_name'],
@@ -356,10 +361,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <span class="detail-value">${data.price_product_fmt}</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Metode Kirim</span>
-                        <span class="detail-value" style="font-size:0.85rem;">${data.shipping}</span>
-                    </div>
-                    <div class="detail-row">
                         <span class="detail-label">Biaya Ongkir</span>
                         <span class="detail-value">${data.price_shipping_fmt}</span>
                     </div>
@@ -379,6 +380,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <div class="detail-row" style="margin-bottom:5px;">
                             <span class="detail-label">Pembayaran</span>
                             <span class="detail-value" style="color:var(--primary); font-weight:bold;">${data.payment}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Metode Kirim</span>
+                            <span class="detail-value" style="font-size:0.85rem;">${data.shipping_clean}</span>
                         </div>
                         <div class="detail-row" style="margin-bottom:5px;">
                             <span class="detail-label">No. Resi</span>
