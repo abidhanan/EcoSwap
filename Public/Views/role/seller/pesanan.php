@@ -15,6 +15,11 @@ $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 $shop_name = $shop['shop_name'];
 
+// --- AMBIL BIAYA ADMIN UNTUK KALKULASI DISPLAY ---
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$d_fee = mysqli_fetch_assoc($q_fee);
+$system_admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
+
 // ==========================================
 // 1. LOGIKA UPDATE STATUS & NOTIFIKASI
 // ==========================================
@@ -71,8 +76,9 @@ if (isset($_POST['action']) && $_POST['action'] == 'mark_delivered') {
 // 2. AMBIL DATA PESANAN
 // ==========================================
 $orders = [];
+// PERBAIKAN: Tambahkan u.profile_picture ke query
 $query_orders = "SELECT o.*, p.name as product_name, p.image as product_image, 
-                 u.name as buyer_name, u.email as buyer_email,
+                 u.name as buyer_name, u.email as buyer_email, u.profile_picture,
                  a.full_address, a.phone_number as buyer_phone
                  FROM orders o
                  JOIN products p ON o.product_id = p.product_id
@@ -88,13 +94,31 @@ while($row = mysqli_fetch_assoc($res)) {
     if($row['status'] == 'delivered') $tab_status = 'shipping'; 
     if($row['status'] == 'reviewed') $tab_status = 'completed';
 
-    // Parse Shipping & Payment (Format: "JNE (15k) | E-Wallet")
+    // Parse Shipping (ambil nama dan harga)
     $shipping_raw = $row['shipping_method'];
     $parts = explode(' | ', $shipping_raw);
-    $shipping_label = isset($parts[0]) ? $parts[0] : $shipping_raw;
-    $payment_label = isset($parts[1]) ? $parts[1] : 'Manual / COD';
+    $shipping_label_full = isset($parts[0]) ? $parts[0] : $shipping_raw; // "JNE (Rp 15.000)"
+    
+    // Bersihkan nama kurir untuk tampilan (hapus harga dalam kurung)
+    $shipping_clean = preg_replace('/\s*\(Rp.*?\)/', '', $shipping_label_full);
 
+    // Ambil nominal ongkir dari string untuk kalkulasi total
+    $shipping_cost = 0;
+    if (preg_match('/\(Rp ([\d\.]+)\)/', $shipping_label_full, $matches)) {
+        $shipping_cost = (int)str_replace('.', '', $matches[1]);
+    }
+
+    $payment_label = isset($parts[1]) ? $parts[1] : 'Manual / COD';
     $alamat_fix = !empty($row['full_address']) ? $row['full_address'] . " (" . $row['buyer_phone'] . ")" : "Alamat tidak ditemukan";
+
+    // Hitung Grand Total (Produk + Ongkir + Admin)
+    $product_price = (int)$row['total_price'];
+    $admin_fee = $system_admin_fee;
+    $grand_total = $product_price + $shipping_cost + $admin_fee;
+
+    // Avatar Logic
+    $buyer_name = !empty($row['buyer_name']) ? $row['buyer_name'] : $row['buyer_email'];
+    $buyer_avatar = !empty($row['profile_picture']) ? $row['profile_picture'] : "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($buyer_name);
 
     $orders[] = [
         'id' => $row['order_id'],
@@ -102,12 +126,17 @@ while($row = mysqli_fetch_assoc($res)) {
         'status' => $tab_status,
         'db_status' => $row['status'],
         'product' => $row['product_name'],
-        'price' => (int)$row['total_price'],
+        'price_raw' => $product_price,
+        'total_price_fmt' => 'Rp ' . number_format($grand_total, 0, ',', '.'), // Tampilkan Grand Total
+        'shipping_cost_fmt' => 'Rp ' . number_format($shipping_cost, 0, ',', '.'),
+        'admin_fee_fmt' => 'Rp ' . number_format($admin_fee, 0, ',', '.'),
         'img' => $row['product_image'],
         'quantity' => 1,
-        'buyer' => !empty($row['buyer_name']) ? $row['buyer_name'] : $row['buyer_email'],
+        'buyer' => $buyer_name,
+        'buyer_avatar' => $buyer_avatar,
         'address' => $alamat_fix,
-        'shipping' => $shipping_label,
+        'shipping' => $shipping_label_full,
+        'shipping_clean' => $shipping_clean,
         'payment' => $payment_label,
         'tracking' => $row['tracking_number'],
         'date' => date('d M Y H:i', strtotime($row['created_at']))
@@ -158,7 +187,8 @@ while($row = mysqli_fetch_assoc($res)) {
         .order-info { display: flex; flex-direction: column; gap: 6px; }
         .order-meta { font-size: 0.85rem; color: #888; display: flex; gap: 8px; align-items: center; }
         .order-title { font-size: 1.1rem; color: #333; font-weight: 700; margin: 0; }
-        .buyer-info { font-size: 0.9rem; color: #555; display: flex; align-items: center; gap: 5px; }
+        .buyer-info { font-size: 0.9rem; color: #555; display: flex; align-items: center; gap: 8px; }
+        .buyer-avatar-img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
         .order-price { font-size: 1rem; font-weight: 700; color: var(--primary); }
         
         .order-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 160px; }
@@ -174,7 +204,7 @@ while($row = mysqli_fetch_assoc($res)) {
         /* Buttons */
         .btn-action {
             padding: 9px 18px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; border: none; font-weight: 600;
-            transition: 0.2s; text-align: center; width: 100%;
+            transition: 0.2s; text-align: center; width: 100%; display: block; text-decoration: none;
         }
         .btn-confirm { background: var(--primary); color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-confirm:hover { filter: brightness(0.9); transform: translateY(-1px); }
@@ -286,25 +316,26 @@ while($row = mysqli_fetch_assoc($res)) {
             filtered.forEach(order => {
                 let actionArea = '', statusBadge = '';
                 
-                // Status Logic & Buttons
+                // Status Logic & Action Buttons
                 if (order.status === 'pending') {
                     statusBadge = `<span class="status-badge status-pending">Menunggu Konfirmasi</span>`;
                     actionArea = `<button class="btn-action btn-confirm" onclick="openProcessModal(${order.id})">Proses Pesanan</button>`;
                 } else if (order.status === 'processed') {
                     statusBadge = `<span class="status-badge status-processed">Sedang Diproses</span>`;
-                    actionArea = `<button class="btn-action btn-confirm" onclick="openShipModal(${order.id}, '${order.shipping}')">Input Resi</button>`;
+                    actionArea = `<button class="btn-action btn-confirm" onclick="openShipModal(${order.id}, '${order.shipping_clean}')">Input Resi</button>`;
                 } else if (order.status === 'shipping') {
                     if (order.db_status === 'shipping') {
                         statusBadge = `<span class="status-badge status-shipping">Sedang Dikirim</span>`;
                         actionArea = `<button class="btn-action btn-confirm" style="font-size:0.8rem; padding:8px 12px;" onclick="confirmArrived(${order.id})">Konfirmasi Sampai</button>`;
                     } else {
                         statusBadge = `<span class="status-badge status-delivered">Barang Sampai</span>`;
-                        actionArea = `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>`;
                     }
                 } else if (order.status === 'completed') {
                     statusBadge = (order.db_status === 'reviewed') ? `<span class="status-badge status-done">Sudah Direview</span>` : `<span class="status-badge status-done">Selesai</span>`;
-                    actionArea = `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>`;
                 }
+
+                // TOMBOL DETAIL MUNCUL DI SEMUA STATUS
+                const detailButton = `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>`;
 
                 container.innerHTML += `
                     <div class="order-card">
@@ -316,18 +347,17 @@ while($row = mysqli_fetch_assoc($res)) {
                                 </div>
                                 <h3 class="order-title">${order.product}</h3>
                                 <div class="buyer-info">
-                                    <i class="fas fa-user-circle" style="color:#aaa;"></i> ${order.buyer}
+                                    <img src="${order.buyer_avatar}" class="buyer-avatar-img">
+                                    <span>${order.buyer}</span>
                                 </div>
                                 <div style="margin-top:4px;">${statusBadge}</div>
                             </div>
                         </div>
                         <div class="order-right">
-                            <div class="order-price">Rp ${order.price.toLocaleString('id-ID')}</div>
+                            <div class="order-price">${order.total_price_fmt}</div>
                             <div style="margin-top:auto; width:100%; display:flex; flex-direction:column; gap:8px;">
                                 ${actionArea}
-                                ${ (order.status !== 'completed' && order.status !== 'shipping') ? 
-                                    `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>` : '' 
-                                }
+                                ${detailButton}
                             </div>
                         </div>
                     </div>`;
@@ -357,14 +387,28 @@ while($row = mysqli_fetch_assoc($res)) {
                     <span class="detail-val">${order.product}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Total Harga</span>
-                    <span class="detail-val" style="color:var(--primary);">Rp ${order.price.toLocaleString('id-ID')}</span>
+                    <span class="detail-label">Harga Barang</span>
+                    <span class="detail-val">Rp ${order.price_raw.toLocaleString('id-ID')}</span>
                 </div>
                 
-                <div style="margin-top:15px; margin-bottom:10px; font-weight:700; color:#555;">Pengiriman & Pembayaran</div>
+                <div style="margin-top:15px; margin-bottom:10px; font-weight:700; color:#555;">Rincian Biaya</div>
+                <div class="detail-row">
+                    <span class="detail-label">Ongkos Kirim</span>
+                    <span class="detail-val">${order.shipping_cost_fmt}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Biaya Admin</span>
+                    <span class="detail-val">${order.admin_fee_fmt}</span>
+                </div>
+                <div class="detail-row" style="border-top: 1px dashed #ccc; padding-top: 5px; margin-top: 5px;">
+                    <span class="detail-label" style="font-weight:700;">Total Keseluruhan</span>
+                    <span class="detail-val" style="color:var(--primary); font-weight:800; font-size:1.1rem;">${order.total_price_fmt}</span>
+                </div>
+                
+                <div style="margin-top:15px; margin-bottom:10px; font-weight:700; color:#555;">Pengiriman</div>
                 <div class="detail-row">
                     <span class="detail-label">Jasa Kirim</span>
-                    <span class="detail-val">${order.shipping}</span>
+                    <span class="detail-val">${order.shipping_clean}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">No. Resi</span>
@@ -376,9 +420,12 @@ while($row = mysqli_fetch_assoc($res)) {
                 </div>
                 
                 <div style="margin-top:15px; margin-bottom:10px; font-weight:700; color:#555;">Info Pembeli</div>
-                <div class="detail-row">
+                <div class="detail-row" style="align-items: center;">
                     <span class="detail-label">Nama</span>
-                    <span class="detail-val">${order.buyer}</span>
+                    <span class="detail-val" style="display:flex; align-items:center; gap:5px;">
+                        <img src="${order.buyer_avatar}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">
+                        ${order.buyer}
+                    </span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Alamat</span>
