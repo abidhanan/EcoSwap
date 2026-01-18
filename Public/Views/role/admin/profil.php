@@ -1,7 +1,7 @@
 <?php
-// --- LOGIKA UPDATE PROFIL ---
+// --- LOGIKA UPDATE PROFIL ADMIN ---
 if (isset($_POST['update_profile'])) {
-    // Pastikan koneksi sudah ada dari file induk
+    // Escape input standar
     $name_p = mysqli_real_escape_string($koneksi, $_POST['name']);
     $email_p = mysqli_real_escape_string($koneksi, $_POST['email']);
     $phone_p = mysqli_real_escape_string($koneksi, $_POST['phone']);
@@ -9,6 +9,13 @@ if (isset($_POST['update_profile'])) {
     // Update Info Dasar
     $query_p = "UPDATE users SET name='$name_p', email='$email_p', phone_number='$phone_p' WHERE user_id='$admin_id'";
     mysqli_query($koneksi, $query_p);
+
+    // Update Password (Jika Diisi)
+    if (!empty($_POST['new_password'])) {
+        // Hash password baru sebelum simpan
+        $new_pass = password_hash($_POST['new_password'], PASSWORD_DEFAULT);
+        mysqli_query($koneksi, "UPDATE users SET password='$new_pass' WHERE user_id='$admin_id'");
+    }
 
     // Handle Upload Foto
     if (!empty($_FILES['profile_pic']['name'])) {
@@ -24,20 +31,20 @@ if (isset($_POST['update_profile'])) {
         }
     }
     
-    // Redirect untuk refresh data
-    echo "<script>window.location.href='dashboard.php';</script>";
+    // Refresh halaman
+    echo "<script>alert('Profil berhasil diperbarui!'); window.location.href='dashboard.php';</script>";
     exit();
 }
 ?>
 
 <div class="modal-overlay" id="profileModal">
-    <div class="modal-box">
+    <div class="modal-box compact-modal">
         <div class="modal-header-profil">
             <h3>Profil Admin</h3>
             <i class="fas fa-times close-modal-btn" onclick="closeProfileModal()"></i>
         </div>
         
-        <form method="POST" enctype="multipart/form-data" id="formProfile">
+        <form method="POST" enctype="multipart/form-data" id="formProfile" class="modal-scroll-content">
             <input type="hidden" name="update_profile" value="1">
             
             <div class="profile-upload-section">
@@ -51,19 +58,27 @@ if (isset($_POST['update_profile'])) {
                 <div class="admin-badge">Administrator</div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Nama Lengkap</label>
-                <input type="text" name="name" id="inputName" class="form-input" value="<?php echo htmlspecialchars($d_admin['name']); ?>" disabled required>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Email</label>
-                <input type="email" name="email" id="inputEmail" class="form-input" value="<?php echo htmlspecialchars($d_admin['email']); ?>" disabled required>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Nomor Telepon</label>
-                <input type="text" name="phone" id="inputPhone" class="form-input" value="<?php echo htmlspecialchars($d_admin['phone_number']); ?>" disabled>
+            <div class="form-container">
+                <div class="form-group">
+                    <label class="form-label">Nama Lengkap</label>
+                    <input type="text" name="name" id="inputName" class="form-input" value="<?php echo htmlspecialchars($d_admin['name']); ?>" disabled required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" id="inputEmail" class="form-input" value="<?php echo htmlspecialchars($d_admin['email']); ?>" disabled required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Nomor Telepon</label>
+                    <input type="text" name="phone" id="inputPhone" class="form-input" value="<?php echo htmlspecialchars($d_admin['phone_number']); ?>" disabled>
+                </div>
+
+                <div class="form-group" id="passGroup" style="display:none; background:#f9f9f9; padding:10px; border-radius:8px; border:1px dashed #ddd;">
+                    <label class="form-label" style="color:#d9534f;">Password Baru (Opsional)</label>
+                    <input type="password" name="new_password" class="form-input" placeholder="Masukkan password baru..." disabled>
+                    <small style="color:#888; font-size:0.75rem;">Kosongkan jika tidak ingin mengganti password.</small>
+                </div>
             </div>
             
             <div class="profile-actions">
@@ -81,64 +96,71 @@ if (isset($_POST['update_profile'])) {
 </div>
 
 <style>
-    /* Styling Khusus agar tampilan konsisten */
-    .modal-header-profil { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .modal-header-profil h3 { margin: 0; font-size: 1.2rem; color: #333; }
+    /* Compact Modal Style */
+    .compact-modal {
+        width: 400px;
+        max-height: 90vh; /* Agar tidak melebihi tinggi layar */
+        display: flex;
+        flex-direction: column;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .modal-header-profil { 
+        padding: 15px 20px; 
+        border-bottom: 1px solid #eee; 
+        display: flex; justify-content: space-between; align-items: center; 
+        background: #fff;
+    }
     
-    .profile-upload-section { text-align: center; margin-bottom: 25px; position: relative; }
-    .img-wrapper { position: relative; width: 100px; height: 100px; margin: 0 auto 10px; }
+    .modal-scroll-content {
+        padding: 20px;
+        overflow-y: auto; /* Scroll jika konten panjang */
+    }
+
+    .profile-upload-section { text-align: center; margin-bottom: 20px; position: relative; }
+    .img-wrapper { position: relative; width: 90px; height: 90px; margin: 0 auto 8px; }
     .profile-img-lg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; }
     
-    /* Overlay Kamera saat Edit */
     .upload-overlay { 
         position: absolute; inset: 0; background: rgba(0,0,0,0.5); border-radius: 50%; 
         display: flex; align-items: center; justify-content: center; color: white; 
-        font-size: 1.5rem; cursor: pointer; transition: 0.2s;
+        font-size: 1.2rem; cursor: pointer; transition: 0.2s;
     }
     .upload-overlay:hover { background: rgba(0,0,0,0.7); }
 
-    .admin-badge { background: #333; color: #FFD700; display: inline-block; padding: 4px 12px; border-radius: 15px; font-size: 0.8rem; font-weight: 600; }
+    .admin-badge { background: #333; color: #FFD700; display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
 
     /* Input Styles */
-    .form-group { margin-bottom: 15px; }
-    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #555; }
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #555; }
     
-    /* Input Disabled (Tampilan Normal) */
-    .form-input:disabled { 
-        background-color: transparent; 
-        border: 1px solid transparent; 
-        padding: 0; 
-        font-weight: 600; 
-        color: #333; 
-        font-size: 1rem;
+    .form-input { 
+        width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; 
+        font-size: 0.9rem; background-color: #fff; transition: 0.3s;
+        box-sizing: border-box; /* Agar padding tidak merusak layout */
     }
     
-    /* Input Enabled (Tampilan Edit) */
-    .form-input { 
-        width: 100%; 
-        padding: 10px; 
-        border: 1px solid #ddd; 
-        border-radius: 6px; 
-        font-size: 0.95rem; 
-        background-color: #fff;
-        transition: 0.3s;
+    /* Disabled State (View Mode) */
+    .form-input:disabled { 
+        background-color: transparent; border: 1px solid transparent; padding: 0; 
+        font-weight: 600; color: #333; 
     }
 
     /* Buttons */
-    .profile-actions { margin-top: 25px; display: flex; justify-content: center; }
-    .btn-edit-profile { width: 100%; padding: 12px; background: #333; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .profile-actions { margin-top: 20px; display: flex; justify-content: center; }
+    .btn-edit-profile { width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
     .btn-edit-profile:hover { background: #000; }
 
-    .btn-save { flex: 1; padding: 12px; background: #FFD700; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .btn-cancel { flex: 1; padding: 12px; background: #eee; color: #333; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .btn-save { flex: 1; padding: 10px; background: #FFD700; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { flex: 1; padding: 10px; background: #eee; color: #333; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
     .btn-cancel:hover { background: #ddd; }
 </style>
 
 <script>
     const profileModal = document.getElementById('profileModal');
-    
-    // Elemen-elemen form
     const inputs = document.querySelectorAll('.form-input');
+    const passGroup = document.getElementById('passGroup');
     const uploadOverlay = document.getElementById('uploadOverlay');
     const btnEdit = document.getElementById('btnEdit');
     const actionButtons = document.getElementById('actionButtons');
@@ -146,7 +168,7 @@ if (isset($_POST['update_profile'])) {
 
     function openProfileModal() { 
         profileModal.classList.add('open'); 
-        disableEditMode(); // Pastikan selalu mulai dalam mode view
+        disableEditMode(); 
     }
 
     function closeProfileModal() { 
@@ -154,36 +176,37 @@ if (isset($_POST['update_profile'])) {
     }
 
     function enableEditMode() {
-        // 1. Aktifkan Input
         inputs.forEach(input => {
             input.disabled = false;
-            input.style.padding = "10px"; // Balik ke style input normal
+            input.style.padding = "8px 10px"; // Style input normal
             input.style.border = "1px solid #ddd";
         });
-        // 2. Tampilkan Overlay Upload & Tombol Simpan
+        
         uploadOverlay.style.display = 'flex';
         btnEdit.style.display = 'none';
         actionButtons.style.display = 'flex';
         
-        // Fokus ke nama
+        // Tampilkan Input Password
+        passGroup.style.display = 'block'; 
+        
         document.getElementById('inputName').focus();
     }
 
     function disableEditMode() {
-        // 1. Matikan Input
         inputs.forEach(input => {
             input.disabled = true;
-            input.style.padding = "0"; // Balik ke style text only
+            input.style.padding = "0"; // Style text only
             input.style.border = "1px solid transparent";
         });
-        // 2. Sembunyikan Overlay & Tombol Simpan
+        
         uploadOverlay.style.display = 'none';
         btnEdit.style.display = 'block';
         actionButtons.style.display = 'none';
         
-        // Reset form ke nilai awal (opsional, agar jika batal kembali ke data DB)
+        // Sembunyikan Input Password
+        passGroup.style.display = 'none'; 
+        
         formProfile.reset();
-        // Reset preview gambar jika ada perubahan tapi dibatalkan (perlu reload src asli jika mau perfect, tapi reset form cukup untuk input text)
     }
 
     function previewFile(input) {
