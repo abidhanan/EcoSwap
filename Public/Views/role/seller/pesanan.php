@@ -15,14 +15,13 @@ $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 $shop_name = $shop['shop_name'];
 
-// --- AMBIL BIAYA ADMIN UNTUK KALKULASI DISPLAY ---
+// --- AMBIL BIAYA ADMIN ---
 $q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
 $d_fee = mysqli_fetch_assoc($q_fee);
 $system_admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
 
-// ==========================================
-// 1. LOGIKA UPDATE STATUS & NOTIFIKASI
-// ==========================================
+// ... (LOGIKA PHP UNTUK UPDATE STATUS TIDAK BERUBAH) ...
+// (Function sendNotification, confirm_order, ship_order, mark_delivered TETAP SAMA)
 
 function sendNotification($koneksi, $user_id, $title, $message) {
     $title = mysqli_real_escape_string($koneksi, $title);
@@ -30,29 +29,24 @@ function sendNotification($koneksi, $user_id, $title, $message) {
     mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('$user_id', '$title', '$message', 0, NOW())");
 }
 
-// A. Konfirmasi Pesanan (Pending -> Processed)
 if (isset($_POST['action']) && $_POST['action'] == 'confirm_order') {
     $oid = $_POST['order_id'];
     $q_ord = mysqli_query($koneksi, "SELECT buyer_id, invoice_code FROM orders WHERE order_id='$oid'");
     $d_ord = mysqli_fetch_assoc($q_ord);
-    
     if(mysqli_query($koneksi, "UPDATE orders SET status='processed' WHERE order_id='$oid' AND shop_id='$shop_id'")) {
         sendNotification($koneksi, $d_ord['buyer_id'], "Pesanan Diproses", "Pesanan #{$d_ord['invoice_code']} sedang disiapkan oleh penjual.");
         echo "<script>alert('Pesanan dikonfirmasi!'); window.location.href='pesanan.php';</script>";
     }
 }
 
-// B. Input Resi (Processed -> Shipping)
 if (isset($_POST['action']) && $_POST['action'] == 'ship_order') {
     $oid = $_POST['order_id'];
     $resi = mysqli_real_escape_string($koneksi, $_POST['tracking_number']);
-    
     if(empty($resi)) {
         echo "<script>alert('Harap masukkan nomor resi!');</script>";
     } else {
         $q_ord = mysqli_query($koneksi, "SELECT buyer_id, invoice_code FROM orders WHERE order_id='$oid'");
         $d_ord = mysqli_fetch_assoc($q_ord);
-
         if(mysqli_query($koneksi, "UPDATE orders SET status='shipping', tracking_number='$resi' WHERE order_id='$oid' AND shop_id='$shop_id'")) {
             sendNotification($koneksi, $d_ord['buyer_id'], "Pesanan Dikirim", "Pesanan #{$d_ord['invoice_code']} telah dikirim. No Resi: $resi");
             echo "<script>alert('Pesanan dikirim!'); window.location.href='pesanan.php';</script>";
@@ -60,12 +54,10 @@ if (isset($_POST['action']) && $_POST['action'] == 'ship_order') {
     }
 }
 
-// C. Konfirmasi Sampai (Shipping -> Delivered)
 if (isset($_POST['action']) && $_POST['action'] == 'mark_delivered') {
     $oid = $_POST['order_id'];
     $q_ord = mysqli_query($koneksi, "SELECT buyer_id, invoice_code FROM orders WHERE order_id='$oid'");
     $d_ord = mysqli_fetch_assoc($q_ord);
-
     if(mysqli_query($koneksi, "UPDATE orders SET status='delivered' WHERE order_id='$oid' AND shop_id='$shop_id'")) {
         sendNotification($koneksi, $d_ord['buyer_id'], "Paket Sampai", "Paket untuk pesanan #{$d_ord['invoice_code']} telah tiba. Mohon konfirmasi penerimaan.");
         echo "<script>alert('Status diubah menjadi Sampai.'); window.location.href='pesanan.php';</script>";
@@ -76,7 +68,6 @@ if (isset($_POST['action']) && $_POST['action'] == 'mark_delivered') {
 // 2. AMBIL DATA PESANAN
 // ==========================================
 $orders = [];
-// PERBAIKAN: Tambahkan u.profile_picture ke query
 $query_orders = "SELECT o.*, p.name as product_name, p.image as product_image, 
                  u.name as buyer_name, u.email as buyer_email, u.profile_picture,
                  a.full_address, a.phone_number as buyer_phone
@@ -89,20 +80,15 @@ $query_orders = "SELECT o.*, p.name as product_name, p.image as product_image,
 $res = mysqli_query($koneksi, $query_orders);
 
 while($row = mysqli_fetch_assoc($res)) {
-    // Logic Tab
     $tab_status = $row['status'];
     if($row['status'] == 'delivered') $tab_status = 'shipping'; 
     if($row['status'] == 'reviewed') $tab_status = 'completed';
 
-    // Parse Shipping (ambil nama dan harga)
     $shipping_raw = $row['shipping_method'];
     $parts = explode(' | ', $shipping_raw);
-    $shipping_label_full = isset($parts[0]) ? $parts[0] : $shipping_raw; // "JNE (Rp 15.000)"
-    
-    // Bersihkan nama kurir untuk tampilan (hapus harga dalam kurung)
+    $shipping_label_full = isset($parts[0]) ? $parts[0] : $shipping_raw;
     $shipping_clean = preg_replace('/\s*\(Rp.*?\)/', '', $shipping_label_full);
 
-    // Ambil nominal ongkir dari string untuk kalkulasi total
     $shipping_cost = 0;
     if (preg_match('/\(Rp ([\d\.]+)\)/', $shipping_label_full, $matches)) {
         $shipping_cost = (int)str_replace('.', '', $matches[1]);
@@ -111,12 +97,10 @@ while($row = mysqli_fetch_assoc($res)) {
     $payment_label = isset($parts[1]) ? $parts[1] : 'Manual / COD';
     $alamat_fix = !empty($row['full_address']) ? $row['full_address'] . " (" . $row['buyer_phone'] . ")" : "Alamat tidak ditemukan";
 
-    // Hitung Grand Total (Produk + Ongkir + Admin)
     $product_price = (int)$row['total_price'];
     $admin_fee = $system_admin_fee;
     $grand_total = $product_price + $shipping_cost + $admin_fee;
 
-    // Avatar Logic
     $buyer_name = !empty($row['buyer_name']) ? $row['buyer_name'] : $row['buyer_email'];
     $buyer_avatar = !empty($row['profile_picture']) ? $row['profile_picture'] : "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($buyer_name);
 
@@ -127,15 +111,13 @@ while($row = mysqli_fetch_assoc($res)) {
         'db_status' => $row['status'],
         'product' => $row['product_name'],
         'price_raw' => $product_price,
-        'total_price_fmt' => 'Rp ' . number_format($grand_total, 0, ',', '.'), // Tampilkan Grand Total
+        'total_price_fmt' => 'Rp ' . number_format($grand_total, 0, ',', '.'),
         'shipping_cost_fmt' => 'Rp ' . number_format($shipping_cost, 0, ',', '.'),
         'admin_fee_fmt' => 'Rp ' . number_format($admin_fee, 0, ',', '.'),
         'img' => $row['product_image'],
-        'quantity' => 1,
         'buyer' => $buyer_name,
         'buyer_avatar' => $buyer_avatar,
         'address' => $alamat_fix,
-        'shipping' => $shipping_label_full,
         'shipping_clean' => $shipping_clean,
         'payment' => $payment_label,
         'tracking' => $row['tracking_number'],
@@ -153,63 +135,58 @@ while($row = mysqli_fetch_assoc($res)) {
     <link rel="stylesheet" href="../../../Assets/css/role/seller/pesanan.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Base & Layout */
+        /* Base Layout */
         .content { padding: 30px 5%; background-color: #f8f9fa; min-height: 100vh; }
         
-        /* Tabs Styling */
-        .tabs-container {
-            display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 25px;
-            overflow-x: auto; padding-bottom: 0;
-        }
-        .tab-btn {
-            background: none; border: none; padding: 10px 15px; font-size: 1rem; color: #666;
-            cursor: pointer; position: relative; font-weight: 500; transition: 0.3s;
-        }
+        /* Tabs */
+        .tabs-container { display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 25px; overflow-x: auto; padding-bottom: 0; }
+        .tab-btn { background: none; border: none; padding: 10px 15px; font-size: 1rem; color: #666; cursor: pointer; position: relative; font-weight: 500; transition: 0.3s; }
         .tab-btn.active { color: var(--primary); font-weight: 700; }
-        .tab-btn.active::after {
-            content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 3px;
-            background-color: var(--primary); border-radius: 2px;
-        }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 3px; background-color: var(--primary); border-radius: 2px; }
         .tab-btn:hover { color: var(--primary); }
 
-        /* Order Card Styling */
+        /* Order Card - Updated Layout */
         .order-card {
-            background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px;
+            background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
-            display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;
-            transition: transform 0.2s;
+            display: flex; justify-content: space-between; align-items: stretch; gap: 20px;
+            transition: all 0.2s; cursor: pointer; /* Menandakan bisa diklik */
         }
-        .order-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); border-color: #e0e0e0; }
 
-        .order-left { display: flex; gap: 15px; flex: 1; }
-        .order-img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
+        .order-left { display: flex; gap: 15px; flex: 1; align-items: center; }
+        .order-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
         
-        .order-info { display: flex; flex-direction: column; gap: 6px; }
-        .order-meta { font-size: 0.85rem; color: #888; display: flex; gap: 8px; align-items: center; }
-        .order-title { font-size: 1.1rem; color: #333; font-weight: 700; margin: 0; }
-        .buyer-info { font-size: 0.9rem; color: #555; display: flex; align-items: center; gap: 8px; }
-        .buyer-avatar-img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
-        .order-price { font-size: 1rem; font-weight: 700; color: var(--primary); }
+        .order-info { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+        .order-meta { font-size: 0.8rem; color: #999; display: flex; gap: 8px; align-items: center; }
+        .order-title { font-size: 1.05rem; color: #333; font-weight: 700; margin: 0; line-height: 1.4; }
+        .buyer-info { font-size: 0.85rem; color: #555; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+        .buyer-avatar-img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
         
-        .order-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 160px; }
+        /* Right Section: Status di Atas, Harga di Bawah */
+        .order-right { 
+            display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; 
+            min-width: 150px; text-align: right; 
+        }
         
+        .order-price { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+        .price-label { font-size: 0.75rem; color: #888; margin-right: 4px; font-weight: normal; }
+
         /* Status Badges */
-        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px; }
-        .status-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .status-processed { background: #e2e6ea; color: #383d41; border: 1px solid #d6d8db; }
-        .status-shipping { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
-        .status-delivered { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-done { background: #d1e7dd; color: #0f5132; }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-pending { background: #fff8e1; color: #d68100; border: 1px solid #ffeeba; }
+        .status-processed { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+        .status-shipping { background: #e8eaf6; color: #283593; border: 1px solid #c5cae9; }
+        .status-delivered { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .status-done { background: #f1f8e9; color: #33691e; border: 1px solid #dcedc8; }
 
-        /* Buttons */
+        /* Action Buttons */
         .btn-action {
-            padding: 9px 18px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; border: none; font-weight: 600;
-            transition: 0.2s; text-align: center; width: 100%; display: block; text-decoration: none;
+            padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; border: none; font-weight: 600;
+            transition: 0.2s; text-align: center; width: auto; min-width: 120px;
+            background: var(--primary); color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        .btn-confirm { background: var(--primary); color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn-confirm:hover { filter: brightness(0.9); transform: translateY(-1px); }
-        .btn-detail { background: #fff; border: 1px solid #ddd; color: #555; }
-        .btn-detail:hover { background: #f8f9fa; border-color: #bbb; color: #333; }
+        .btn-action:hover { filter: brightness(0.9); transform: translateY(-1px); }
 
         /* Modal Customization */
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; border-bottom: 1px dashed #f0f0f0; padding-bottom: 5px; }
@@ -217,11 +194,10 @@ while($row = mysqli_fetch_assoc($res)) {
         .detail-label { color: #666; }
         .detail-val { font-weight: 600; color: #333; text-align: right; max-width: 65%; }
 
-        /* Responsive */
         @media (max-width: 768px) {
-            .order-card { flex-direction: column; }
-            .order-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
-            .btn-action { width: auto; padding: 8px 14px; }
+            .order-card { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .order-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid #f0f0f0; }
+            .order-price { font-size: 1rem; }
         }
     </style>
 </head>
@@ -287,8 +263,7 @@ while($row = mysqli_fetch_assoc($res)) {
                 <div class="modal-title">Rincian Pesanan</div>
                 <span class="close-modal" onclick="closeModal('detailModal')">&times;</span>
             </div>
-            <div id="detailContent" style="padding: 5px 0;">
-                </div>
+            <div id="detailContent" style="padding: 5px 0;"></div>
             <button class="btn-submit" style="background:#eee; color:#333; margin-top:15px; border:1px solid #ccc;" onclick="closeModal('detailModal')">Tutup</button>
         </div>
     </div>
@@ -316,29 +291,29 @@ while($row = mysqli_fetch_assoc($res)) {
             filtered.forEach(order => {
                 let actionArea = '', statusBadge = '';
                 
-                // Status Logic & Action Buttons
+                // --- SETUP STATUS BADGE & ACTION ---
                 if (order.status === 'pending') {
-                    statusBadge = `<span class="status-badge status-pending">Menunggu Konfirmasi</span>`;
-                    actionArea = `<button class="btn-action btn-confirm" onclick="openProcessModal(${order.id})">Proses Pesanan</button>`;
+                    statusBadge = `<span class="status-badge status-pending">Menunggu</span>`;
+                    actionArea = `<button class="btn-action" onclick="event.stopPropagation(); openProcessModal(${order.id})">Proses</button>`;
                 } else if (order.status === 'processed') {
-                    statusBadge = `<span class="status-badge status-processed">Sedang Diproses</span>`;
-                    actionArea = `<button class="btn-action btn-confirm" onclick="openShipModal(${order.id}, '${order.shipping_clean}')">Input Resi</button>`;
+                    statusBadge = `<span class="status-badge status-processed">Diproses</span>`;
+                    actionArea = `<button class="btn-action" onclick="event.stopPropagation(); openShipModal(${order.id}, '${order.shipping_clean}')">Input Resi</button>`;
                 } else if (order.status === 'shipping') {
                     if (order.db_status === 'shipping') {
-                        statusBadge = `<span class="status-badge status-shipping">Sedang Dikirim</span>`;
-                        actionArea = `<button class="btn-action btn-confirm" style="font-size:0.8rem; padding:8px 12px;" onclick="confirmArrived(${order.id})">Konfirmasi Sampai</button>`;
+                        statusBadge = `<span class="status-badge status-shipping">Dikirim</span>`;
+                        actionArea = `<button class="btn-action" onclick="event.stopPropagation(); confirmArrived(${order.id})">Selesai</button>`;
                     } else {
-                        statusBadge = `<span class="status-badge status-delivered">Barang Sampai</span>`;
+                        statusBadge = `<span class="status-badge status-delivered">Sampai</span>`;
+                        actionArea = `<span style="font-size:0.85rem; color:#888;">Menunggu Buyer</span>`;
                     }
                 } else if (order.status === 'completed') {
-                    statusBadge = (order.db_status === 'reviewed') ? `<span class="status-badge status-done">Sudah Direview</span>` : `<span class="status-badge status-done">Selesai</span>`;
+                    statusBadge = (order.db_status === 'reviewed') ? `<span class="status-badge status-done">Direview</span>` : `<span class="status-badge status-done">Selesai</span>`;
+                    actionArea = ``; // Tidak ada tombol aksi di tab selesai
                 }
 
-                // TOMBOL DETAIL MUNCUL DI SEMUA STATUS
-                const detailButton = `<button class="btn-action btn-detail" onclick="openDetailModal(${order.id})">Lihat Detail</button>`;
-
+                // --- RENDER CARD (TOMBOL DETAIL DIHAPUS, KLIK CARD UNTUK DETAIL) ---
                 container.innerHTML += `
-                    <div class="order-card">
+                    <div class="order-card" onclick="openDetailModal(${order.id})">
                         <div class="order-left">
                             <img src="${order.img}" class="order-img" alt="${order.product}">
                             <div class="order-info">
@@ -350,14 +325,18 @@ while($row = mysqli_fetch_assoc($res)) {
                                     <img src="${order.buyer_avatar}" class="buyer-avatar-img">
                                     <span>${order.buyer}</span>
                                 </div>
-                                <div style="margin-top:4px;">${statusBadge}</div>
                             </div>
                         </div>
+                        
                         <div class="order-right">
-                            <div class="order-price">${order.total_price_fmt}</div>
-                            <div style="margin-top:auto; width:100%; display:flex; flex-direction:column; gap:8px;">
+                            <div style="margin-bottom: 8px;">${statusBadge}</div>
+                            
+                            <div>
+                                <div class="order-price">${order.total_price_fmt}</div>
+                            </div>
+
+                            <div style="margin-top: 10px;">
                                 ${actionArea}
-                                ${detailButton}
                             </div>
                         </div>
                     </div>`;
@@ -370,7 +349,7 @@ while($row = mysqli_fetch_assoc($res)) {
         function confirmArrived(id) { if(confirm("Yakin barang sudah sampai?")) { document.getElementById('deliveredOrderId').value = id; document.getElementById('formMarkDelivered').submit(); } }
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('open'); }
 
-        // --- FUNGSI DETAIL OVERLAY ---
+        // --- OVERLAY DETAIL ---
         function openDetailModal(id) {
             const order = orders.find(o => o.id === id); if (!order) return;
             const resi = order.tracking ? order.tracking : '-';
