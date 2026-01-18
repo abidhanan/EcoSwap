@@ -12,8 +12,12 @@ if(mysqli_num_rows($q_shop) == 0){ header("Location: dashboard.php"); exit(); }
 $shop = mysqli_fetch_assoc($q_shop);
 $shop_id = $shop['shop_id'];
 
+// --- 0. AMBIL BIAYA ADMIN (Penting untuk hitung total) ---
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$d_fee = mysqli_fetch_assoc($q_fee);
+$system_admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
+
 // --- 1. HITUNG STATISTIK ---
-// Menghitung 'completed' ATAU 'reviewed' (karena reviewed artinya juga sudah selesai)
 $q_sold = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE shop_id='$shop_id' AND (status='completed' OR status='reviewed')");
 $d_sold = mysqli_fetch_assoc($q_sold);
 $total_sold = $d_sold['total'];
@@ -22,11 +26,13 @@ $q_rating = mysqli_query($koneksi, "SELECT AVG(r.rating) as avg_rating FROM revi
 $d_rating = mysqli_fetch_assoc($q_rating);
 $rating_toko = number_format((float)$d_rating['avg_rating'], 1);
 
-// --- 2. AMBIL RIWAYAT PENJUALAN (Semua yang selesai diterima pembeli) ---
+// --- 2. AMBIL RIWAYAT PENJUALAN ---
+// Query diperbarui untuk mengambil foto produk (p.image) dan foto user (u.profile_picture)
 $sold_items = [];
 $q_history = mysqli_query($koneksi, "
-    SELECT o.order_id, p.name as product_name, o.total_price, 
-           u.name as buyer_name, o.shipping_method, o.status,
+    SELECT o.order_id, p.name as product_name, p.image as product_image, o.total_price, 
+           u.name as buyer_name, u.profile_picture as buyer_avatar, 
+           o.shipping_method, o.status,
            (SELECT rating FROM reviews r WHERE r.order_id = o.order_id LIMIT 1) as review_rating
     FROM orders o
     JOIN products p ON o.product_id = p.product_id
@@ -37,17 +43,36 @@ $q_history = mysqli_query($koneksi, "
 ");
 
 while($row = mysqli_fetch_assoc($q_history)) {
-    // Parse Info Pengiriman & Pembayaran
+    // 1. Parse Info Pengiriman & Pembayaran
     $parts = explode(' | ', $row['shipping_method']);
-    $row['ship_only'] = isset($parts[0]) ? $parts[0] : $row['shipping_method'];
-    $row['pay_only'] = isset($parts[1]) ? $parts[1] : '-';
+    $raw_ship = isset($parts[0]) ? $parts[0] : $row['shipping_method'];
+    
+    // Bersihkan Nama Kurir (Hapus harga di dalam kurung)
+    $row['ship_clean'] = preg_replace('/\s*\(Rp.*?\)/', '', $raw_ship);
+    $row['pay_method'] = isset($parts[1]) ? $parts[1] : '-';
+
+    // 2. Kalkulasi Total Keseluruhan
+    // Ambil ongkir dari string "JNE (Rp 15.000)"
+    $shipping_cost = 0;
+    if (preg_match('/\(Rp ([\d\.]+)\)/', $raw_ship, $matches)) {
+        $shipping_cost = (int)str_replace('.', '', $matches[1]);
+    }
+    
+    // Rumus: Harga Produk + Ongkir + Admin
+    $row['grand_total'] = $row['total_price'] + $shipping_cost + $system_admin_fee;
+
+    // 3. Avatar Handler
+    if (empty($row['buyer_avatar'])) {
+        $row['buyer_avatar'] = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($row['buyer_name']);
+    }
+
     $sold_items[] = $row;
 }
 
 // --- 3. AMBIL ULASAN PEMBELI ---
 $reviews = [];
 $q_rev = mysqli_query($koneksi, "
-    SELECT r.*, p.name as product_name, u.name as buyer_name 
+    SELECT r.*, p.name as product_name, u.name as buyer_name, u.profile_picture 
     FROM reviews r 
     JOIN products p ON r.product_id = p.product_id 
     JOIN users u ON r.user_id = u.user_id 
@@ -56,6 +81,8 @@ $q_rev = mysqli_query($koneksi, "
 ");
 
 while($row = mysqli_fetch_assoc($q_rev)) {
+    $avatar = !empty($row['profile_picture']) ? $row['profile_picture'] : "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($row['buyer_name']);
+    
     $reviews[] = [
         'name' => $row['buyer_name'],
         'date' => date('d M Y', strtotime($row['created_at'])),
@@ -63,7 +90,8 @@ while($row = mysqli_fetch_assoc($q_rev)) {
         'rating' => (int)$row['rating'],
         'text' => $row['comment'],
         'review_photo' => $row['photo'],
-        'img' => $row['buyer_name']
+        'avatar_url' => $avatar,
+        'rating_filter' => (string)$row['rating']
     ];
 }
 ?>
@@ -77,19 +105,41 @@ while($row = mysqli_fetch_assoc($q_rev)) {
     <link rel="stylesheet" href="../../../Assets/css/role/seller/performa.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* CSS Tambahan untuk Tabel yang Lebih Rapi */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { 
+            background-color: #f8f9fa; color: #555; font-weight: 600; padding: 15px 10px; 
+            border-bottom: 2px solid #eee; text-align: left; font-size: 0.85rem; white-space: nowrap;
+        }
+        .data-table td { 
+            padding: 15px 10px; vertical-align: middle; border-bottom: 1px solid #f0f0f0; 
+            color: #333; font-size: 0.9rem; 
+        }
+        .data-table tr:hover { background-color: #fafafa; }
+
+        /* Komponen Tabel */
+        .product-cell { display: flex; align-items: center; gap: 12px; }
+        .table-prod-img { width: 45px; height: 45px; border-radius: 6px; object-fit: cover; border: 1px solid #eee; }
+        .table-prod-name { font-weight: 600; font-size: 0.9rem; color: #333; line-height: 1.2; }
+        .table-ord-id { font-size: 0.75rem; color: #888; margin-top: 2px; }
+
+        .buyer-cell { display: flex; align-items: center; gap: 8px; }
+        .table-buyer-img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
+        
+        .badge-pill { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        .bg-completed { background: #d1e7dd; color: #0f5132; }
+        .bg-reviewed { background: #fff3cd; color: #856404; }
+        .bg-ship { background: #eef2f7; color: #333; }
+
+        .price-bold { font-weight: 700; color: var(--primary); }
+        .star-gold { color: #ffc107; font-size: 0.85rem; }
+
+        /* Filter & Reviews */
         .review-img-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-top: 10px; border: 1px solid #eee; cursor: pointer; transition: transform 0.2s; }
         .review-img-thumb:hover { transform: scale(1.05); }
-        
-        /* Filter Button Active State */
-        .filter-pill {
-            padding: 8px 16px; border: 1px solid #ddd; background: #fff; border-radius: 20px; cursor: pointer; font-size: 0.9rem; transition: 0.2s;
-        }
+        .filter-pill { padding: 8px 16px; border: 1px solid #ddd; background: #fff; border-radius: 20px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; color: #555; }
         .filter-pill:hover { background: #f0f0f0; }
         .filter-pill.active { background: var(--primary); border-color: var(--primary); color: #000; font-weight: 600; }
-        
-        /* Badge Status */
-        .badge-status-completed { background: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
-        .badge-status-reviewed { background: #fff3cd; color: #856404; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -109,6 +159,7 @@ while($row = mysqli_fetch_assoc($q_rev)) {
             <div class="header"><div class="page-title">Performa Toko</div></div>
             <div class="content">
                 <div class="performa-container">
+                    
                     <div class="stats-grid">
                         <div class="stat-card active" id="cardSold" onclick="showSection('sold')">
                             <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
@@ -128,40 +179,67 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Nama Barang</th>
-                                        <th>Harga</th>
-                                        <th>Pembeli</th>
-                                        <th>Info Pengiriman</th>
-                                        <th>Rating</th>
+                                        <th width="25%">Produk</th>
+                                        <th width="10%">Harga Produk</th>
+                                        <th width="15%">Pembeli</th>
+                                        <th width="10%">Status</th>
+                                        <th width="10%">Pembayaran</th>
+                                        <th width="10%">Pengiriman</th>
+                                        <th width="12%">Total Order</th>
+                                        <th width="8%">Rating</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if(empty($sold_items)): ?> 
-                                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">Belum ada penjualan selesai.</td></tr>
+                                        <tr><td colspan="8" style="text-align:center; padding:40px; color:#888;">Belum ada penjualan selesai.</td></tr>
                                     <?php else: ?>
                                         <?php foreach($sold_items as $item): ?>
                                         <tr>
                                             <td>
-                                                <strong><?php echo $item['product_name']; ?></strong><br>
-                                                <small style="color:#888;">#ORD-<?php echo $item['order_id']; ?></small>
-                                                <br>
+                                                <div class="product-cell">
+                                                    <img src="<?php echo $item['product_image']; ?>" class="table-prod-img" alt="img">
+                                                    <div>
+                                                        <div class="table-prod-name"><?php echo $item['product_name']; ?></div>
+                                                        <div class="table-ord-id">#ORD-<?php echo $item['order_id']; ?></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            
+                                            <td>Rp <?php echo number_format($item['total_price'], 0, ',', '.'); ?></td>
+                                            
+                                            <td>
+                                                <div class="buyer-cell">
+                                                    <img src="<?php echo $item['buyer_avatar']; ?>" class="table-buyer-img">
+                                                    <span><?php echo $item['buyer_name']; ?></span>
+                                                </div>
+                                            </td>
+
+                                            <td>
                                                 <?php if($item['status'] == 'reviewed'): ?>
-                                                    <span class="badge-status-reviewed">Sudah Direview</span>
+                                                    <span class="badge-pill bg-reviewed">Direview</span>
                                                 <?php else: ?>
-                                                    <span class="badge-status-completed">Selesai</span>
+                                                    <span class="badge-pill bg-completed">Selesai</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td>Rp <?php echo number_format($item['total_price'], 0, ',', '.'); ?></td>
-                                            <td><?php echo $item['buyer_name']; ?></td>
+
+                                            <td><span style="font-weight:500; color:#555;"><?php echo $item['pay_method']; ?></span></td>
+
                                             <td>
-                                                <span class="badge-shipping"><?php echo $item['ship_only']; ?></span><br>
-                                                <small style="color:var(--primary); font-weight:bold;"><?php echo $item['pay_only']; ?></small>
+                                                <span class="badge-pill bg-ship">
+                                                    <i class="fas fa-truck" style="font-size:0.6rem; margin-right:3px;"></i> 
+                                                    <?php echo $item['ship_clean']; ?>
+                                                </span>
                                             </td>
+
+                                            <td>
+                                                <span class="price-bold">Rp <?php echo number_format($item['grand_total'], 0, ',', '.'); ?></span>
+                                            </td>
+
                                             <td>
                                                 <?php if($item['review_rating']): ?>
-                                                    <div class="star-rating"><i class="fas fa-star" style="color:#ffc107;"></i> <?php echo number_format($item['review_rating'], 1); ?></div>
+                                                    <div class="star-rating"><i class="fas fa-star star-gold"></i> <?php echo number_format($item['review_rating'], 1); ?></div>
                                                 <?php else: ?>
-                                                    <span style="color:#ccc;">-</span>
+                                                    <span style="color:#ccc; font-size:0.8rem;">-</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
@@ -194,21 +272,19 @@ while($row = mysqli_fetch_assoc($q_rev)) {
     <script>
         function goToDashboard() { window.location.href = '../buyer/dashboard.php'; }
         
-        // Data Reviews dari PHP
         const reviews = <?php echo json_encode($reviews); ?>;
 
         function renderReviews(filterType) {
             const container = document.getElementById('reviewListContainer');
             container.innerHTML = '';
 
-            // Filter Logic
             const filteredReviews = reviews.filter(r => {
                 if (filterType === 'all') return true;
-                return r.rating == filterType;
+                return r.rating_filter == filterType;
             });
 
             if (filteredReviews.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:30px; color:#888;">Tidak ada ulasan untuk filter ini.</div>`;
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:#888; border:1px dashed #ddd; border-radius:8px;">Tidak ada ulasan untuk filter ini.</div>`;
                 return;
             }
 
@@ -224,16 +300,18 @@ while($row = mysqli_fetch_assoc($q_rev)) {
                 }
 
                 container.innerHTML += `
-                    <div class="review-item" style="border-bottom:1px solid #eee; padding:15px 0; display:flex; gap:15px;">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${r.img}" class="buyer-avatar" style="width:50px; height:50px; border-radius:50%; background:#eee;">
+                    <div class="review-item" style="border-bottom:1px solid #f0f0f0; padding:20px 0; display:flex; gap:15px;">
+                        <img src="${r.avatar_url}" class="buyer-avatar" style="width:50px; height:50px; border-radius:50%; background:#eee; object-fit:cover; border:1px solid #ddd;">
                         <div class="review-content" style="flex:1;">
                             <div class="review-header" style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                <span class="buyer-name" style="font-weight:bold;">${r.name}</span>
-                                <span class="review-date" style="font-size:0.85rem; color:#999;">${r.date}</span>
+                                <span class="buyer-name" style="font-weight:700; font-size:0.95rem; color:#333;">${r.name}</span>
+                                <span class="review-date" style="font-size:0.8rem; color:#999;">${r.date}</span>
                             </div>
-                            <span class="review-product" style="font-size:0.85rem; color:#666; background:#f5f5f5; padding:2px 8px; border-radius:4px;"><i class="fas fa-box"></i> ${r.product}</span>
-                            <div class="review-stars" style="color:#ffc107; margin:5px 0;">${stars}</div>
-                            <p class="review-text" style="color:#333; line-height:1.5;">${r.text}</p>
+                            <span class="review-product" style="font-size:0.8rem; color:#555; background:#f5f5f5; padding:3px 8px; border-radius:4px; display:inline-block; margin-bottom:5px;">
+                                <i class="fas fa-box" style="margin-right:4px;"></i> ${r.product}
+                            </span>
+                            <div class="review-stars" style="color:#ffc107; margin:5px 0; font-size:0.9rem;">${stars}</div>
+                            <p class="review-text" style="color:#444; line-height:1.5; margin:5px 0 0 0; font-size:0.95rem;">${r.text}</p>
                             ${photoHtml}
                         </div>
                     </div>`;
@@ -241,15 +319,12 @@ while($row = mysqli_fetch_assoc($q_rev)) {
         }
 
         function filterReviews(type, btn) {
-            // Update tombol active
             document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
             renderReviews(type);
         }
 
         function showSection(type) {
-            // Tab Toggle (Penjualan vs Rating)
             document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.data-section').forEach(s => s.classList.remove('active'));
             
@@ -259,12 +334,11 @@ while($row = mysqli_fetch_assoc($q_rev)) {
             } else {
                 document.getElementById('cardRating').classList.add('active');
                 document.getElementById('sectionRating').classList.add('active');
-                renderReviews('all'); // Render default 'all' saat tab dibuka
+                renderReviews('all');
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Default load
             renderReviews('all');
         });
     </script>
