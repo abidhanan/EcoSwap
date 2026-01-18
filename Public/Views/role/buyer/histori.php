@@ -16,9 +16,9 @@ $q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE
 $d_fee = mysqli_fetch_assoc($q_fee);
 $system_admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
 
-// ... (KODE LOGIKA AKSI SEPERTI CONFIRM, REVIEW, REPORT TETAP SAMA) ...
-// (Bagian A, B, C: Confirm Received, Submit Review, Report Seller JANGAN DIUBAH)
-// ...
+// ... (LOGIKA PHP TETAP SAMA SEPERTI SEBELUMNYA) ...
+// Bagian Action Handler tidak diubah agar fungsi tetap jalan normal
+
 if (isset($_POST['action']) && $_POST['action'] == 'confirm_received') {
     $oid = $_POST['order_id'];
     $q_ord = mysqli_query($koneksi, "SELECT o.invoice_code, o.shop_id, o.total_price, o.shipping_method, s.user_id as seller_id FROM orders o JOIN shops s ON o.shop_id = s.shop_id WHERE o.order_id='$oid'");
@@ -74,11 +74,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 
     $parts = explode(' | ', $row['shipping_method']);
-    $ship_lbl_full = $parts[0]; // Contoh: "JNE (Rp 15.000)"
-    
-    // Bersihkan nama kurir untuk modal (hilangkan harga dalam kurung)
+    $ship_lbl_full = $parts[0]; 
     $ship_name_clean = preg_replace('/\s*\(Rp.*?\)/', '', $ship_lbl_full);
-
     $pay_lbl = isset($parts[1]) ? $parts[1] : 'Manual/COD';
     
     $shipping_cost = 0;
@@ -87,11 +84,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 
     $product_price = (int)$row['total_price'];
-    
-    // GUNAKAN BIAYA ADMIN DARI DATABASE
     $admin_fee = $system_admin_fee;
-    
-    // Total yang dibayar buyer (untuk tampilan detail)
     $grand_total = $product_price + $shipping_cost + $admin_fee;
 
     $history_data[] = [
@@ -100,9 +93,9 @@ while ($row = mysqli_fetch_assoc($result)) {
         'shop_id' => $row['shop_id'],
         'status_raw' => $row['status'],
         'item' => $row['product_name'],
-        'price' => 'Rp ' . number_format($grand_total, 0, ',', '.'), // TAMPILKAN GRAND TOTAL
+        'price' => 'Rp ' . number_format($grand_total, 0, ',', '.'),
         'shipping' => $ship_lbl_full,
-        'shipping_clean' => $ship_name_clean, // Nama kurir bersih
+        'shipping_clean' => $ship_name_clean,
         'payment' => $pay_lbl,
         'tracking' => $row['tracking_number'] ? $row['tracking_number'] : '-',
         'counterparty' => $row['shop_name'],
@@ -128,6 +121,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/histori.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* CSS DASAR HISTORI */
         .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
         .status-selesai { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .status-proses { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
@@ -144,6 +138,8 @@ while ($row = mysqli_fetch_assoc($result)) {
         .btn-report:hover { background: #dc3545; color: white; }
         .btn-detail { background: #f8f9fa; border: 1px solid #ccc; color: #333; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition:0.2s; }
         .btn-detail:hover { background: #e2e6ea; }
+
+        /* MODAL STYLING UMUM */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
         .modal-overlay.open { display: flex; opacity: 1; }
         .modal-container { background: #fff; width: 90%; max-width: 500px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 25px; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; }
@@ -152,22 +148,48 @@ while ($row = mysqli_fetch_assoc($result)) {
         .modal-title { font-size: 1.25rem; font-weight: 700; color: #333; }
         .close-modal { background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer; transition: 0.2s; }
         .close-modal:hover { color: #333; }
-        .form-group { margin-bottom: 15px; }
+        
+        .form-group { margin-bottom: 20px; }
         .form-label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; color: #555; }
-        .form-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; transition: 0.3s; }
+        .form-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; transition: 0.3s; box-sizing: border-box; }
         .form-input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(255,215,0,0.1); }
+        
         .btn-submit { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 1rem; margin-top: 10px; transition: 0.2s; }
         .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
-        .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+
+        /* DETAIL MODAL STYLES */
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
         .detail-label { color: #666; }
         .detail-value { font-weight: 600; color: #333; text-align: right; max-width: 60%; }
-        .detail-total { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid #eee; font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        .rating-input { display: flex; flex-direction: row-reverse; gap: 5px; justify-content: flex-end; }
+
+        /* RATING & REPORT MODAL SPECIFIC */
+        .rating-wrapper { text-align: center; margin-bottom: 10px; }
+        .rating-input { display: inline-flex; flex-direction: row-reverse; gap: 5px; }
         .rating-input input { display: none; }
-        .rating-input label { font-size: 2rem; color: #ddd; cursor: pointer; transition: 0.2s; }
-        .rating-input input:checked ~ label, .rating-input label:hover, .rating-input label:hover ~ label { color: #ffc107; }
-        .file-upload-box { border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; background: #fafafa; }
+        .rating-input label { font-size: 2.5rem; color: #e0e0e0; cursor: pointer; transition: color 0.2s; }
+        .rating-input input:checked ~ label, 
+        .rating-input label:hover, 
+        .rating-input label:hover ~ label { color: #ffc107; text-shadow: 0 0 5px rgba(255,193,7,0.5); }
+        .rating-text { font-weight: 600; color: var(--primary); margin-top: 5px; height: 20px; font-size: 0.9rem; }
+
+        .file-upload-box { 
+            border: 2px dashed #ddd; padding: 25px; text-align: center; border-radius: 12px; 
+            cursor: pointer; background: #fafafa; transition: 0.2s; position: relative; overflow: hidden;
+        }
         .file-upload-box:hover { border-color: var(--primary); background: #fffdf0; }
+        .file-upload-content { position: relative; z-index: 2; pointer-events: none; }
+        .preview-image { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            object-fit: cover; z-index: 1; display: none; border-radius: 10px;
+        }
+        .preview-active .file-upload-content { opacity: 0; }
+        .preview-active .preview-image { display: block; }
+        
+        .alert-box {
+            background: #fff5f5; border-left: 4px solid #dc3545; padding: 12px 15px; 
+            border-radius: 6px; margin-bottom: 20px; font-size: 0.85rem; color: #c53030; 
+            display: flex; align-items: start; gap: 10px; line-height: 1.4;
+        }
     </style>
 </head>
 
@@ -176,31 +198,23 @@ while ($row = mysqli_fetch_assoc($result)) {
     <div class="app-layout">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
-                    ECO<span>SWAP</span>
-                </div>
+                <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">ECO<span>SWAP</span></div>
             </div>
-
             <ul class="sidebar-menu">
                 <li class="menu-item"><a href="profil.php" class="menu-link"><i class="fas fa-user"></i><span>Biodata Diri</span></a></li>
                 <li class="menu-item"><a href="alamat.php" class="menu-link"><i class="fas fa-map-marker-alt"></i><span>Alamat</span></a></li>
                 <li class="menu-item active"><a href="histori.php" class="menu-link"><i class="fas fa-history"></i><span>Histori</span></a></li>
                 <li class="menu-item"><a href="../seller/dashboard.php" class="menu-link"><i class="fas fa-store"></i><span>Toko Saya</span></a></li>
             </ul>
-
             <div class="sidebar-footer">
                 <a href="../../../../index.php" class="logout-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
             </div>
         </aside>
 
         <main class="main-content-wrapper">
-            <div class="header">
-                <div class="page-title">Histori Aktivitas</div>
-            </div>
-
+            <div class="header"><div class="page-title">Histori Aktivitas</div></div>
             <div class="content">
                 <div class="history-list">
-                    
                     <?php if (empty($history_data)): ?>
                         <div style="text-align:center; padding:60px 0; color:#888;">
                             <i class="fas fa-history" style="font-size:3rem; margin-bottom:15px; opacity:0.5;"></i><br>
@@ -215,9 +229,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 </div>
                                 <div class="item-info">
                                     <div class="badge-container">
-                                        <span class="status-badge <?php echo $data['badge_class']; ?>">
-                                            <?php echo $data['badge_text']; ?>
-                                        </span>
+                                        <span class="status-badge <?php echo $data['badge_class']; ?>"><?php echo $data['badge_text']; ?></span>
                                     </div>
                                     <div class="item-title"><?php echo $data['item']; ?></div>
                                     <div class="item-date">
@@ -229,7 +241,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                             </div>
                             <div class="card-right">
                                 <div class="item-price"><?php echo $data['price']; ?></div>
-                                
                                 <div class="btn-action-group">
                                     <?php if($data['status_raw'] == 'delivered'): ?>
                                         <form method="POST" onsubmit="return confirm('Sudah mengecek barang dan yakin ingin menyelesaikannya?')">
@@ -238,19 +249,16 @@ while ($row = mysqli_fetch_assoc($result)) {
                                             <button type="submit" class="btn-confirm"><i class="fas fa-check"></i> Terima Pesanan</button>
                                         </form>
                                     <?php endif; ?>
-
                                     <?php if($data['status_raw'] == 'completed'): ?>
                                         <button class="btn-review" onclick="openReviewModal(<?php echo $data['id']; ?>, <?php echo $data['product_id']; ?>)">Nilai</button>
                                         <button class="btn-report" onclick="openReportModal(<?php echo $data['id']; ?>, <?php echo $data['shop_id']; ?>)">Lapor</button>
                                     <?php endif; ?>
-
                                     <button class="btn-detail" onclick="openDetail(<?php echo $data['id']; ?>)">Detail</button>
                                 </div>
                             </div>
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
-
                 </div>
             </div>
         </main>
@@ -278,29 +286,32 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <input type="hidden" name="order_id" id="revOrderId">
                 <input type="hidden" name="product_id" id="revProductId">
 
-                <div class="form-group" style="text-align:center;">
-                    <label class="form-label">Berikan Rating</label>
+                <div class="rating-wrapper">
                     <div class="rating-input">
-                        <input type="radio" id="star5" name="rating" value="5" required><label for="star5" title="Sempurna"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star4" name="rating" value="4"><label for="star4" title="Bagus"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star3" name="rating" value="3"><label for="star3" title="Cukup"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star2" name="rating" value="2"><label for="star2" title="Buruk"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star1" name="rating" value="1"><label for="star1" title="Sangat Buruk"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star5" name="rating" value="5" onchange="updateRatingText('Sempurna!')" required><label for="star5" title="Sempurna"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star4" name="rating" value="4" onchange="updateRatingText('Puas!')"><label for="star4" title="Bagus"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star3" name="rating" value="3" onchange="updateRatingText('Cukup')"><label for="star3" title="Cukup"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star2" name="rating" value="2" onchange="updateRatingText('Buruk')"><label for="star2" title="Buruk"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star1" name="rating" value="1" onchange="updateRatingText('Sangat Buruk')"><label for="star1" title="Sangat Buruk"><i class="fas fa-star"></i></label>
                     </div>
+                    <div id="ratingText" class="rating-text">Klik bintang untuk menilai</div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Komentar</label>
-                    <textarea name="comment" class="form-input" rows="3" placeholder="Bagaimana kualitas produk ini?" required></textarea>
+                    <textarea name="comment" class="form-input" rows="3" placeholder="Bagaimana kualitas produk ini? Ceritakan pengalamanmu..." required></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Foto Produk (Opsional)</label>
-                    <div class="file-upload-box" onclick="document.getElementById('reviewPhotoInput').click()">
-                        <i class="fas fa-camera" style="font-size:1.2rem; color:#888;"></i><br>
-                        <span style="font-size:0.85rem; color:#666;">Klik untuk upload foto</span>
+                    <div class="file-upload-box" id="reviewUploadBox" onclick="document.getElementById('reviewPhotoInput').click()">
+                        <div class="file-upload-content">
+                            <i class="fas fa-camera" style="font-size:1.5rem; color:#ccc; margin-bottom:8px;"></i><br>
+                            <span style="font-size:0.85rem; color:#666; font-weight:600;">Klik untuk tambah foto</span>
+                        </div>
+                        <img id="reviewPreview" class="preview-image" src="">
                     </div>
-                    <input type="file" id="reviewPhotoInput" name="review_photo" accept="image/*" style="display:none;">
+                    <input type="file" id="reviewPhotoInput" name="review_photo" accept="image/*" style="display:none;" onchange="previewImage(this, 'reviewPreview', 'reviewUploadBox')">
                 </div>
 
                 <button type="submit" class="btn-submit" style="background:var(--primary); color:#000;">Kirim Ulasan</button>
@@ -319,22 +330,28 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <input type="hidden" name="order_id" id="repOrderId">
                 <input type="hidden" name="shop_id" id="repShopId">
 
-                <div style="background:#fff5f5; border:1px solid #feb2b2; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85rem; color:#c53030;">
-                    <i class="fas fa-exclamation-triangle"></i> Laporan palsu dapat menyebabkan akun Anda dibekukan.
+                <div class="alert-box">
+                    <i class="fas fa-exclamation-triangle" style="margin-top:3px;"></i>
+                    <div>
+                        <strong>Perhatian:</strong><br>Laporan palsu dapat menyebabkan akun Anda dibekukan sementara atau permanen.
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Alasan Pelaporan</label>
-                    <textarea name="reason" class="form-input" rows="4" placeholder="Jelaskan masalah Anda (Barang palsu, penipuan, rusak, dll)..." required></textarea>
+                    <textarea name="reason" class="form-input" rows="4" placeholder="Jelaskan masalah secara detail (Contoh: Barang palsu, penipuan, barang rusak parah)..." required></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Bukti Foto (Wajib)</label>
-                    <div class="file-upload-box" onclick="document.getElementById('reportProofInput').click()">
-                        <i class="fas fa-cloud-upload-alt" style="font-size:1.2rem; color:#888;"></i><br>
-                        <span style="font-size:0.85rem; color:#666;">Upload bukti foto</span>
+                    <div class="file-upload-box" id="reportUploadBox" onclick="document.getElementById('reportProofInput').click()">
+                        <div class="file-upload-content">
+                            <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem; color:#ccc; margin-bottom:8px;"></i><br>
+                            <span style="font-size:0.85rem; color:#666; font-weight:600;">Upload bukti foto</span>
+                        </div>
+                        <img id="reportPreview" class="preview-image" src="">
                     </div>
-                    <input type="file" id="reportProofInput" name="report_proof" accept="image/*" style="display:none;" required>
+                    <input type="file" id="reportProofInput" name="report_proof" accept="image/*" style="display:none;" required onchange="previewImage(this, 'reportPreview', 'reportUploadBox')">
                 </div>
 
                 <button type="submit" class="btn-submit" style="background:#dc3545; color:white;">Kirim Laporan</button>
@@ -361,6 +378,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <span class="detail-value">${data.price_product_fmt}</span>
                     </div>
                     <div class="detail-row">
+                        <span class="detail-label">Metode Kirim</span>
+                        <span class="detail-value" style="font-size:0.85rem;">${data.shipping_clean}</span>
+                    </div>
+                    <div class="detail-row">
                         <span class="detail-label">Biaya Ongkir</span>
                         <span class="detail-value">${data.price_shipping_fmt}</span>
                     </div>
@@ -381,10 +402,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <span class="detail-label">Pembayaran</span>
                             <span class="detail-value" style="color:var(--primary); font-weight:bold;">${data.payment}</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Metode Kirim</span>
-                            <span class="detail-value" style="font-size:0.85rem;">${data.shipping_clean}</span>
-                        </div>
                         <div class="detail-row" style="margin-bottom:5px;">
                             <span class="detail-label">No. Resi</span>
                             <span class="detail-value" style="font-weight:bold; letter-spacing:1px;">${data.tracking}</span>
@@ -402,17 +419,43 @@ while ($row = mysqli_fetch_assoc($result)) {
         function openReviewModal(orderId, productId) {
             document.getElementById('revOrderId').value = orderId;
             document.getElementById('revProductId').value = productId;
+            // Reset form
+            document.querySelectorAll('input[name="rating"]').forEach(el => el.checked = false);
+            document.getElementById('ratingText').textContent = "Klik bintang untuk menilai";
+            resetPreview('reviewPreview', 'reviewUploadBox');
+            
             document.getElementById('reviewModal').classList.add('open');
         }
 
         function openReportModal(orderId, shopId) {
             document.getElementById('repOrderId').value = orderId;
             document.getElementById('repShopId').value = shopId;
+            resetPreview('reportPreview', 'reportUploadBox');
             document.getElementById('reportModal').classList.add('open');
         }
 
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('open');
+        }
+
+        function updateRatingText(text) {
+            document.getElementById('ratingText').textContent = text;
+        }
+
+        function previewImage(input, imgId, boxId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(imgId).src = e.target.result;
+                    document.getElementById(boxId).classList.add('preview-active');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function resetPreview(imgId, boxId) {
+            document.getElementById(imgId).src = "";
+            document.getElementById(boxId).classList.remove('preview-active');
         }
 
         window.onclick = function(event) {
