@@ -53,7 +53,12 @@
                 <div class="section-title-checkout">Rincian Pembayaran</div>
                 <div class="summary-row"><span>Subtotal Produk</span><span class="price-val" id="summaryProdPrice">Rp 0</span></div>
                 <div class="summary-row"><span>Ongkos Kirim</span><span class="price-val" id="summaryShipPrice">Rp 0</span></div>
-                <div class="summary-row"><span>Biaya Admin</span><span class="price-val">Rp 1.000</span></div>
+                
+                <div class="summary-row">
+                    <span>Biaya Admin</span>
+                    <span class="price-val">Rp <?php echo number_format($admin_fee, 0, ',', '.'); ?></span>
+                </div>
+                
                 <div class="summary-row total"><span>Total Pembayaran</span><span class="price-val" id="summaryTotal" style="color:var(--primary)">Rp 0</span></div>
             </div>
         </div>

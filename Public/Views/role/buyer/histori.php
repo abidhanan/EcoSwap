@@ -11,123 +11,40 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
-// ==========================================
-// 1. LOGIKA AKSI
-// ==========================================
+// --- AMBIL BIAYA ADMIN DARI DATABASE UNTUK KALKULASI DISPLAY ---
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$d_fee = mysqli_fetch_assoc($q_fee);
+$system_admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
 
-// A. Konfirmasi Pesanan Diterima (Delivered -> Completed)
+// ... (KODE LOGIKA AKSI SEPERTI CONFIRM, REVIEW, REPORT TETAP SAMA) ...
+// (Bagian A, B, C: Confirm Received, Submit Review, Report Seller JANGAN DIUBAH)
+// ...
 if (isset($_POST['action']) && $_POST['action'] == 'confirm_received') {
     $oid = $_POST['order_id'];
-    
-    // Ambil Data Pesanan (Total Harga & Toko Terkait)
-    $q_ord = mysqli_query($koneksi, "SELECT o.invoice_code, o.shop_id, o.total_price, o.shipping_method, s.user_id as seller_id 
-                                     FROM orders o JOIN shops s ON o.shop_id = s.shop_id 
-                                     WHERE o.order_id='$oid'");
+    $q_ord = mysqli_query($koneksi, "SELECT o.invoice_code, o.shop_id, o.total_price, o.shipping_method, s.user_id as seller_id FROM orders o JOIN shops s ON o.shop_id = s.shop_id WHERE o.order_id='$oid'");
     $d_ord = mysqli_fetch_assoc($q_ord);
-
     if ($d_ord) {
-        // Mulai Transaksi Database
         mysqli_begin_transaction($koneksi);
-
         try {
-            // 1. Update Status Pesanan
             mysqli_query($koneksi, "UPDATE orders SET status='completed' WHERE order_id='$oid' AND buyer_id='$user_id'");
-            
-            // 2. Kirim Notif ke Penjual
             $msg = "Pesanan #{$d_ord['invoice_code']} telah diterima pembeli. Dana masuk ke saldo Anda.";
             mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('{$d_ord['seller_id']}', 'Pesanan Selesai', '$msg', 0, NOW())");
-            
-            // 3. LOGIKA SALDO SELLER (DIPERBAIKI)
-            
-            // a. Ambil Ongkir dari teks (contoh: "JNE (Rp 18.000)")
-            $parts = explode(' | ', $d_ord['shipping_method']);
-            $ship_lbl_full = $parts[0]; 
-            $shipping_cost = 0;
-            if (preg_match('/\(Rp ([\d\.]+)\)/', $ship_lbl_full, $matches)) {
-                $shipping_cost = (int)str_replace('.', '', $matches[1]);
-            }
-
-            // b. Harga Produk (dari database)
-            $product_price = $d_ord['total_price'];
-
-            // c. Total Pendapatan Seller = Produk + Ongkir
-            // (Biaya Admin 1k sudah dibayar buyer di luar ini, jadi seller terima bersih produk+ongkir)
-            $net_income = $product_price + $shipping_cost;
-            
-            if ($net_income > 0) {
-                // Update Saldo Toko
-                mysqli_query($koneksi, "UPDATE shops SET balance = balance + $net_income WHERE shop_id='{$d_ord['shop_id']}'");
-                
-                // Catat di Riwayat Transaksi Toko
-                $desc = "Pendapatan pesanan #{$d_ord['invoice_code']}";
-                mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
-                                        VALUES ('{$d_ord['shop_id']}', 'in', '$net_income', '$desc', NOW())");
-            }
-
-            mysqli_commit($koneksi);
-            echo "<script>alert('Terima kasih! Pesanan selesai.'); window.location.href='histori.php';</script>";
-
-        } catch (Exception $e) {
-            mysqli_rollback($koneksi);
-            echo "<script>alert('Terjadi kesalahan saat memproses pesanan.');</script>";
-        }
+            $parts = explode(' | ', $d_ord['shipping_method']); $ship_lbl_full = $parts[0]; $shipping_cost = 0; if (preg_match('/\(Rp ([\d\.]+)\)/', $ship_lbl_full, $matches)) { $shipping_cost = (int)str_replace('.', '', $matches[1]); }
+            $product_price = $d_ord['total_price']; $net_income = $product_price + $shipping_cost;
+            if ($net_income > 0) { mysqli_query($koneksi, "UPDATE shops SET balance = balance + $net_income WHERE shop_id='{$d_ord['shop_id']}'"); $desc = "Pendapatan pesanan #{$d_ord['invoice_code']}"; mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) VALUES ('{$d_ord['shop_id']}', 'in', '$net_income', '$desc', NOW())"); }
+            mysqli_commit($koneksi); echo "<script>alert('Terima kasih! Pesanan selesai.'); window.location.href='histori.php';</script>";
+        } catch (Exception $e) { mysqli_rollback($koneksi); echo "<script>alert('Terjadi kesalahan saat memproses pesanan.');</script>"; }
     }
 }
-
-// B. Kirim Review
 if (isset($_POST['action']) && $_POST['action'] == 'submit_review') {
-    $oid = $_POST['order_id'];
-    $pid = $_POST['product_id'];
-    $rating = $_POST['rating'];
-    $comment = mysqli_real_escape_string($koneksi, $_POST['comment']);
-    
-    $review_img = "";
-    if (!empty($_FILES['review_photo']['name'])) {
-        $target_dir = "../../../Assets/img/reviews/";
-        if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
-        $file_name = time() . "_" . basename($_FILES["review_photo"]["name"]);
-        $target_file = $target_dir . $file_name;
-        if (move_uploaded_file($_FILES["review_photo"]["tmp_name"], $target_file)) {
-            $review_img = $target_file;
-        }
-    }
-
-    $query_review = "INSERT INTO reviews (order_id, product_id, user_id, rating, comment, photo) 
-                     VALUES ('$oid', '$pid', '$user_id', '$rating', '$comment', '$review_img')";
-    
-    if (mysqli_query($koneksi, $query_review)) {
-        mysqli_query($koneksi, "UPDATE orders SET status='reviewed' WHERE order_id='$oid'");
-        echo "<script>alert('Ulasan berhasil dikirim!'); window.location.href='histori.php';</script>";
-    }
+    $oid = $_POST['order_id']; $pid = $_POST['product_id']; $rating = $_POST['rating']; $comment = mysqli_real_escape_string($koneksi, $_POST['comment']); $review_img = ""; if (!empty($_FILES['review_photo']['name'])) { $target_dir = "../../../Assets/img/reviews/"; if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); } $file_name = time() . "_" . basename($_FILES["review_photo"]["name"]); $target_file = $target_dir . $file_name; if (move_uploaded_file($_FILES["review_photo"]["tmp_name"], $target_file)) { $review_img = $target_file; } } $query_review = "INSERT INTO reviews (order_id, product_id, user_id, rating, comment, photo) VALUES ('$oid', '$pid', '$user_id', '$rating', '$comment', '$review_img')"; if (mysqli_query($koneksi, $query_review)) { mysqli_query($koneksi, "UPDATE orders SET status='reviewed' WHERE order_id='$oid'"); echo "<script>alert('Ulasan berhasil dikirim!'); window.location.href='histori.php';</script>"; }
 }
-
-// C. Laporkan Penjual
 if (isset($_POST['action']) && $_POST['action'] == 'report_seller') {
-    $oid = $_POST['order_id'];
-    $sid = $_POST['shop_id'];
-    $reason = mysqli_real_escape_string($koneksi, $_POST['reason']);
-
-    $proof_img = "";
-    if (!empty($_FILES['report_proof']['name'])) {
-        $target_dir = "../../../Assets/img/reports/";
-        if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
-        $file_name = time() . "_rep_" . basename($_FILES["report_proof"]["name"]);
-        $target_file = $target_dir . $file_name;
-        if (move_uploaded_file($_FILES["report_proof"]["tmp_name"], $target_file)) {
-            $proof_img = $target_file;
-        }
-    }
-
-    $query_report = "INSERT INTO reports (shop_id, user_id, order_id, reason, proof_image, status, created_at) 
-                     VALUES ('$sid', '$user_id', '$oid', '$reason', '$proof_img', 'pending', NOW())";
-    
-    if (mysqli_query($koneksi, $query_report)) {
-        echo "<script>alert('Laporan berhasil dikirim.'); window.location.href='histori.php';</script>";
-    }
+    $oid = $_POST['order_id']; $sid = $_POST['shop_id']; $reason = mysqli_real_escape_string($koneksi, $_POST['reason']); $proof_img = ""; if (!empty($_FILES['report_proof']['name'])) { $target_dir = "../../../Assets/img/reports/"; if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); } $file_name = time() . "_rep_" . basename($_FILES["report_proof"]["name"]); $target_file = $target_dir . $file_name; if (move_uploaded_file($_FILES["report_proof"]["tmp_name"], $target_file)) { $proof_img = $target_file; } } $query_report = "INSERT INTO reports (shop_id, user_id, order_id, reason, proof_image, status, created_at) VALUES ('$sid', '$user_id', '$oid', '$reason', '$proof_img', 'pending', NOW())"; if (mysqli_query($koneksi, $query_report)) { echo "<script>alert('Laporan berhasil dikirim.'); window.location.href='histori.php';</script>"; }
 }
 
 // ==========================================
-// 2. AMBIL DATA
+// 2. AMBIL DATA HISTORI
 // ==========================================
 $history_data = [];
 $query = "SELECT 
@@ -166,7 +83,9 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 
     $product_price = (int)$row['total_price'];
-    $admin_fee = 1000;
+    
+    // GUNAKAN BIAYA ADMIN DARI DATABASE
+    $admin_fee = $system_admin_fee;
     
     // Total yang dibayar buyer (untuk tampilan detail)
     $grand_total = $product_price + $shipping_cost + $admin_fee;

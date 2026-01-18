@@ -6,6 +6,12 @@ include '../../../Auth/koneksi.php';
 if (!isset($_SESSION['user_id'])) { header("Location: ../../auth/login.php"); exit(); }
 $user_id = $_SESSION['user_id'];
 
+// --- AMBIL BIAYA ADMIN DARI DATABASE ---
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$d_fee = mysqli_fetch_assoc($q_fee);
+// Jika belum diatur admin, default ke 1000
+$admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
+
 // --- AJAX HANDLER: CREATE ORDER (TERHUBUNG KE DATABASE) ---
 if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     header('Content-Type: application/json');
@@ -16,7 +22,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     $payment_method = $_POST['payment_method'];
     $items = json_decode($_POST['items'], true); 
     
-    // 1. Ambil Detail Alamat Lengkap (Snapshot agar data tidak berubah jika user edit alamat nanti)
+    // 1. Ambil Detail Alamat Lengkap
     $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE address_id='$address_id'");
     $d_addr = mysqli_fetch_assoc($q_addr);
     
@@ -25,44 +31,33 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
         exit;
     }
 
-    // Format alamat snapshot yang akan disimpan di tabel orders
     $full_address_snapshot = $d_addr['full_address'] . ", " . $d_addr['village'] . ", " . $d_addr['subdistrict'] . ", " . $d_addr['city'] . " " . $d_addr['postal_code'] . " (" . $d_addr['recipient_name'] . " - " . $d_addr['phone_number'] . ")";
 
-    // Buat Kode Invoice Unik
     $invoice_code = "INV/" . date('Ymd') . "/" . strtoupper(substr(md5(time() . rand()), 0, 6));
     $success_count = 0;
 
     foreach ($items as $item) {
-        $prod_id = $item['id'];      // Product ID
-        $shop_id = $item['shop_id']; // Shop ID
-        $price = $item['price'];     // Harga Produk
+        $prod_id = $item['id'];
+        $shop_id = $item['shop_id'];
+        $price = $item['price'];
         
-        // Total Price = Harga Produk (Ongkir + Admin dianggap dibayar terpisah/info saja di sini untuk simplifikasi)
-        // Atau jika ingin total semua masuk ke DB, sesuaikan logika bisnis. 
-        // Di sini kita simpan Harga Produk sebagai total_price per item order.
         $final_price = $price; 
 
-        // Gabungkan Info Pengiriman & Pembayaran ke kolom shipping_method (Format: "JNE (Rp 15.000) | Dana")
         $shipping_info_str = $shipping_method . " (Rp " . number_format($shipping_cost,0,',','.') . ")";
         $full_shipping_payment_info = $shipping_info_str . " | " . $payment_method;
 
-        // 2. INSERT KE TABEL ORDERS
-        // Kolom 'shipping_address' diisi snapshot alamat
-        // Kolom 'shipping_method' diisi info kurir + pembayaran
+        // INSERT KE TABEL ORDERS
         $query_order = "INSERT INTO orders (invoice_code, buyer_id, shop_id, product_id, address_id, total_price, shipping_method, shipping_address, status, tracking_number, created_at) 
                         VALUES ('$invoice_code', '$user_id', '$shop_id', '$prod_id', '$address_id', '$final_price', '$full_shipping_payment_info', '$full_address_snapshot', 'pending', '', NOW())";
         
         if (mysqli_query($koneksi, $query_order)) {
             $success_count++;
             
-            // 3. HAPUS DARI KERANJANG (Jika item berasal dari cart)
             if (isset($item['cart_id']) && !empty($item['cart_id'])) {
                 $cid = $item['cart_id'];
                 mysqli_query($koneksi, "DELETE FROM cart WHERE cart_id='$cid'");
             }
 
-            // 4. NOTIFIKASI KE SELLER (Opsional, agar Seller tahu ada order baru)
-            // Cari user_id pemilik toko
             $q_shop_owner = mysqli_query($koneksi, "SELECT user_id FROM shops WHERE shop_id='$shop_id'");
             $d_shop_owner = mysqli_fetch_assoc($q_shop_owner);
             if($d_shop_owner) {
@@ -81,14 +76,15 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     exit;
 }
 
-// --- AJAX HANDLER: MARK NOTIF READ ---
+// ... (AJAX HANDLER LAIN TETAP SAMA SEPERTI KODE ASLI) ...
+// (Bagian mark_read, get_shop_settings, toggle_follow, send_message, filter_products, add_to_cart, delete_item JANGAN DIUBAH)
+// ...
+
 if (isset($_POST['action']) && $_POST['action'] == 'mark_read') {
     $nid = $_POST['notif_id'];
     mysqli_query($koneksi, "UPDATE notifications SET is_read=1 WHERE notif_id='$nid'");
     exit;
 }
-
-// --- AJAX HANDLER: GET SHOP SETTINGS ---
 if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') {
     header('Content-Type: application/json');
     $shop_id = $_POST['shop_id'];
@@ -99,8 +95,6 @@ if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') {
     echo json_encode(['status' => 'success', 'shipping' => $shipping, 'payment' => $payment]);
     exit;
 }
-
-// --- AJAX HANDLERS LAINNYA ---
 if (isset($_POST['action']) && $_POST['action'] == 'toggle_follow') {
     header('Content-Type: application/json'); $target_shop_id = $_POST['shop_id'];
     $check = mysqli_query($koneksi, "SELECT * FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'");
@@ -188,6 +182,7 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
         .btn-follow { display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; }
         .btn-follow i { font-size: 0.9rem; }
         .btn-follow.following { background-color: #e0e0e0; color: #333; border: 1px solid #ccc; }
+        .btn-follow.following:hover { background-color: #d0d0d0; }
         body.no-scroll { overflow: hidden; }
     </style>
 </head>
@@ -254,7 +249,7 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
 
         document.addEventListener('DOMContentLoaded', () => { renderProducts(products); });
 
-        // --- Render Product & Filter ---
+        // ... (FUNGSI RENDER PRODUCT, FILTER, MODAL SAMA SEPERTI ASLI) ...
         function renderProducts(data) {
             const productGrid = document.getElementById('productGrid'); productGrid.innerHTML = '';
             if(data.length === 0) { productGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">Tidak ada produk ditemukan.</div>`; return; }
@@ -269,8 +264,6 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
             const grid = document.getElementById('productGrid'); grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat...</div>';
             fetch(`dashboard.php?action=filter_products&category=${encodeURIComponent(cat)}`).then(response => response.json()).then(data => { products = data; renderProducts(products); }).catch(error => { grid.innerHTML = '<div style="text-align:center;">Gagal memuat produk.</div>'; });
         }
-
-        // --- Modal Product & Follow ---
         const modalOverlay = document.getElementById('productModal');
         function openModal(product) {
             currentActiveProduct = product;
@@ -296,7 +289,6 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
         }
         function updateLocalProductFollowStatus(shopId, status) { products.forEach(p => { if(p.shop_id == shopId) { p.is_following = status; } }); }
 
-        // --- Add/Delete Cart ---
         function addToCart() {
             if(!currentActiveProduct) return;
             const btn = document.getElementById('btnAddToCart'); const originalText = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menambahkan...'; btn.disabled = true;
@@ -323,16 +315,18 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
         }
 
         // ============================================
-        // CHECKOUT & SHIPPING & PAYMENT LOGIC (UPDATED)
+        // LOGIKA CHECKOUT & FEE DARI DATABASE (UPDATED)
         // ============================================
         const formatRupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
         let checkoutProductPriceTotal = 0; 
-        const checkoutAdminFee = 1000; 
+        
+        // --- AMBIL NILAI BIAYA ADMIN DARI PHP ---
+        const checkoutAdminFee = <?php echo $admin_fee; ?>; 
+        
         let activePaymentCategory = null; 
         let activePaymentName = '';
         let selectedShippingCost = 0;
         let selectedShippingName = '';
-        
         const courierPrices = { "COD": 0, "JNE Reguler": 15000, "J&T Express": 18000, "SiCepat": 12000, "GoSend Instant": 25000, "GrabExpress": 24000, "AnterAja": 11000 };
 
         function checkoutFromCart() {
@@ -372,7 +366,6 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
             const container = document.getElementById('checkoutProductList');
             container.innerHTML = ''; checkoutProductPriceTotal = 0;
             
-            // Reset Selections
             selectedShippingCost = 0; selectedShippingName = ''; activePaymentCategory = null; activePaymentName = '';
 
             if (storedData) {
@@ -393,19 +386,15 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
                     const fd = new FormData(); fd.append('action', 'get_shop_settings'); fd.append('shop_id', shopId);
                     const response = await fetch('dashboard.php', { method: 'POST', body: fd });
                     const settings = await response.json();
-                    
                     renderShippingOptions(settings.shipping);
                     renderPaymentMethods(settings.payment);
-
                 } catch (e) { console.error(e); }
             }
         }
 
-        // --- SHIPPING RENDER (SEPERTI PAYMENT) ---
         function renderShippingOptions(options) {
             const container = document.getElementById('shippingContainer');
             container.innerHTML = '';
-            
             if(options && options.length > 0) {
                 options.forEach(opt => {
                     const price = courierPrices[opt] !== undefined ? courierPrices[opt] : 15000;
@@ -419,74 +408,31 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
                         </div>
                     `;
                 });
-            } else {
-                container.innerHTML = '<div style="color:#888; padding:10px;">Toko belum mengatur pengiriman.</div>';
-            }
+            } else { container.innerHTML = '<div style="color:#888; padding:10px;">Toko belum mengatur pengiriman.</div>'; }
         }
-
         function selectShippingOption(el, name, price) {
-            // Reset active state
-            document.querySelectorAll('.shipping-option-card').forEach(c => {
-                c.classList.remove('active');
-                c.querySelector('.check-circle').style.display = 'none';
-            });
-            
-            // Set active
-            el.classList.add('active');
-            el.querySelector('.check-circle').style.display = 'block';
-            
-            selectedShippingCost = price;
-            selectedShippingName = name;
+            document.querySelectorAll('.shipping-option-card').forEach(c => { c.classList.remove('active'); c.querySelector('.check-circle').style.display = 'none'; });
+            el.classList.add('active'); el.querySelector('.check-circle').style.display = 'block';
+            selectedShippingCost = price; selectedShippingName = name;
             calculateCheckoutTotal();
         }
-
-        // --- PAYMENT RENDER ---
         function renderPaymentMethods(methods) {
-            const container = document.getElementById('paymentContainer');
-            container.innerHTML = '';
-            const cats = {
-                'Transfer Bank': {id: 'bank', icon: 'fa-university', items: []}, 
-                'E-Wallet': {id: 'ewallet', icon: 'fa-wallet', items: []}, 
-                'COD': {id: 'cod', icon: 'fa-hand-holding-usd', items: []}
-            };
-            if(methods) { 
-                methods.forEach(pay => { 
-                    if(pay.includes('Bank') || pay.includes('BCA') || pay.includes('BRI') || pay.includes('Mandiri')) cats['Transfer Bank'].items.push(pay); 
-                    else if(pay.includes('Pay') || pay.includes('OVO') || pay.includes('Dana')) cats['E-Wallet'].items.push(pay); 
-                    else if(pay.includes('COD')) cats['COD'].items.push(pay); 
-                }); 
-            }
-            
+            const container = document.getElementById('paymentContainer'); container.innerHTML = '';
+            const cats = { 'Transfer Bank': {id: 'bank', icon: 'fa-university', items: []}, 'E-Wallet': {id: 'ewallet', icon: 'fa-wallet', items: []}, 'COD': {id: 'cod', icon: 'fa-hand-holding-usd', items: []} };
+            if(methods) { methods.forEach(pay => { if(pay.includes('Bank') || pay.includes('BCA') || pay.includes('BRI') || pay.includes('Mandiri')) cats['Transfer Bank'].items.push(pay); else if(pay.includes('Pay') || pay.includes('OVO') || pay.includes('Dana')) cats['E-Wallet'].items.push(pay); else if(pay.includes('COD')) cats['COD'].items.push(pay); }); }
             for (const [key, cat] of Object.entries(cats)) {
                 if(cat.items.length > 0) {
-                    let subHTML = '';
-                    cat.items.forEach(i => { 
-                        subHTML += `
-                        <div class="sub-option" onclick="selectPaymentSubOption('${cat.id}', '${i}', '${i}')">
-                            <i class="far fa-circle" style="font-size:0.8rem; margin-right:8px; color:#bbb;"></i> ${i}
-                        </div>`; 
-                    });
-                    
-                    const dropIcon = (key !== 'COD') ? `<i class="fas fa-chevron-down drop-icon"></i>` : '';
-                    const toggleAction = (key !== 'COD') ? `onclick="togglePaymentDropdown(event, 'list-${cat.id}')"` : `onclick="selectPaymentCategory('cod', 'COD (Bayar di Tempat)')"`;
-                    const listDisplay = (key !== 'COD') ? `<div class="payment-options-list" id="list-${cat.id}">${subHTML}</div>` : '';
-                    
-                    container.innerHTML += `
-                        <div class="payment-category" id="cat-${cat.id}" ${toggleAction}>
-                            <div class="payment-header">
-                                <div class="ph-left"><i class="fas ${cat.icon}" style="width:20px; text-align:center; margin-right:8px;"></i><span class="ph-title">${key}</span></div>
-                                <div class="ph-right">${dropIcon}<i class="fas fa-check-circle check-circle" id="check-${cat.id}" style="display:none; color:var(--primary);"></i></div>
-                            </div>
-                            ${listDisplay}
-                        </div>
-                    `;
+                    let subHTML = ''; cat.items.forEach(i => { subHTML += `<div class="sub-option" onclick="selectPaymentSubOption('${cat.id}', '${i}', '${i}')"><i class="far fa-circle" style="font-size:0.8rem; margin-right:8px; color:#bbb;"></i> ${i}</div>`; });
+                    const dropIcon = (key !== 'COD') ? `<i class="fas fa-chevron-down drop-icon"></i>` : ''; const toggleAction = (key !== 'COD') ? `onclick="togglePaymentDropdown(event, 'list-${cat.id}')"` : `onclick="selectPaymentCategory('cod', 'COD (Bayar di Tempat)')"`; const listDisplay = (key !== 'COD') ? `<div class="payment-options-list" id="list-${cat.id}">${subHTML}</div>` : '';
+                    container.innerHTML += `<div class="payment-category" id="cat-${cat.id}" ${toggleAction}><div class="payment-header"><div class="ph-left"><i class="fas ${cat.icon}" style="width:20px; text-align:center; margin-right:8px;"></i><span class="ph-title">${key}</span></div><div class="ph-right">${dropIcon}<i class="fas fa-check-circle check-circle" id="check-${cat.id}" style="display:none; color:var(--primary);"></i></div></div>${listDisplay}</div>`;
                 }
             }
             if(container.innerHTML === '') container.innerHTML = '<div style="color:#888; padding:10px;">Toko belum mengatur pembayaran.</div>';
         }
-
         function closeCheckoutModal() { document.getElementById('checkoutModal').classList.remove('open'); document.body.classList.remove('no-scroll'); }
+        
         function calculateCheckoutTotal() { 
+            // GUNAKAN VARIABLE DARI PHP
             const total = checkoutProductPriceTotal + selectedShippingCost + checkoutAdminFee; 
             document.getElementById('summaryProdPrice').innerText = formatRupiah(checkoutProductPriceTotal); 
             document.getElementById('summaryShipPrice').innerText = formatRupiah(selectedShippingCost); 
@@ -494,49 +440,15 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
             document.getElementById('bottomTotal').innerText = formatRupiah(total); 
         }
         
-        function togglePaymentDropdown(e, listId) {
-            e.stopPropagation();
-            document.querySelectorAll('.payment-options-list').forEach(el => { if(el.id !== listId) el.classList.remove('show'); });
-            document.getElementById(listId).classList.toggle('show');
-        }
-
-        function selectPaymentCategory(catId, name='') { 
-            document.querySelectorAll('.payment-category').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.payment-category .check-circle').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.payment-category .drop-icon').forEach(el => el.style.display = 'block');
-            document.querySelectorAll('.sub-option').forEach(el => el.classList.remove('selected'));
-
-            const catEl = document.getElementById('cat-' + catId);
-            if(catEl) {
-                catEl.classList.add('active');
-                const check = catEl.querySelector('.check-circle');
-                const drop = catEl.querySelector('.drop-icon');
-                if(check) check.style.display = 'block';
-                if(drop) drop.style.display = 'none';
-                activePaymentCategory = catId;
-                activePaymentName = name;
-            }
-        }
-
-        function selectPaymentSubOption(catId, val, name) {
-            selectPaymentCategory(catId, name);
-            const list = document.getElementById('list-' + catId);
-            Array.from(list.children).forEach(child => {
-                if(child.textContent.includes(name)) {
-                    child.classList.add('selected'); child.querySelector('i').className = 'fas fa-dot-circle'; child.querySelector('i').style.color = 'var(--primary)';
-                } else {
-                    child.classList.remove('selected'); child.querySelector('i').className = 'far fa-circle';
-                }
-            });
-        }
+        function togglePaymentDropdown(e, listId) { e.stopPropagation(); document.querySelectorAll('.payment-options-list').forEach(el => { if(el.id !== listId) el.classList.remove('show'); }); document.getElementById(listId).classList.toggle('show'); }
+        function selectPaymentCategory(catId, name='') { document.querySelectorAll('.payment-category').forEach(el => el.classList.remove('active')); document.querySelectorAll('.payment-category .check-circle').forEach(el => el.style.display = 'none'); document.querySelectorAll('.payment-category .drop-icon').forEach(el => el.style.display = 'block'); document.querySelectorAll('.sub-option').forEach(el => el.classList.remove('selected')); const catEl = document.getElementById('cat-' + catId); if(catEl) { catEl.classList.add('active'); const check = catEl.querySelector('.check-circle'); const drop = catEl.querySelector('.drop-icon'); if(check) check.style.display = 'block'; if(drop) drop.style.display = 'none'; activePaymentCategory = catId; activePaymentName = name; } }
+        function selectPaymentSubOption(catId, val, name) { selectPaymentCategory(catId, name); const list = document.getElementById('list-' + catId); Array.from(list.children).forEach(child => { if(child.textContent.includes(name)) { child.classList.add('selected'); child.querySelector('i').className = 'fas fa-dot-circle'; child.querySelector('i').style.color = 'var(--primary)'; } else { child.classList.remove('selected'); child.querySelector('i').className = 'far fa-circle'; } }); }
 
         function processOrder() {
             if (!selectedShippingName) { alert("Pilih pengiriman."); return; }
             if (!activePaymentCategory) { alert("Pilih metode pembayaran."); return; }
             if (!selectedAddressId) { alert("Pilih alamat pengiriman."); return; }
-
             const items = localStorage.getItem('checkoutItems');
-
             if(confirm("Buat pesanan sekarang?")) {
                 const btn = document.querySelector('.btn-order'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...'; btn.disabled = true;
                 const fd = new FormData(); fd.append('action', 'create_order'); fd.append('address_id', selectedAddressId); fd.append('shipping_method', selectedShippingName); fd.append('shipping_cost', selectedShippingCost); fd.append('payment_method', activePaymentName); fd.append('items', items);
@@ -546,28 +458,13 @@ while($row = mysqli_fetch_assoc($q_chat)){ if($row['sender_id'] == $user_id){ $p
                 }).catch(err => { console.error(err); alert("Error sistem."); btn.innerHTML = 'Buat Pesanan'; btn.disabled = false; });
             }
         }
-
-        // --- Address Modal & Update Visual in Checkout ---
         function openAddressModal() { document.getElementById('addressModal').classList.add('open'); }
         function closeAddressModal() { document.getElementById('addressModal').classList.remove('open'); }
-        
         function selectAddress(el, name, detail, phone) { 
-            // 1. Update Visual di Checkout Box
             const displayBox = document.querySelector('.address-box');
-            displayBox.innerHTML = `
-                <div class="addr-header-row">
-                    <span class="addr-recipient">${name}</span>
-                    <span class="addr-divider">|</span>
-                    <span class="addr-phone">${phone}</span>
-                </div>
-                <div class="addr-body-text">${detail}</div>
-                <div class="addr-change-text">Ubah Alamat <i class="fas fa-chevron-right"></i></div>
-            `;
-            
-            // 2. Tutup Modal
+            displayBox.innerHTML = `<div class="addr-header-row"><span class="addr-recipient">${name}</span><span class="addr-divider">|</span><span class="addr-phone">${phone}</span></div><div class="addr-body-text">${detail}</div><div class="addr-change-text">Ubah Alamat <i class="fas fa-chevron-right"></i></div>`;
             closeAddressModal(); 
         }
-
         function toggleCartItem(el) { const cb = el.querySelector('.cart-checkbox'); cb.checked = !cb.checked; updateCartTotal(); }
         function toggleCart() { document.getElementById('cartSidebar').classList.toggle('open'); document.getElementById('cartOverlay').classList.toggle('open'); updateCartTotal(); }
         function toggleNotifications() { document.getElementById('notifSidebar').classList.toggle('open'); document.getElementById('notifOverlay').classList.toggle('open'); }
