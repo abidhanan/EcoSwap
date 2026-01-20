@@ -24,10 +24,11 @@ $shop_id = $shop['shop_id'];
 // 1. LOGIKA TAMBAH PRODUK (STATUS: REVIEW)
 // ==========================================
 if (isset($_POST['action']) && $_POST['action'] == 'add') {
+    // Sanitasi input agar aman dan tidak error saat ada karakter khusus
     $name = mysqli_real_escape_string($koneksi, $_POST['name']);
-    $price = $_POST['price'];
-    $cond = $_POST['condition'];
-    $cat = $_POST['category']; // Ambil Kategori
+    $price = (int)$_POST['price']; // Pastikan integer
+    $cond = mysqli_real_escape_string($koneksi, $_POST['condition']);
+    $cat = mysqli_real_escape_string($koneksi, $_POST['category']); 
     $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
     
     // Upload Gambar
@@ -51,6 +52,9 @@ if (isset($_POST['action']) && $_POST['action'] == 'add') {
     
     if(mysqli_query($koneksi, $query)){
         echo "<script>alert('Produk berhasil ditambahkan! Menunggu peninjauan admin.'); window.location.href='produkSaya.php';</script>";
+    } else {
+        // Tampilkan error jika query gagal (untuk debugging)
+        echo "<script>alert('Gagal menambah produk: " . mysqli_error($koneksi) . "');</script>";
     }
 }
 
@@ -58,11 +62,11 @@ if (isset($_POST['action']) && $_POST['action'] == 'add') {
 // 2. LOGIKA UPDATE PRODUK
 // ==========================================
 if (isset($_POST['action']) && $_POST['action'] == 'edit') {
-    $pid = $_POST['product_id'];
+    $pid = mysqli_real_escape_string($koneksi, $_POST['product_id']);
     $name = mysqli_real_escape_string($koneksi, $_POST['name']);
-    $price = $_POST['price'];
-    $cond = $_POST['condition'];
-    $cat = $_POST['category']; // Update Kategori
+    $price = (int)$_POST['price'];
+    $cond = mysqli_real_escape_string($koneksi, $_POST['condition']);
+    $cat = mysqli_real_escape_string($koneksi, $_POST['category']);
     $desc = mysqli_real_escape_string($koneksi, $_POST['description']);
     
     // Update data teks
@@ -90,8 +94,9 @@ if (isset($_POST['action']) && $_POST['action'] == 'edit') {
 // 3. LOGIKA HAPUS PRODUK
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
-    $pid = $_GET['id'];
-    $query = "DELETE FROM products WHERE product_id='$pid' AND shop_id='$shop_id'";
+    $pid = mysqli_real_escape_string($koneksi, $_GET['id']);
+    // Soft Delete (ubah status jadi deleted) atau Hard Delete sesuai kebutuhan
+    $query = "UPDATE products SET status = 'deleted' WHERE product_id='$pid' AND shop_id='$shop_id'";
     
     if(mysqli_query($koneksi, $query)){
         echo "<script>alert('Produk berhasil dihapus!'); window.location.href='produkSaya.php';</script>";
@@ -145,6 +150,13 @@ while($row = mysqli_fetch_assoc($query_prod)) {
         .review-overlay {
             position: absolute; top: 10px; left: 10px;
             background: rgba(255, 193, 7, 0.9); color: #000;
+            padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;
+        }
+        
+        /* Badge untuk status sold */
+        .sold-overlay {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(46, 204, 113, 0.9); color: #fff;
             padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;
         }
     </style>
@@ -451,7 +463,7 @@ while($row = mysqli_fetch_assoc($query_prod)) {
             document.getElementById('editName').value = product.name;
             document.getElementById('editPrice').value = product.price;
             document.getElementById('editCond').value = product.cond;
-            document.getElementById('editCat').value = product.category; // Set Kategori di Edit
+            document.getElementById('editCat').value = product.category; 
             document.getElementById('editDesc').value = product.desc;
             document.getElementById('previewImgEdit').src = product.img;
             
