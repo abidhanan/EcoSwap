@@ -10,11 +10,8 @@
             <div style="text-align:center; padding:20px; color:#666;">Belum ada percakapan</div>
         <?php else: ?>
             <?php foreach($chat_partners as $pid => $info): ?>
-            <div class="chat-item"
-                 onclick="selectChat(<?php echo (int)$pid; ?>, '<?php echo addslashes($info['name']); ?>', '<?php echo addslashes($info['img']); ?>')">
-                <div class="chat-avatar">
-                    <img src="<?php echo $info['img']; ?>" alt="User">
-                </div>
+            <div class="chat-item" onclick="selectChat(<?php echo (int)$pid; ?>)">
+                <div class="chat-avatar"><img src="<?php echo $info['img']; ?>" alt="User"></div>
                 <div class="chat-content">
                     <div class="chat-name"><?php echo htmlspecialchars($info['name']); ?></div>
                     <div class="chat-message"><?php echo htmlspecialchars($info['last_msg']); ?></div>
@@ -36,10 +33,12 @@
                 </div>
             </div>
         </div>
+
         <div class="chat-messages" id="chatMessagesSidebar"></div>
+
         <div class="input-area-sidebar">
             <button class="add-file-btn-sidebar" onclick="openFileInput()"><i class="fas fa-plus"></i></button>
-            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="sendImage()">
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="sendImage()">
             <input type="text" class="chat-input-sidebar" id="messageInputSidebar" placeholder="Tulis pesan..." onkeypress="handleEnterSidebar(event)">
             <button class="send-btn-sidebar" onclick="sendMessageSidebar()"><i class="fas fa-paper-plane"></i></button>
         </div>
