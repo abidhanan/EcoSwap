@@ -4,19 +4,33 @@ include '../../../Auth/koneksi.php';
 
 // Cek Login
 if (!isset($_SESSION['user_id'])) { header("Location: ../../auth/login.php"); exit(); }
-$user_id = $_SESSION['user_id'];
+$user_id = (int)$_SESSION['user_id'];
 
 // --- AMBIL BIAYA ADMIN ---
-$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+$q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee' LIMIT 1");
 $d_fee = mysqli_fetch_assoc($q_fee);
 $admin_fee = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
 
 /* =========================================================
-   AJAX CHAT HELPERS
+   HELPERS
 ========================================================= */
 
+function normalize_web_path($path){
+    // Biar image_path bisa dipakai di <img src="">
+    if(empty($path)) return null;
+
+    // Jika sudah URL
+    if(preg_match('~^https?://~i', $path)) return $path;
+
+    // Hilangkan backslash windows
+    $path = str_replace('\\','/',$path);
+
+    // Kalau path disimpan "../../../Assets/..." tetap biarkan
+    // Kalau disimpan "Assets/..." juga ok
+    return $path;
+}
+
 function chat_partner_profile($koneksi, $partner_user_id) {
-    // Buyer melihat partner sebagai TOKO (jika ada shop), kalau tidak ada pakai profile user
     $partner_user_id = (int)$partner_user_id;
     $q = mysqli_query($koneksi, "
         SELECT u.user_id, u.name, u.profile_picture,
@@ -53,14 +67,18 @@ function fetch_chat_messages($koneksi, $user_id, $partner_id) {
             'id' => (int)$r['chat_id'],
             'type' => ((int)$r['sender_id'] === $user_id) ? 'outgoing' : 'incoming',
             'text' => $r['message'],
-            'img'  => $r['image_path'],
+            'img'  => normalize_web_path($r['image_path']),
             'time' => date('H:i', strtotime($r['created_at']))
         ];
     }
     return $rows;
 }
 
-// --- AJAX: GET CHAT (messages + partner) ---
+/* =========================================================
+   AJAX CHAT
+========================================================= */
+
+// GET CHAT (messages + partner)
 if (isset($_GET['action']) && $_GET['action'] === 'get_chat') {
     header('Content-Type: application/json');
     $partner_id = isset($_GET['partner_id']) ? (int)$_GET['partner_id'] : 0;
@@ -73,7 +91,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_chat') {
     exit;
 }
 
-// --- AJAX: SEND MESSAGE (text + image) ---
+// SEND MESSAGE (text + image)
 if (isset($_POST['action']) && $_POST['action'] === 'send_message') {
     header('Content-Type: application/json');
 
@@ -102,6 +120,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'send_message') {
             echo json_encode(['status'=>'error','message'=>'gagal upload']);
             exit;
         }
+        // simpan path yang bisa dipakai langsung di browser
         $image_path = $target_file;
     }
 
@@ -121,7 +140,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'send_message') {
             'status'=>'success',
             'chat_id'=>mysqli_insert_id($koneksi),
             'time'=>date('H:i'),
-            'image'=>$image_path
+            'image'=>normalize_web_path($image_path)
         ]);
     } else {
         echo json_encode(['status'=>'error','message'=>'db insert gagal']);
@@ -129,7 +148,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'send_message') {
     exit;
 }
 
-// --- AJAX: DELETE CHAT ---
+// DELETE CHAT
 if (isset($_POST['action']) && $_POST['action'] === 'delete_chat') {
     header('Content-Type: application/json');
     $chat_id = (int)($_POST['chat_id'] ?? 0);
@@ -140,7 +159,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_chat') {
     exit;
 }
 
-// --- AJAX: REPORT CHAT (masuk ke notifikasi admin) ---
+// REPORT CHAT -> NOTIF ADMIN
 if (isset($_POST['action']) && $_POST['action'] === 'report_chat') {
     header('Content-Type: application/json');
     $chat_id = (int)($_POST['chat_id'] ?? 0);
@@ -190,27 +209,51 @@ if (isset($_POST['action']) && $_POST['action'] === 'report_chat') {
    HANDLER LAIN (tetap sama)
 ========================================================= */
 
-// --- AJAX HANDLER: CREATE ORDER ---
+// CREATE ORDER
 if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
     header('Content-Type: application/json');
     $address_id = $_POST['address_id']; $shipping_method = $_POST['shipping_method']; $shipping_cost = $_POST['shipping_cost']; $payment_method = $_POST['payment_method']; $items = json_decode($_POST['items'], true);
-    $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE address_id='$address_id'"); $d_addr = mysqli_fetch_assoc($q_addr);
+
+    $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE address_id='$address_id'");
+    $d_addr = mysqli_fetch_assoc($q_addr);
     if(!$d_addr) { echo json_encode(['status' => 'error', 'message' => 'Alamat tidak ditemukan.']); exit; }
+
     $full_address_snapshot = $d_addr['full_address'] . ", " . $d_addr['village'] . ", " . $d_addr['subdistrict'] . ", " . $d_addr['city'] . " " . $d_addr['postal_code'] . " (" . $d_addr['recipient_name'] . " - " . $d_addr['phone_number'] . ")";
-    $invoice_code = "INV/" . date('Ymd') . "/" . strtoupper(substr(md5(time() . rand()), 0, 6)); $success_count = 0;
+    $invoice_code = "INV/" . date('Ymd') . "/" . strtoupper(substr(md5(time() . rand()), 0, 6));
+    $success_count = 0;
+
     foreach ($items as $item) {
         $prod_id = $item['id']; $shop_id = $item['shop_id']; $price = $item['price']; $final_price = $price;
-        $shipping_info_str = $shipping_method . " (Rp " . number_format($shipping_cost,0,',','.') . ")"; $full_shipping_payment_info = $shipping_info_str . " | " . $payment_method;
-        $query_order = "INSERT INTO orders (invoice_code, buyer_id, shop_id, product_id, address_id, total_price, shipping_method, shipping_address, status, tracking_number, created_at) VALUES ('$invoice_code', '$user_id', '$shop_id', '$prod_id', '$address_id', '$final_price', '$full_shipping_payment_info', '$full_address_snapshot', 'pending', '', NOW())";
+        $shipping_info_str = $shipping_method . " (Rp " . number_format($shipping_cost,0,',','.') . ")";
+        $full_shipping_payment_info = $shipping_info_str . " | " . $payment_method;
+
+        $query_order = "INSERT INTO orders (invoice_code, buyer_id, shop_id, product_id, address_id, total_price, shipping_method, shipping_address, status, tracking_number, created_at)
+                        VALUES ('$invoice_code', '$user_id', '$shop_id', '$prod_id', '$address_id', '$final_price', '$full_shipping_payment_info', '$full_address_snapshot', 'pending', '', NOW())";
+
         if (mysqli_query($koneksi, $query_order)) {
-            $success_count++; mysqli_query($koneksi, "UPDATE products SET status = 'sold' WHERE product_id = '$prod_id'");
-            if (isset($item['cart_id'])) { $cid = $item['cart_id']; mysqli_query($koneksi, "DELETE FROM cart WHERE cart_id='$cid'"); }
-            $q_shop_owner = mysqli_query($koneksi, "SELECT user_id FROM shops WHERE shop_id='$shop_id'"); $d_shop_owner = mysqli_fetch_assoc($q_shop_owner);
-            if($d_shop_owner) { $seller_uid = $d_shop_owner['user_id']; $notif_msg = "Pesanan baru #$invoice_code masuk."; mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('$seller_uid', 'Pesanan Baru', '$notif_msg', 0, NOW())"); }
+            $success_count++;
+            mysqli_query($koneksi, "UPDATE products SET status = 'sold' WHERE product_id = '$prod_id'");
+
+            if (isset($item['cart_id'])) {
+                $cid = $item['cart_id'];
+                mysqli_query($koneksi, "DELETE FROM cart WHERE cart_id='$cid'");
+            }
+
+            $q_shop_owner = mysqli_query($koneksi, "SELECT user_id FROM shops WHERE shop_id='$shop_id'");
+            $d_shop_owner = mysqli_fetch_assoc($q_shop_owner);
+            if($d_shop_owner) {
+                $seller_uid = $d_shop_owner['user_id'];
+                $notif_msg = "Pesanan baru #$invoice_code masuk.";
+                mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('$seller_uid', 'Pesanan Baru', '$notif_msg', 0, NOW())");
+            }
         }
     }
-    if ($success_count > 0) echo json_encode(['status' => 'success']); else echo json_encode(['status' => 'error']); exit;
+
+    if ($success_count > 0) echo json_encode(['status' => 'success']);
+    else echo json_encode(['status' => 'error']);
+    exit;
 }
+
 if (isset($_POST['action']) && $_POST['action'] == 'mark_read') { $nid = $_POST['notif_id']; mysqli_query($koneksi, "UPDATE notifications SET is_read=1 WHERE notif_id='$nid'"); exit; }
 if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') { header('Content-Type: application/json'); $shop_id = $_POST['shop_id']; $query = mysqli_query($koneksi, "SELECT shipping_options, payment_methods FROM shops WHERE shop_id='$shop_id'"); $data = mysqli_fetch_assoc($query); $shipping = !empty($data['shipping_options']) ? json_decode($data['shipping_options']) : []; $payment = !empty($data['payment_methods']) ? json_decode($data['payment_methods']) : []; echo json_encode(['status' => 'success', 'shipping' => $shipping, 'payment' => $payment]); exit; }
 if (isset($_POST['action']) && $_POST['action'] == 'toggle_follow') { header('Content-Type: application/json'); $target_shop_id = $_POST['shop_id']; $check = mysqli_query($koneksi, "SELECT * FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'"); if (mysqli_num_rows($check) > 0) { mysqli_query($koneksi, "DELETE FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'"); echo json_encode(['status' => 'unfollowed']); } else { mysqli_query($koneksi, "INSERT INTO shop_followers (shop_id, user_id) VALUES ('$target_shop_id', '$user_id')"); echo json_encode(['status' => 'followed']); } exit; }
@@ -219,24 +262,51 @@ if (isset($_GET['action']) && $_GET['action'] == 'filter_products') {
     header('Content-Type: application/json');
     $category_filter = isset($_GET['category']) ? $_GET['category'] : 'Semua';
     $where_clause = "WHERE p.status = 'active'";
+
     if ($category_filter != 'Semua') {
         $safe_cat = mysqli_real_escape_string($koneksi, $category_filter);
         if ($safe_cat == 'Fashion') $where_clause .= " AND (p.category = 'Fashion Pria' OR p.category = 'Fashion Wanita')";
         elseif ($safe_cat == 'Hobi') $where_clause .= " AND p.category = 'Hobi & Koleksi'";
         else $where_clause .= " AND p.category = '$safe_cat'";
     }
-    $query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.user_id as seller_id, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 $where_clause ORDER BY p.created_at DESC");
+
+    $query_prod = mysqli_query($koneksi, "
+        SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.user_id as seller_id, s.shop_city, a.full_address
+        FROM products p
+        JOIN shops s ON p.shop_id = s.shop_id
+        LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
+        $where_clause
+        ORDER BY p.created_at DESC
+    ");
+
     $filtered_products = [];
     while($row = mysqli_fetch_assoc($query_prod)) {
         $shop_id_prod = $row['shop_id'];
+
         $is_following = false;
         $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
         if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
+
         $city = !empty($row['shop_city']) ? $row['shop_city'] : (isset($row['full_address']) ? trim(explode(',', $row['full_address'])[2] ?? 'Indonesia') : 'Indonesia');
         $city = str_replace(['Kota ', 'Kabupaten '], '', $city);
+
         $img_db = $row['image'];
-        if (strpos($img_db, 'http') !== 0) { $img_db = str_replace('../../../', '../../../', $img_db); }
-        $filtered_products[] = [ 'id' => $row['product_id'], 'title' => $row['name'], 'price' => (int)$row['price'], 'loc' => $city, 'img' => $img_db, 'cond' => $row['condition'], 'desc' => $row['description'], 'category' => $row['category'], 'shop_name' => $row['shop_name'], 'shop_img' => $row['shop_image'], 'shop_id' => $row['shop_id'], 'seller_id' => $row['seller_id'], 'shop_address' => $city, 'is_following' => $is_following ];
+        $filtered_products[] = [
+            'id' => (int)$row['product_id'],
+            'title' => $row['name'],
+            'price' => (int)$row['price'],
+            'loc' => $city,
+            'img' => $img_db,
+            'cond' => $row['condition'],
+            'desc' => $row['description'],
+            'category' => $row['category'],
+            'shop_name' => $row['shop_name'],
+            'shop_img' => $row['shop_image'],
+            'shop_id' => (int)$row['shop_id'],
+            'seller_id' => (int)$row['seller_id'],
+            'shop_address' => $city,
+            'is_following' => $is_following
+        ];
     }
     echo json_encode($filtered_products); exit;
 }
@@ -245,33 +315,73 @@ if (isset($_POST['action']) && $_POST['action'] == 'add_to_cart') { header('Cont
 if (isset($_POST['action']) && $_POST['action'] == 'delete_item') { header('Content-Type: application/json'); $cart_id = $_POST['cart_id']; $delete = mysqli_query($koneksi, "DELETE FROM cart WHERE cart_id='$cart_id' AND user_id='$user_id'"); if ($delete) { $q_count = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM cart WHERE user_id='$user_id'"); $d_count = mysqli_fetch_assoc($q_count); echo json_encode(['status' => 'success', 'new_count' => $d_count['total']]); } else { echo json_encode(['status' => 'error']); } exit; }
 if (isset($_POST['action']) && $_POST['action'] == 'view_product') { $pid = mysqli_real_escape_string($koneksi, $_POST['product_id']); mysqli_query($koneksi, "UPDATE products SET views = views + 1 WHERE product_id = '$pid'"); exit(); }
 
-// --- DATA FETCHING UTAMA ---
-$q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id'");
+/* =========================================================
+   DATA FETCHING UTAMA
+========================================================= */
+
+$q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE user_id = '$user_id' LIMIT 1");
 $d_user = mysqli_fetch_assoc($q_user);
 $user_name = !empty($d_user['name']) ? $d_user['name'] : explode('@', $d_user['email'])[0];
 $user_avatar = !empty($d_user['profile_picture']) ? $d_user['profile_picture'] : "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($user_name);
 
-$query_prod = mysqli_query($koneksi, "SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.user_id as seller_id, s.shop_city, a.full_address FROM products p JOIN shops s ON p.shop_id = s.shop_id LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1 WHERE p.status = 'active' ORDER BY p.created_at DESC");
+$query_prod = mysqli_query($koneksi, "
+    SELECT p.*, s.shop_name, s.shop_image, s.shop_id, s.user_id as seller_id, s.shop_city, a.full_address
+    FROM products p
+    JOIN shops s ON p.shop_id = s.shop_id
+    LEFT JOIN addresses a ON s.user_id = a.user_id AND a.is_primary = 1
+    WHERE p.status = 'active'
+    ORDER BY p.created_at DESC
+");
+
 $all_products = [];
 while($row = mysqli_fetch_assoc($query_prod)) {
     $shop_id_prod = $row['shop_id'];
     $is_following = false;
     $q_check = mysqli_query($koneksi, "SELECT 1 FROM shop_followers WHERE shop_id='$shop_id_prod' AND user_id='$user_id'");
     if($q_check && mysqli_num_rows($q_check) > 0) $is_following = true;
+
     $city = !empty($row['shop_city']) ? $row['shop_city'] : (isset($row['full_address']) ? trim(explode(',', $row['full_address'])[2] ?? 'Indonesia') : 'Indonesia');
     $city = str_replace(['Kota ', 'Kabupaten '], '', $city);
-    $all_products[] = [ 'id' => $row['product_id'], 'title' => $row['name'], 'price' => (int)$row['price'], 'loc' => $city, 'img' => $row['image'], 'cond' => $row['condition'], 'desc' => $row['description'], 'category' => $row['category'], 'shop_name' => $row['shop_name'], 'shop_img' => $row['shop_image'], 'shop_id' => $row['shop_id'], 'seller_id' => $row['seller_id'], 'shop_address' => $city, 'is_following' => $is_following ];
+
+    $all_products[] = [
+        'id' => (int)$row['product_id'],
+        'title' => $row['name'],
+        'price' => (int)$row['price'],
+        'loc' => $city,
+        'img' => $row['image'],
+        'cond' => $row['condition'],
+        'desc' => $row['description'],
+        'category' => $row['category'],
+        'shop_name' => $row['shop_name'],
+        'shop_img' => $row['shop_image'],
+        'shop_id' => (int)$row['shop_id'],
+        'seller_id' => (int)$row['seller_id'],
+        'shop_address' => $city,
+        'is_following' => $is_following
+    ];
 }
 
+// Cart
 $cart_items = []; $cart_total = 0;
-$q_cart = mysqli_query($koneksi, "SELECT c.cart_id, p.product_id, p.name, p.price, p.image, p.shop_id, p.status FROM cart c JOIN products p ON c.product_id = p.product_id WHERE c.user_id = '$user_id' AND p.status = 'active' ORDER BY c.created_at DESC");
-while($row = mysqli_fetch_assoc($q_cart)){ $cart_items[] = $row; $cart_total += $row['price']; }
+$q_cart = mysqli_query($koneksi, "
+    SELECT c.cart_id, p.product_id, p.name, p.price, p.image, p.shop_id, p.status
+    FROM cart c
+    JOIN products p ON c.product_id = p.product_id
+    WHERE c.user_id = '$user_id' AND p.status = 'active'
+    ORDER BY c.created_at DESC
+");
+while($row = mysqli_fetch_assoc($q_cart)){ $cart_items[] = $row; $cart_total += (int)$row['price']; }
 $cart_count = count($cart_items);
 
-$notif_items = []; $q_notif = mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id = '$user_id' ORDER BY created_at DESC LIMIT 10"); while($row = mysqli_fetch_assoc($q_notif)){ $notif_items[] = $row; }
+// Notif
+$notif_items = [];
+$q_notif = mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id = '$user_id' ORDER BY created_at DESC LIMIT 10");
+while($row = mysqli_fetch_assoc($q_notif)){ $notif_items[] = $row; }
 $notif_count = mysqli_num_rows(mysqli_query($koneksi, "SELECT * FROM notifications WHERE user_id='$user_id' AND is_read=0"));
 
-$addresses = []; $q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE user_id = '$user_id' ORDER BY is_primary DESC");
+// Address
+$addresses = [];
+$q_addr = mysqli_query($koneksi, "SELECT * FROM addresses WHERE user_id = '$user_id' ORDER BY is_primary DESC");
 while($row = mysqli_fetch_assoc($q_addr)){
     $details = [];
     if(!empty($row['village'])) $details[] = "Kel. " . $row['village'];
@@ -284,8 +394,7 @@ while($row = mysqli_fetch_assoc($q_addr)){
 $default_addr = !empty($addresses) ? $addresses[0] : null;
 
 /* =========================================================
-   CHAT LIST BUYER (tampilkan semua chat dengan seller)
-   - Partner ditampilkan sebagai TOKO (shop_name/image jika ada)
+   CHAT LIST BUYER
 ========================================================= */
 $chat_partners = [];
 $q_partner = mysqli_query($koneksi, "
@@ -298,7 +407,6 @@ while($r = mysqli_fetch_assoc($q_partner)){
     $pid = (int)$r['partner_id'];
     $p = chat_partner_profile($koneksi, $pid);
 
-    // last message preview
     $q_last = mysqli_query($koneksi, "
         SELECT message, image_path, created_at
         FROM chats
@@ -308,12 +416,12 @@ while($r = mysqli_fetch_assoc($q_partner)){
         LIMIT 1
     ");
     $l = mysqli_fetch_assoc($q_last);
+
     $preview = '';
+    $time = '';
     if($l){
         $preview = !empty($l['message']) ? $l['message'] : (!empty($l['image_path']) ? '[Foto]' : '');
         $time = date('H:i', strtotime($l['created_at']));
-    } else {
-        $time = '';
     }
 
     $chat_partners[$pid] = [
@@ -325,40 +433,65 @@ while($r = mysqli_fetch_assoc($q_partner)){
     ];
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Ecoswap</title>
+
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/dashboard.css">
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/keranjang.css">
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/notifikasi.css">
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/chat.css">
     <link rel="stylesheet" href="../../../Assets/css/role/buyer/checkout.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .btn-follow { display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; }
-        .btn-follow i { font-size: 0.9rem; }
-        .btn-follow.following { background-color: #e0e0e0; color: #333; border: 1px solid #ccc; }
-        .btn-follow.following:hover { background-color: #d0d0d0; }
-        body.no-scroll { overflow: hidden; }
 
+    <style>
+        .btn-follow { display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.3s ease; }
+        .btn-follow i { font-size:0.9rem; }
+        .btn-follow.following { background-color:#e0e0e0; color:#333; border:1px solid #ccc; }
+        .btn-follow.following:hover { background-color:#d0d0d0; }
+
+        /* LOCK BACKGROUND SCROLL WHEN CHAT OPEN */
+        body.no-scroll-chat { overflow: hidden; }
+
+        /* context menu */
         .chat-context-menu {
-            position: absolute; background: white; border: 1px solid #eee;
-            border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10000; min-width: 160px; display: none;
+            position:absolute; background:white; border:1px solid #eee;
+            border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.15);
+            z-index:10000; min-width:160px; display:none;
         }
         .chat-context-item {
-            padding: 10px 15px; cursor: pointer; font-size: 0.85rem; color: #333; transition: 0.2s;
+            padding:10px 15px; cursor:pointer; font-size:0.85rem; color:#333; transition:0.2s;
             display:flex; align-items:center; gap:8px;
         }
-        .chat-context-item:hover { background: #f8f9fa; }
-        .chat-context-item.danger { color: #dc3545; }
-        .chat-context-item.danger:hover { background: #fff5f5; }
-        .message-bubble { cursor: pointer; position: relative; }
-        .message-bubble:hover { filter: brightness(0.95); }
+        .chat-context-item:hover { background:#f8f9fa; }
+        .chat-context-item.danger { color:#dc3545; }
+        .chat-context-item.danger:hover { background:#fff5f5; }
+        .message-bubble { cursor:pointer; position:relative; }
+        .message-bubble:hover { filter: brightness(0.97); }
+
+        /* lightbox image */
+        .img-lightbox {
+            position:fixed; inset:0; background:rgba(0,0,0,0.75);
+            display:none; align-items:center; justify-content:center;
+            z-index: 99999;
+        }
+        .img-lightbox.open { display:flex; }
+        .img-lightbox img{
+            max-width: 92vw; max-height: 92vh; border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        .img-lightbox .close-x{
+            position:absolute; top:18px; right:18px;
+            width:42px; height:42px; border-radius:50%;
+            background:rgba(255,255,255,0.15);
+            border:1px solid rgba(255,255,255,0.25);
+            color:white; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            font-size: 18px;
+        }
     </style>
 </head>
 
@@ -366,11 +499,20 @@ while($r = mysqli_fetch_assoc($q_partner)){
     <nav class="navbar">
         <div class="nav-left">
             <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">ECO<span>SWAP</span></div>
-            <div class="search-container"><input type="text" class="search-input" placeholder="Cari barang bekas berkualitas..."><i class="fas fa-search search-icon"></i></div>
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="Cari barang bekas berkualitas...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
         </div>
         <div class="nav-right">
-            <button class="nav-icon-btn" onclick="toggleCart()"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="navCartBadge" style="<?php echo $cart_count > 0 ? '' : 'display:none;'; ?>"><?php echo $cart_count; ?></span></button>
-            <button class="nav-icon-btn" onclick="toggleNotifications()"><i class="fas fa-bell"></i><?php if($notif_count > 0): ?><span class="notif-badge"><?php echo $notif_count; ?></span><?php endif; ?></button>
+            <button class="nav-icon-btn" onclick="toggleCart()">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-badge" id="navCartBadge" style="<?php echo $cart_count > 0 ? '' : 'display:none;'; ?>"><?php echo $cart_count; ?></span>
+            </button>
+            <button class="nav-icon-btn" onclick="toggleNotifications()">
+                <i class="fas fa-bell"></i>
+                <?php if($notif_count > 0): ?><span class="notif-badge"><?php echo $notif_count; ?></span><?php endif; ?>
+            </button>
             <button class="nav-icon-btn" onclick="toggleChat()"><i class="fas fa-comment-dots"></i></button>
             <div class="user-avatar" onclick="window.location.href='profil.php'"><img src="<?php echo $user_avatar; ?>" alt="User"></div>
         </div>
@@ -379,16 +521,32 @@ while($r = mysqli_fetch_assoc($q_partner)){
     <div class="container">
         <div class="hero-section">
             <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide"><img src="https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=1200"><div class="hero-text"><h1>Barang Bekas <br><span>Berkualitas</span></h1><p>Hemat uang dan selamatkan bumi.</p></div></div>
-                <div class="carousel-slide"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=1200"><div class="hero-text"><h1>Elektronik <br><span>Murah</span></h1><p>Upgrade gadget tanpa bikin kantong bolong.</p></div></div>
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=1200">
+                    <div class="hero-text"><h1>Barang Bekas <br><span>Berkualitas</span></h1><p>Hemat uang dan selamatkan bumi.</p></div>
+                </div>
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=1200">
+                    <div class="hero-text"><h1>Elektronik <br><span>Murah</span></h1><p>Upgrade gadget tanpa bikin kantong bolong.</p></div>
+                </div>
             </div>
         </div>
 
         <div class="section-header"><h2 class="section-title">Kategori Pilihan</h2></div>
         <div class="category-pills">
-            <?php $categories = ['Semua', 'Elektronik', 'Fashion', 'Hobi', 'Rumah Tangga', 'Buku', 'Otomotif']; foreach($categories as $cat) { echo '<div class="category-pill '.($cat == 'Semua' ? 'active' : '').'" onclick="filterCategory(this, \''.$cat.'\')">'.$cat.'</div>'; } ?>
+            <?php
+            $categories = ['Semua', 'Elektronik', 'Fashion', 'Hobi', 'Rumah Tangga', 'Buku', 'Otomotif'];
+            foreach($categories as $cat) {
+                echo '<div class="category-pill '.($cat == 'Semua' ? 'active' : '').'" onclick="filterCategory(this, \''.$cat.'\')">'.$cat.'</div>';
+            }
+            ?>
         </div>
-        <div class="product-grid" id="productGrid"><div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;" id="loadingGrid"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat produk...</div></div>
+
+        <div class="product-grid" id="productGrid">
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;" id="loadingGrid">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat produk...
+            </div>
+        </div>
     </div>
 
     <?php include 'chat.php'; ?>
@@ -398,7 +556,7 @@ while($r = mysqli_fetch_assoc($q_partner)){
     <?php include 'keranjang.php'; ?>
     <?php include 'notifikasi.php'; ?>
 
-    <!-- Product Modal (tetap) -->
+    <!-- Product Modal -->
     <div class="modal-overlay" id="productModal">
         <div class="product-modal">
             <button class="close-modal-btn" onclick="closeModal()"><i class="fas fa-times"></i></button>
@@ -419,102 +577,216 @@ while($r = mysqli_fetch_assoc($q_partner)){
         </div>
     </div>
 
+    <!-- Lightbox for chat images -->
+    <div class="img-lightbox" id="imgLightbox" onclick="closeLightbox(event)">
+        <div class="close-x" onclick="closeLightbox(event)"><i class="fas fa-times"></i></div>
+        <img id="lightboxImg" src="" alt="Preview">
+    </div>
+
 <script>
     const goToDashboard = () => window.location.href = 'dashboard.php';
-    let products = <?php echo json_encode($all_products); ?>;
 
-    // Chat partners list dari PHP
+    let products = <?php echo json_encode($all_products); ?>;
     const chatPartners = <?php echo json_encode($chat_partners); ?>;
 
     let currentActiveProduct = null;
-    let selectedAddressId = <?php echo $default_addr ? $default_addr['address_id'] : 'null'; ?>;
+    let selectedAddressId = <?php echo $default_addr ? (int)$default_addr['address_id'] : 'null'; ?>;
 
     document.addEventListener('DOMContentLoaded', () => {
         renderProducts(products);
 
-        // Close context menu on click elsewhere
+        // close context menu if click outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.message-bubble')) {
-                document.getElementById('chatContextMenu').style.display = 'none';
+                const cm = document.getElementById('chatContextMenu');
+                if(cm) cm.style.display = 'none';
             }
         });
+
+        // SEARCH (live)
+        const searchInput = document.getElementById('searchInput');
+        if(searchInput){
+            let t=null;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(t);
+                t = setTimeout(() => {
+                    const q = searchInput.value.trim().toLowerCase();
+                    if(!q){ renderProducts(products); return; }
+                    const filtered = products.filter(p => {
+                        const hay = `${p.title||''} ${p.desc||''} ${p.category||''} ${p.shop_name||''} ${p.loc||''}`.toLowerCase();
+                        return hay.includes(q);
+                    });
+                    renderProducts(filtered);
+                }, 150);
+            });
+        }
     });
 
-    // -------- PRODUCTS (tetap seperti punyamu) ----------
+    // -------- PRODUCTS ----------
     function renderProducts(data) {
-        const productGrid = document.getElementById('productGrid'); productGrid.innerHTML = '';
-        if(data.length === 0) { productGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">Tidak ada produk ditemukan.</div>`; return; }
+        const productGrid = document.getElementById('productGrid');
+        productGrid.innerHTML = '';
+        if(data.length === 0) {
+            productGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">Tidak ada produk ditemukan.</div>`;
+            return;
+        }
         data.forEach(p => {
-            const card = document.createElement('div'); card.className = 'product-card'; card.onclick = () => openModal(p);
-            card.innerHTML = `<div class="product-img-wrapper"><img src="${p.img}"></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price">Rp ${p.price.toLocaleString('id-ID')}</div><div class="product-meta"><i class="fas fa-map-marker-alt"></i> ${p.loc}</div></div>`;
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            card.onclick = () => openModal(p);
+            card.innerHTML = `
+                <div class="product-img-wrapper"><img src="${p.img}"></div>
+                <div class="product-info">
+                    <div class="product-title">${p.title}</div>
+                    <div class="product-price">Rp ${Number(p.price||0).toLocaleString('id-ID')}</div>
+                    <div class="product-meta"><i class="fas fa-map-marker-alt"></i> ${p.loc}</div>
+                </div>
+            `;
             productGrid.appendChild(card);
         });
     }
+
     function filterCategory(btn, cat) {
-        document.querySelectorAll('.category-pill').forEach(el => el.classList.remove('active')); btn.classList.add('active');
-        const grid = document.getElementById('productGrid'); grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat...</div>';
-        fetch(`dashboard.php?action=filter_products&category=${encodeURIComponent(cat)}`).then(r => r.json()).then(data => { products = data; renderProducts(products); }).catch(() => { grid.innerHTML = '<div style="text-align:center;">Gagal memuat produk.</div>'; });
+        document.querySelectorAll('.category-pill').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+
+        const grid = document.getElementById('productGrid');
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><br>Memuat...</div>';
+
+        fetch(`dashboard.php?action=filter_products&category=${encodeURIComponent(cat)}`)
+            .then(r => r.json())
+            .then(data => { products = data; renderProducts(products); })
+            .catch(() => { grid.innerHTML = '<div style="text-align:center;">Gagal memuat produk.</div>'; });
     }
+
     const modalOverlay = document.getElementById('productModal');
+
     function openModal(product) {
         currentActiveProduct = product;
-        const fd = new FormData(); fd.append('action', 'view_product'); fd.append('product_id', product.id); fetch('dashboard.php', { method: 'POST', body: fd });
+
+        const fd = new FormData();
+        fd.append('action', 'view_product');
+        fd.append('product_id', product.id);
+        fetch('dashboard.php', { method: 'POST', body: fd });
 
         document.getElementById('modalImg').src = product.img;
         document.getElementById('modalTitle').textContent = product.title;
-        document.getElementById('modalPrice').textContent = 'Rp ' + product.price.toLocaleString('id-ID');
+        document.getElementById('modalPrice').textContent = 'Rp ' + Number(product.price||0).toLocaleString('id-ID');
         document.getElementById('modalDesc').textContent = product.desc;
 
         const metaRow = document.querySelector('.modal-meta-row');
         if(metaRow) metaRow.innerHTML = `<span style="color:#555; font-weight:600;">Kondisi: <span id="modalCond" style="font-weight:normal; margin-left:4px; color:#333;">${product.cond}</span></span>`;
+
         const catContainer = document.getElementById('modalCategoryBadge');
         if(catContainer) catContainer.innerHTML = `<span class="modal-category-badge">${product.category || 'Umum'}</span>`;
 
         const shopContainer = document.getElementById('modalShopContainer');
-        const isFollowing = product.is_following;
+        const isFollowing = !!product.is_following;
         const followText = isFollowing ? 'Mengikuti' : 'Ikuti';
         const followIcon = isFollowing ? '<i class="fas fa-check"></i>' : '<i class="fas fa-plus"></i>';
         const followClass = isFollowing ? 'btn-follow following' : 'btn-follow';
         const shopImg = product.shop_img ? product.shop_img : 'https://placehold.co/50';
 
-        shopContainer.innerHTML = `<div class="modal-shop-left"><img src="${shopImg}" class="modal-shop-img" alt="Toko"><div class="modal-shop-details"><h4>${product.shop_name}</h4><span style="font-size:0.8rem; color:#666; display:flex; align-items:center; gap:4px;"><i class="fas fa-map-marker-alt" style="color:#fbc02d;"></i> ${product.shop_address || 'Indonesia'}</span></div></div><button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this, '${product.shop_name}')">${followIcon} ${followText}</button>`;
+        shopContainer.innerHTML = `
+            <div class="modal-shop-left">
+                <img src="${shopImg}" class="modal-shop-img" alt="Toko">
+                <div class="modal-shop-details">
+                    <h4>${product.shop_name}</h4>
+                    <span style="font-size:0.8rem; color:#666; display:flex; align-items:center; gap:4px;">
+                        <i class="fas fa-map-marker-alt" style="color:#fbc02d;"></i> ${product.shop_address || 'Indonesia'}
+                    </span>
+                </div>
+            </div>
+            <button class="${followClass}" onclick="toggleFollow(${product.shop_id}, this)">
+                ${followIcon} ${followText}
+            </button>
+        `;
 
         const btnChat = document.getElementById('btnModalChat');
         const newBtnChat = btnChat.cloneNode(true);
         btnChat.parentNode.replaceChild(newBtnChat, btnChat);
-        newBtnChat.onclick = function() { closeModal(); toggleChat(); selectChat(product.seller_id); };
+        newBtnChat.onclick = function() {
+            closeModal();
+            toggleChat();
+            selectChat(product.seller_id);
+        };
 
-        modalOverlay.classList.add('open'); document.body.classList.add('no-scroll');
+        modalOverlay.classList.add('open');
+        document.body.classList.add('no-scroll'); // existing behavior
     }
-    function closeModal() { modalOverlay.classList.remove('open'); document.body.classList.remove('no-scroll'); }
+
+    function closeModal() {
+        modalOverlay.classList.remove('open');
+        document.body.classList.remove('no-scroll');
+    }
     modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
 
     function toggleFollow(shopId, btn) {
-        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        const formData = new FormData(); formData.append('action', 'toggle_follow'); formData.append('shop_id', shopId);
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+
+        const formData = new FormData();
+        formData.append('action', 'toggle_follow');
+        formData.append('shop_id', shopId);
+
         fetch('dashboard.php', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'followed') { btn.classList.add('following'); btn.innerHTML = '<i class="fas fa-check"></i> Mengikuti'; }
-                else if (data.status === 'unfollowed') { btn.classList.remove('following'); btn.innerHTML = '<i class="fas fa-plus"></i> Ikuti'; }
+                if (data.status === 'followed') {
+                    btn.classList.add('following');
+                    btn.innerHTML = '<i class="fas fa-check"></i> Mengikuti';
+                } else if (data.status === 'unfollowed') {
+                    btn.classList.remove('following');
+                    btn.innerHTML = '<i class="fas fa-plus"></i> Ikuti';
+                }
             })
             .finally(() => { btn.disabled = false; });
     }
 
-    // ------------- CART/NOTIF/CHAT TOGGLE (tetap) -------------
+    // ------------- CART/NOTIF/CHAT TOGGLE -------------
     const formatRupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
-    function toggleCart() { document.getElementById('cartSidebar').classList.toggle('open'); document.getElementById('cartOverlay').classList.toggle('open'); updateCartTotal(); }
-    function toggleNotifications() { document.getElementById('notifSidebar').classList.toggle('open'); document.getElementById('notifOverlay').classList.toggle('open'); }
-    function toggleChat() { document.getElementById('chatSidebar').classList.toggle('open'); document.getElementById('chatOverlay').classList.toggle('open'); }
+
+    function toggleCart() {
+        document.getElementById('cartSidebar').classList.toggle('open');
+        document.getElementById('cartOverlay').classList.toggle('open');
+        updateCartTotal();
+    }
+    function toggleNotifications() {
+        document.getElementById('notifSidebar').classList.toggle('open');
+        document.getElementById('notifOverlay').classList.toggle('open');
+    }
+
+    function toggleChat() {
+        const sidebar = document.getElementById('chatSidebar');
+        const overlay = document.getElementById('chatOverlay');
+
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+
+        // IMPORTANT: lock background scroll when chat open
+        const isOpen = sidebar.classList.contains('open');
+        document.body.classList.toggle('no-scroll-chat', isOpen);
+
+        // auto scroll when open and already in chat area
+        if(isOpen && document.getElementById('chatAreaSidebar').style.display === 'flex'){
+            setTimeout(() => {
+                const c = document.getElementById('chatMessagesSidebar');
+                if(c) c.scrollTop = c.scrollHeight;
+            }, 50);
+        }
+    }
+
     function updateCartTotal() {
         let t=0;
-        document.querySelectorAll('.cart-item').forEach(el=>{ if(el.querySelector('.cart-checkbox')?.checked) t+=parseInt(el.getAttribute('data-price')) });
+        document.querySelectorAll('.cart-item').forEach(el=>{
+            if(el.querySelector('.cart-checkbox')?.checked) t += parseInt(el.getAttribute('data-price'));
+        });
         const el = document.getElementById('cartTotalPrice');
         if(el) el.innerText = formatRupiah(t);
     }
 
     // ==========================================================
-    // CHAT BUYER (REALTIME, OUTGOING MUNCUL, FOTO BISA)
+    // CHAT BUYER
     // ==========================================================
     let currentChatPartnerId = null;
     let currentPartner = null;
@@ -533,28 +805,25 @@ while($r = mysqli_fetch_assoc($q_partner)){
         document.getElementById('chatSellerNameSidebar').textContent = currentPartner.name;
         document.getElementById('chatSellerAvatarSidebar').src = currentPartner.img;
 
-        renderMessagesSidebar();
+        renderMessagesSidebar(true);
     }
 
     function selectChat(pid){
-        // open chat UI
         document.getElementById('chatItemsContainer').style.display='none';
         document.getElementById('chatAreaSidebar').style.display='flex';
 
         loadChat(pid);
 
-        // polling realtime
         if(chatPollTimer) clearInterval(chatPollTimer);
         chatPollTimer = setInterval(async () => {
             if(!currentChatPartnerId) return;
             const res = await fetch(`dashboard.php?action=get_chat&partner_id=${currentChatPartnerId}`);
             const data = await res.json();
             if(data.status === 'success'){
-                // update only if changed length / id
                 const newMsgs = data.messages || [];
                 if(newMsgs.length !== messages.length || (newMsgs.at(-1)?.id !== messages.at(-1)?.id)){
                     messages = newMsgs;
-                    renderMessagesSidebar();
+                    renderMessagesSidebar(false);
                 }
             }
         }, 2000);
@@ -570,15 +839,44 @@ while($r = mysqli_fetch_assoc($q_partner)){
         chatPollTimer = null;
     }
 
-    function renderMessagesSidebar(){
-        const c=document.getElementById('chatMessagesSidebar'); c.innerHTML='';
-        if(messages.length===0){ c.innerHTML='<div style="text-align:center;padding:20px;color:#888;">Belum ada pesan.</div>'; return; }
+    function escapeHtml(str){
+        return String(str)
+            .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+            .replaceAll('"','&quot;').replaceAll("'","&#039;");
+    }
+
+    function openLightbox(src){
+        const lb = document.getElementById('imgLightbox');
+        const img = document.getElementById('lightboxImg');
+        img.src = src;
+        lb.classList.add('open');
+    }
+    function closeLightbox(e){
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('imgLightbox').classList.remove('open');
+        document.getElementById('lightboxImg').src = '';
+    }
+
+    function renderMessagesSidebar(forceScroll){
+        const c=document.getElementById('chatMessagesSidebar');
+        c.innerHTML='';
+
+        if(messages.length===0){
+            c.innerHTML='<div style="text-align:center;padding:20px;color:#888;">Belum ada pesan.</div>';
+            return;
+        }
 
         messages.forEach(m=>{
             const bubbleClass = (m.type === 'outgoing') ? 'msg-me' : 'msg-other';
             let content = '';
-            if (m.img) content += `<img src="${m.img}" style="max-width:220px;border-radius:10px;display:block;margin-bottom:${m.text ? '8px' : '0'};">`;
+
+            if (m.img){
+                const safeSrc = m.img;
+                content += `<img src="${safeSrc}" class="chat-img" style="max-width:220px;border-radius:10px;display:block;margin-bottom:${m.text ? '8px' : '0'};cursor:zoom-in;" onclick="openLightbox('${safeSrc}')">`;
+            }
             if (m.text) content += `<div>${escapeHtml(m.text)}</div>`;
+
             c.innerHTML += `
                 <div class="message-wrapper ${m.type}">
                     <div class="message-bubble ${bubbleClass}" onclick="showChatOptions(event, ${m.id}, '${m.type}')">
@@ -587,18 +885,18 @@ while($r = mysqli_fetch_assoc($q_partner)){
                     <span class="message-time">${m.time}</span>
                 </div>`;
         });
-        c.scrollTop=c.scrollHeight;
-    }
 
-    function escapeHtml(str){
-        return String(str)
-            .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-            .replaceAll('"','&quot;').replaceAll("'","&#039;");
+        if(forceScroll){
+            c.scrollTop = c.scrollHeight;
+        } else {
+            // auto scroll if already near bottom
+            const nearBottom = (c.scrollHeight - (c.scrollTop + c.clientHeight)) < 120;
+            if(nearBottom) c.scrollTop = c.scrollHeight;
+        }
     }
 
     // CONTEXT MENU
     const contextMenu = document.getElementById('chatContextMenu');
-
     function showChatOptions(e, id, type) {
         e.stopPropagation();
         contextMenu.innerHTML = '';
@@ -616,12 +914,15 @@ while($r = mysqli_fetch_assoc($q_partner)){
 
     async function deleteMessage(id) {
         if(!confirm("Hapus pesan ini?")) return;
-        const fd = new FormData(); fd.append('action','delete_chat'); fd.append('chat_id', id);
+        const fd = new FormData();
+        fd.append('action','delete_chat');
+        fd.append('chat_id', id);
+
         const res = await fetch('dashboard.php',{method:'POST',body:fd});
         const data = await res.json();
         if(data.status==='success'){
             messages = messages.filter(m => m.id !== id);
-            renderMessagesSidebar();
+            renderMessagesSidebar(false);
             contextMenu.style.display='none';
         } else alert('Gagal hapus pesan.');
     }
@@ -629,7 +930,12 @@ while($r = mysqli_fetch_assoc($q_partner)){
     async function reportMessage(id) {
         const reason = prompt("Masukkan alasan pelaporan:");
         if(!reason) return;
-        const fd = new FormData(); fd.append('action','report_chat'); fd.append('chat_id', id); fd.append('reason', reason);
+
+        const fd = new FormData();
+        fd.append('action','report_chat');
+        fd.append('chat_id', id);
+        fd.append('reason', reason);
+
         const res = await fetch('dashboard.php',{method:'POST',body:fd});
         const data = await res.json();
         if(data.status==='success') alert("Laporan terkirim. Admin akan meninjau.");
@@ -645,10 +951,9 @@ while($r = mysqli_fetch_assoc($q_partner)){
 
         inp.value = '';
 
-        // tampilkan langsung di UI
         const temp = { id: -Date.now(), type:'outgoing', text:txt, img:null, time:'...' };
         messages.push(temp);
-        renderMessagesSidebar();
+        renderMessagesSidebar(true);
 
         const fd = new FormData();
         fd.append('action','send_message');
@@ -659,12 +964,11 @@ while($r = mysqli_fetch_assoc($q_partner)){
         const data = await res.json();
 
         if(data.status==='success'){
-            // ganti temp id/time
             const idx = messages.findIndex(m => m.id === temp.id);
             if(idx >= 0){
                 messages[idx].id = data.chat_id;
                 messages[idx].time = data.time;
-                renderMessagesSidebar();
+                renderMessagesSidebar(true);
             }
         } else {
             alert('Gagal mengirim pesan.');
@@ -681,11 +985,10 @@ while($r = mysqli_fetch_assoc($q_partner)){
         const file = fileInput.files[0];
         if(!file) return;
 
-        // tampilkan langsung preview di UI
         const localUrl = URL.createObjectURL(file);
         const temp = { id: -Date.now(), type:'outgoing', text:'', img:localUrl, time:'...' };
         messages.push(temp);
-        renderMessagesSidebar();
+        renderMessagesSidebar(true);
 
         const fd = new FormData();
         fd.append('action','send_message');
@@ -700,9 +1003,9 @@ while($r = mysqli_fetch_assoc($q_partner)){
             const idx = messages.findIndex(m => m.id === temp.id);
             if(idx >= 0){
                 messages[idx].id = data.chat_id;
-                messages[idx].img = data.image || messages[idx].img; // pakai path server
+                messages[idx].img = data.image || messages[idx].img;
                 messages[idx].time = data.time;
-                renderMessagesSidebar();
+                renderMessagesSidebar(true);
             }
         } else {
             alert('Gagal mengirim foto.');
@@ -711,13 +1014,9 @@ while($r = mysqli_fetch_assoc($q_partner)){
         fileInput.value = '';
     }
 
-    // chat list click bind (tanpa ubah tampilan)
-    // list di-render oleh PHP di chat.php, onclick sudah memanggil selectChat(pid,...)
-    // tapi kita ubah agar cukup selectChat(pid). (lihat chat.php buyer di bawah)
-
     // carousel
     const track=document.getElementById('carouselTrack'); let ci=0;
-    setInterval(()=>{ci=(ci+1)%2;track.style.transform=`translateX(-${ci*100}%)`;},5000);
+    setInterval(()=>{ ci=(ci+1)%2; track.style.transform=`translateX(-${ci*100}%)`; },5000);
 </script>
 
 </body>
