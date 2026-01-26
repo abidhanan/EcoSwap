@@ -2,31 +2,32 @@
 session_start();
 
 // --- KONEKSI DATABASE ---
-// Sesuaikan path jika perlu. Karena index.php di root, akses langsung ke Auth/koneksi.php
-include '../EcoSwap/Public/Auth/koneksi.php'; 
+// Pastikan path ini benar sesuai struktur foldermu
+include 'Public/Auth/koneksi.php'; 
 
+// Fallback jika path di atas gagal (misal struktur foldernya beda)
 if (!isset($koneksi)) {
-    die("Error: Koneksi database gagal. Pastikan file 'Auth/koneksi.php' ada.");
+    if (file_exists('../EcoSwap/Public/Auth/koneksi.php')) {
+        include '../EcoSwap/Public/Auth/koneksi.php';
+    } else {
+        die("<h3>Koneksi Gagal</h3><p>Pastikan file <b>Public/Auth/koneksi.php</b> ada.</p>");
+    }
 }
 
-// --- 1. HITUNG STATISTIK DARI DATABASE ---
+// --- 1. STATISTIK ---
+$stat_users = '0'; $stat_sold = '0'; $stat_rating = '0.0';
+if ($koneksi) {
+    $d_users = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users WHERE role != 'admin'"));
+    $stat_users = number_format($d_users['total']);
+    
+    $d_sold = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed' OR status = 'reviewed'"));
+    $stat_sold = number_format($d_sold['total']);
+    
+    $d_rating = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT AVG(rating) as avg_rating FROM reviews"));
+    $stat_rating = number_format((float)$d_rating['avg_rating'], 1);
+}
 
-// A. Pengguna Aktif (Semua user kecuali admin)
-$q_users = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users WHERE role != 'admin'");
-$d_users = mysqli_fetch_assoc($q_users);
-$stat_users = $d_users['total'] > 0 ? number_format($d_users['total']) : '0';
-
-// B. Barang Terjual (Status completed/reviewed)
-$q_sold = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed' OR status = 'reviewed'");
-$d_sold = mysqli_fetch_assoc($q_sold);
-$stat_sold = $d_sold['total'] > 0 ? number_format($d_sold['total']) : '0';
-
-// C. Rating Rata-rata (Dari semua review)
-$q_rating = mysqli_query($koneksi, "SELECT AVG(rating) as avg_rating FROM reviews");
-$d_rating = mysqli_fetch_assoc($q_rating);
-$stat_rating = number_format((float)$d_rating['avg_rating'], 1);
-
-// --- 2. AMBIL PRODUK TERBARU ---
+// --- 2. AMBIL PRODUK (LOGIC GAMBAR DIPERBAIKI) ---
 $featured_products = [];
 $query_prod = "SELECT p.product_id, p.name, p.price, p.image, p.category, s.shop_city 
                FROM products p 
@@ -40,14 +41,21 @@ $result_prod = mysqli_query($koneksi, $query_prod);
 if ($result_prod) {
     while($row = mysqli_fetch_assoc($result_prod)) {
         
-        // --- LOGIKA PERBAIKAN GAMBAR (Sama seperti dashboard buyer) ---
         $img_db = $row['image'];
-        // Cek apakah gambar link online (http) atau file lokal
+        
+        // --- PERBAIKAN JALUR GAMBAR ---
         if (strpos($img_db, 'http') === 0) {
+            // Jika gambar dari internet (Google/Placeholder), biarkan saja
             $final_img = $img_db;
         } else {
-            // Hapus traversing directory (../../../) agar path sesuai dari root
-            $final_img = str_replace('../../../', '', $img_db);
+            // Jika gambar upload lokal (tersimpan sebagai ../../../Assets/...)
+            // Kita ubah menjadi Public/Assets/... agar bisa dibaca dari Index
+            $final_img = str_replace('../../../', 'Public/', $img_db);
+            
+            // Cek cadangan: Jika replace gagal (misal di DB tersimpan tanpa ../../)
+            if (strpos($final_img, 'Public/') === false && strpos($final_img, 'Assets/') === 0) {
+                $final_img = 'Public/' . $final_img;
+            }
         }
 
         $featured_products[] = [
@@ -55,7 +63,7 @@ if ($result_prod) {
             "title" => $row['name'],
             "price" => $row['price'],
             "loc" => !empty($row['shop_city']) ? $row['shop_city'] : 'Indonesia',
-            "img" => $final_img, // Path gambar yang sudah diperbaiki
+            "img" => $final_img, 
             "category" => $row['category']
         ];
     }
@@ -78,22 +86,17 @@ if ($result_prod) {
     <nav class="navbar" id="navbar">
         <div class="container nav-container">
             <div class="logo">ECO<span>SWAP</span></div>
-            
             <div class="nav-links">
                 <a href="#home">Beranda</a>
                 <a href="#features">Keunggulan</a>
                 <a href="#products">Produk</a>
                 <a href="#contact">Kontak</a>
             </div>
-
             <div class="nav-auth">
                 <button class="btn-login" onclick="window.location.href='Public/Views/guest/login.php'">Masuk</button>
                 <button class="btn-register" onclick="window.location.href='Public/Views/guest/register.php'">Daftar</button>
             </div>
-            
-            <div class="hamburger">
-                <i class="fas fa-bars"></i>
-            </div>
+            <div class="hamburger"><i class="fas fa-bars"></i></div>
         </div>
     </nav>
 
@@ -111,22 +114,10 @@ if ($result_prod) {
 
     <section class="stats-section">
         <div class="container stats-grid">
-            <div class="stat-item">
-                <div class="stat-number"><?php echo $stat_users; ?>+</div>
-                <div class="stat-label">Pengguna Aktif</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number"><?php echo $stat_sold; ?>+</div>
-                <div class="stat-label">Barang Terjual</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number"><?php echo $stat_rating; ?></div>
-                <div class="stat-label">Rating Rata-rata</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">100%</div>
-                <div class="stat-label">Aman & Terpercaya</div>
-            </div>
+            <div class="stat-item"><div class="stat-number"><?php echo $stat_users; ?>+</div><div class="stat-label">Pengguna Aktif</div></div>
+            <div class="stat-item"><div class="stat-number"><?php echo $stat_sold; ?>+</div><div class="stat-label">Barang Terjual</div></div>
+            <div class="stat-item"><div class="stat-number"><?php echo $stat_rating; ?></div><div class="stat-label">Rating Rata-rata</div></div>
+            <div class="stat-item"><div class="stat-number">100%</div><div class="stat-label">Aman & Terpercaya</div></div>
         </div>
     </section>
 
@@ -137,26 +128,10 @@ if ($result_prod) {
                 <p>Solusi cerdas untuk gaya hidup hemat dan ramah lingkungan.</p>
             </div>
             <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
-                    <h3>Transaksi Aman</h3>
-                    <p>Sistem Rekber (Rekening Bersama) menjamin keamanan uang pembeli dan barang penjual.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-leaf"></i></div>
-                    <h3>Ramah Lingkungan</h3>
-                    <p>Dengan membeli barang bekas, kamu berkontribusi mengurangi limbah elektronik dan fashion.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-wallet"></i></div>
-                    <h3>Harga Terjangkau</h3>
-                    <p>Dapatkan barang bermerek berkualitas dengan harga miring, jauh di bawah harga toko.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
-                    <h3>Proses Cepat</h3>
-                    <p>Posting barang dalam hitungan detik. Chat langsung dengan penjual tanpa perantara ribet.</p>
-                </div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-shield-alt"></i></div><h3>Transaksi Aman</h3><p>Sistem Rekber menjamin keamanan uang pembeli dan barang penjual.</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-leaf"></i></div><h3>Ramah Lingkungan</h3><p>Berkontribusi mengurangi limbah elektronik dan fashion.</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-wallet"></i></div><h3>Harga Terjangkau</h3><p>Dapatkan barang bermerek berkualitas dengan harga miring.</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-bolt"></i></div><h3>Proses Cepat</h3><p>Posting barang dalam hitungan detik. Chat langsung dengan penjual.</p></div>
             </div>
         </div>
     </section>
@@ -172,14 +147,16 @@ if ($result_prod) {
                 <?php if(empty($featured_products)): ?>
                     <div style="grid-column: 1/-1; text-align: center; color: #666; padding: 40px; background: #f9f9f9; border-radius: 8px;">
                         <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.5;"></i>
-                        Belum ada produk yang aktif saat ini.
+                        Belum ada produk yang aktif.
                     </div>
                 <?php else: ?>
                     <?php foreach ($featured_products as $p): ?>
                     <div class="product-card" onclick="promptLogin()">
                         <div class="product-badge"><?= htmlspecialchars($p['category']) ?></div>
                         <div class="product-img-wrapper">
-                            <img src="<?= htmlspecialchars($p['img']) ?>" alt="<?= htmlspecialchars($p['title']) ?>">
+                            <img src="<?= htmlspecialchars($p['img']) ?>" 
+                                 alt="<?= htmlspecialchars($p['title']) ?>"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300?text=No+Image';">
                         </div>
                         <div class="product-info">
                             <div class="product-title"><?= htmlspecialchars($p['title']) ?></div>
@@ -199,7 +176,7 @@ if ($result_prod) {
         <div class="container">
             <div class="cta-content">
                 <h2>Punya Barang Tak Terpakai?</h2>
-                <p>Jangan biarkan menumpuk berdebu. Jual sekarang di Ecoswap dan dapatkan uang tunai dengan cepat!</p>
+                <p>Jangan biarkan menumpuk. Jual sekarang dan dapatkan uang tunai!</p>
                 <button class="btn btn-dark btn-lg" onclick="window.location.href='Public/Views/guest/register.php'">Mulai Jual Sekarang</button>
             </div>
             <div class="cta-img">
@@ -212,58 +189,35 @@ if ($result_prod) {
         <div class="container footer-content">
             <div class="footer-col brand-col">
                 <div class="logo footer-logo">ECO<span>SWAP</span></div>
-                <p>Platform jual beli barang bekas terpercaya. Wujudkan gaya hidup berkelanjutan bersama kami.</p>
+                <p>Platform jual beli barang bekas terpercaya.</p>
                 <div class="social-links">
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#"><i class="fab fa-twitter"></i></a>
-                    <a href="#"><i class="fab fa-youtube"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-twitter"></i></a>
                 </div>
             </div>
             <div class="footer-col">
                 <h4>Navigasi</h4>
-                <ul>
-                    <li><a href="#home">Beranda</a></li>
-                    <li><a href="#features">Tentang Kami</a></li>
-                    <li><a href="#products">Belanja</a></li>
-                    <li><a href="#">Blog</a></li>
-                </ul>
+                <ul><li><a href="#home">Beranda</a></li><li><a href="#products">Belanja</a></li></ul>
             </div>
             <div class="footer-col">
                 <h4>Hubungi Kami</h4>
                 <ul class="contact-info">
                     <li><i class="fas fa-envelope"></i> support@ecoswap.id</li>
-                    <li><i class="fas fa-phone"></i> +62 812 3456 7890</li>
                     <li><i class="fas fa-map-marker-alt"></i> Jakarta, Indonesia</li>
                 </ul>
             </div>
         </div>
-        <div class="footer-bottom">
-            <div class="container">
-                <p>&copy; 2024 Ecoswap Indonesia. All rights reserved.</p>
-            </div>
-        </div>
+        <div class="footer-bottom"><div class="container"><p>&copy; 2024 Ecoswap Indonesia.</p></div></div>
     </footer>
 
     <script>
-        // Sticky Navbar Effect
         window.addEventListener('scroll', function() {
             const navbar = document.getElementById('navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
+            if (window.scrollY > 50) navbar.classList.add('scrolled');
+            else navbar.classList.remove('scrolled');
         });
-
-        // Scroll to Products
-        function scrollToProducts() {
-            document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        // Prompt Login for Interaction
+        function scrollToProducts() { document.getElementById('products').scrollIntoView({ behavior: 'smooth' }); }
         function promptLogin() {
-            if(confirm("Anda harus masuk untuk melihat detail produk atau membeli. Ingin masuk sekarang?")) {
+            if(confirm("Anda harus masuk untuk melihat detail. Masuk sekarang?")) {
                 window.location.href = 'Public/Views/guest/login.php';
             }
         }
