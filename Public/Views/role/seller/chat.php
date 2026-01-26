@@ -11,14 +11,14 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id']; // ID Seller
 
-// --- 1. HANDLE KIRIM PESAN ---
+// --- 1. HANDLE KIRIM PESAN (Seller -> Buyer) ---
 if (isset($_POST['send_message']) && !empty($_POST['message'])) {
     $receiver_id = mysqli_real_escape_string($koneksi, $_POST['receiver_id']);
     $msg = mysqli_real_escape_string($koneksi, $_POST['message']);
-    
-    // Insert Pesan
+
+    // Insert Pesan (seller -> buyer)
     $q_insert = "INSERT INTO chats (sender_id, receiver_id, message, created_at) VALUES ('$user_id', '$receiver_id', '$msg', NOW())";
-    
+
     if(mysqli_query($koneksi, $q_insert)){
         // Redirect agar tidak resubmit saat refresh
         header("Location: chat.php?chat_with=$receiver_id");
@@ -26,20 +26,25 @@ if (isset($_POST['send_message']) && !empty($_POST['message'])) {
     }
 }
 
-// --- 2. AMBIL DAFTAR USER YANG PERNAH CHAT (SIDEBAR) ---
+// --- 2. AMBIL DAFTAR USER YANG PERNAH CHAT MASUK (SIDEBAR) ---
+// Hanya user yang pernah mengirim ke seller (inbox seller)
 $chat_list = [];
 $query_chat_list = "
     SELECT u.user_id, u.name, u.profile_picture,
-           (SELECT message FROM chats WHERE (sender_id=u.user_id AND receiver_id='$user_id') OR (sender_id='$user_id' AND receiver_id=u.user_id) ORDER BY created_at DESC LIMIT 1) as last_msg,
-           (SELECT created_at FROM chats WHERE (sender_id=u.user_id AND receiver_id='$user_id') OR (sender_id='$user_id' AND receiver_id=u.user_id) ORDER BY created_at DESC LIMIT 1) as last_time
+           (SELECT message FROM chats
+            WHERE sender_id=u.user_id AND receiver_id='$user_id'
+            ORDER BY created_at DESC LIMIT 1) as last_msg,
+           (SELECT image_path FROM chats
+            WHERE sender_id=u.user_id AND receiver_id='$user_id'
+            ORDER BY created_at DESC LIMIT 1) as last_img,
+           (SELECT created_at FROM chats
+            WHERE sender_id=u.user_id AND receiver_id='$user_id'
+            ORDER BY created_at DESC LIMIT 1) as last_time
     FROM users u
     WHERE u.user_id IN (
-        SELECT DISTINCT CASE 
-            WHEN sender_id = '$user_id' THEN receiver_id 
-            ELSE sender_id 
-        END 
-        FROM chats 
-        WHERE sender_id = '$user_id' OR receiver_id = '$user_id'
+        SELECT DISTINCT sender_id
+        FROM chats
+        WHERE receiver_id = '$user_id'
     )
     ORDER BY last_time DESC
 ";
@@ -51,29 +56,34 @@ if ($res_list) {
         if(empty($row['profile_picture'])){
             $row['profile_picture'] = "https://ui-avatars.com/api/?name=".urlencode($row['name'])."&background=random";
         }
+
+        // Preview pesan
+        if(empty($row['last_msg']) && !empty($row['last_img'])) $row['last_msg'] = '[Foto]';
+
         $chat_list[] = $row;
     }
 }
 
-// --- 3. AMBIL ISI PERCAKAPAN AKTIF ---
+// --- 3. AMBIL ISI PERCAKAPAN AKTIF (INBOX SAJA) ---
 $chat_partner_id = isset($_GET['chat_with']) ? $_GET['chat_with'] : null;
 $active_chats = [];
 $partner_name = "";
 $partner_avatar = "";
 
 if ($chat_partner_id) {
-    // Info Partner
+    // Info Partner (Buyer)
     $q_partner = mysqli_query($koneksi, "SELECT name, profile_picture FROM users WHERE user_id = '$chat_partner_id'");
     if($d_partner = mysqli_fetch_assoc($q_partner)){
         $partner_name = $d_partner['name'];
         $partner_avatar = !empty($d_partner['profile_picture']) ? $d_partner['profile_picture'] : "https://ui-avatars.com/api/?name=".urlencode($partner_name);
     }
 
-    // Ambil Pesan (Urutkan dari lama ke baru)
-    $query_msgs = "SELECT * FROM chats 
-                   WHERE (sender_id = '$user_id' AND receiver_id = '$chat_partner_id') 
-                   OR (sender_id = '$chat_partner_id' AND receiver_id = '$user_id') 
+    // Ambil PESAN MASUK SAJA (buyer -> seller)
+    $query_msgs = "SELECT * FROM chats
+                   WHERE sender_id = '$chat_partner_id'
+                   AND receiver_id = '$user_id'
                    ORDER BY created_at ASC";
+
     $res_msgs = mysqli_query($koneksi, $query_msgs);
     if ($res_msgs) {
         while ($row = mysqli_fetch_assoc($res_msgs)) {
@@ -93,7 +103,6 @@ if ($chat_partner_id) {
     <link rel="stylesheet" href="../../../Assets/css/role/seller/chat.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Tambahan Style untuk layout chat yang lebih rapi */
         .chat-main-header { display: flex; align-items: center; gap: 10px; padding: 15px 20px; border-bottom: 1px solid #eee; background: #fff; }
         .header-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .chat-partner-name { font-weight: bold; font-size: 1.1rem; color: #333; }
@@ -105,7 +114,7 @@ if ($chat_partner_id) {
 <body>
 
     <div class="app-layout">
-        
+
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo" onclick="window.location.href='dashboard.php'" style="cursor:pointer;">
@@ -132,7 +141,7 @@ if ($chat_partner_id) {
 
             <div class="content">
                 <div class="chat-container">
-                    
+
                     <div class="chat-sidebar-list">
                         <div class="chat-sidebar-header">Daftar Obrolan</div>
                         <div class="chat-list-items">
@@ -174,8 +183,15 @@ if ($chat_partner_id) {
                                 </div>
                             <?php else: ?>
                                 <?php foreach($active_chats as $msg): ?>
-                                    <div class="message-bubble <?php echo ($msg['sender_id'] == $user_id) ? 'msg-me' : 'msg-other'; ?>">
-                                        <?php echo htmlspecialchars($msg['message']); ?>
+                                    <div class="message-bubble msg-other">
+                                        <?php if(!empty($msg['image_path'])): ?>
+                                            <img src="<?php echo htmlspecialchars($msg['image_path']); ?>" style="max-width:260px; border-radius:10px; display:block; margin-bottom:<?php echo !empty($msg['message']) ? '8px' : '0'; ?>;">
+                                        <?php endif; ?>
+
+                                        <?php if(!empty($msg['message'])): ?>
+                                            <?php echo htmlspecialchars($msg['message']); ?>
+                                        <?php endif; ?>
+
                                         <span class="msg-time"><?php echo date('H:i', strtotime($msg['created_at'])); ?></span>
                                     </div>
                                 <?php endforeach; ?>
@@ -199,7 +215,6 @@ if ($chat_partner_id) {
     </div>
 
     <script>
-        // Auto Scroll ke pesan terakhir
         var chatBox = document.getElementById("chatMessages");
         if(chatBox) { chatBox.scrollTop = chatBox.scrollHeight; }
     </script>

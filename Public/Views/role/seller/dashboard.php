@@ -19,7 +19,7 @@ $is_banned = ($d_status['status'] == 'banned');
 // Variabel Default
 $has_shop = false;
 $shop_data = [];
-$rating_toko = "0"; 
+$rating_toko = "0";
 $total_followers = 0;
 
 // JIKA TIDAK DIBANNED, JALANKAN LOGIKA TOKO
@@ -41,12 +41,12 @@ if (!$is_banned) {
             }
         }
 
-        $query_insert = "INSERT INTO shops (user_id, shop_name, shop_description, shop_image, balance, created_at) 
+        $query_insert = "INSERT INTO shops (user_id, shop_name, shop_description, shop_image, balance, created_at)
                          VALUES ('$user_id', '$shop_name', '$shop_desc', '$shop_img', 0, NOW())";
-        
+
         if (mysqli_query($koneksi, $query_insert)) {
             mysqli_query($koneksi, "UPDATE users SET role='seller' WHERE user_id='$user_id'");
-            $_SESSION['role'] = 'seller'; 
+            $_SESSION['role'] = 'seller';
             echo "<script>alert('Toko berhasil dibuat!'); window.location.href='dashboard.php';</script>";
         } else {
             echo "<script>alert('Gagal membuat toko.');</script>";
@@ -99,11 +99,11 @@ if (!$is_banned) {
         .illustration-icon { font-size: 4rem; color: var(--primary); margin-bottom: 20px; }
         .shop-stats-container { display: flex; align-items: center; gap: 15px; color: #666; font-size: 0.95rem; margin-top: 5px; }
         .stat-divider { width: 1px; height: 15px; background-color: #ccc; }
-        
+
         /* Tombol Header Actions */
         .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
         .btn-visit-shop { margin-left: 0 !important; }
-        
+
         .btn-chat-link {
             width: 42px; height: 42px; border-radius: 50%; background-color: #f5f5f5;
             display: flex; align-items: center; justify-content: center; color: #333;
@@ -126,11 +126,11 @@ if (!$is_banned) {
             animation: popIn 0.3s ease-out;
         }
         @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        
-        .banned-icon { 
-            width: 80px; height: 80px; background: #fee2e2; color: #dc2626; 
+
+        .banned-icon {
+            width: 80px; height: 80px; background: #fee2e2; color: #dc2626;
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 2.5rem; margin: 0 auto 20px auto; 
+            font-size: 2.5rem; margin: 0 auto 20px auto;
         }
         .banned-title { font-size: 1.5rem; font-weight: 800; color: #333; margin-bottom: 10px; }
         .banned-text { color: #666; line-height: 1.6; margin-bottom: 25px; }
@@ -150,7 +150,7 @@ if (!$is_banned) {
                 <div class="banned-icon"><i class="fas fa-ban"></i></div>
                 <h2 class="banned-title">Akses Toko Dibekukan</h2>
                 <p class="banned-text">
-                    Mohon maaf, akun toko Anda telah dinonaktifkan karena pelanggaran kebijakan komunitas atau laporan pengguna. 
+                    Mohon maaf, akun toko Anda telah dinonaktifkan karena pelanggaran kebijakan komunitas atau laporan pengguna.
                     <br><br>
                     Anda tetap dapat menggunakan akun ini untuk berbelanja sebagai pembeli.
                 </p>
@@ -161,7 +161,7 @@ if (!$is_banned) {
         </div>
     <?php else: ?>
         <div class="app-layout">
-            
+
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <div class="logo" onclick="goToDashboard()" style="cursor:pointer;">
@@ -212,16 +212,16 @@ if (!$is_banned) {
                 </div>
 
                 <div class="content">
-                    
+
                     <?php if($has_shop): ?>
                         <div class="shop-container">
-                            
+
                             <div class="shop-header-card">
                                 <div class="shop-avatar-container">
                                     <img src="<?php echo $shop_data['shop_image']; ?>" alt="Shop Logo" class="shop-avatar">
                                     <div class="shop-status-dot" title="Online"></div>
                                 </div>
-                                
+
                                 <div class="shop-info">
                                     <h2><?php echo $shop_data['shop_name']; ?></h2>
                                     <div class="shop-stats-container">

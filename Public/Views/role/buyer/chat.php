@@ -10,12 +10,15 @@
             <div style="text-align:center; padding:20px; color:#666;">Belum ada percakapan</div>
         <?php else: ?>
             <?php foreach($chat_partners as $pid => $info): ?>
-            <div class="chat-item" onclick="selectChat(<?php echo $pid; ?>, '<?php echo addslashes($info['name']); ?>')">
-                <div class="chat-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=<?php echo $info['name']; ?>" alt="User"></div>
+            <div class="chat-item"
+                 onclick="selectChat(<?php echo (int)$pid; ?>, '<?php echo addslashes($info['name']); ?>', '<?php echo addslashes($info['img']); ?>')">
+                <div class="chat-avatar">
+                    <img src="<?php echo $info['img']; ?>" alt="User">
+                </div>
                 <div class="chat-content">
-                    <div class="chat-name"><?php echo $info['name']; ?></div>
-                    <div class="chat-message"><?php echo $info['last_msg']; ?></div>
-                    <div class="chat-time"><?php echo $info['time']; ?></div>
+                    <div class="chat-name"><?php echo htmlspecialchars($info['name']); ?></div>
+                    <div class="chat-message"><?php echo htmlspecialchars($info['last_msg']); ?></div>
+                    <div class="chat-time"><?php echo htmlspecialchars($info['time']); ?></div>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -28,7 +31,7 @@
             <div class="seller-info-sidebar">
                 <img src="" alt="Seller" class="seller-avatar-sidebar" id="chatSellerAvatarSidebar">
                 <div class="seller-details-sidebar">
-                    <h4 id="chatSellerNameSidebar">Nama Penjual</h4>
+                    <h4 id="chatSellerNameSidebar">Nama Toko</h4>
                     <span>Online</span>
                 </div>
             </div>
