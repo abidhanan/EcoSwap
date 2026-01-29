@@ -22,10 +22,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'mark_notif_read') {
 if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_stats') {
     header('Content-Type: application/json');
     
+    $admin_id = $_SESSION['user_id'];
+    
     // Ambil statistik terbaru
     $total_users = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users WHERE role != 'admin'"))['total'];
-    $pending_products = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'pending'"))['total'];
-    $active_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
+    $pending_products = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'pending' OR status = 'review'"))['total'];
+    $transaction_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
+    $chat_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM notifications WHERE user_id = '$admin_id' AND title = 'Laporan Chat' AND is_read = 0"))['total'];
+    $active_reports = $transaction_reports + $chat_reports;
     
     // Hitung pendapatan
     $q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
@@ -92,11 +96,13 @@ $fee_per_trx = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1
 // 1. Total User (Buyer & Seller)
 $total_users = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users WHERE role != 'admin'"))['total'];
 
-// 2. Produk Pending
-$pending_products = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'pending'"))['total'];
+// 2. Produk Pending (termasuk review)
+$pending_products = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'pending' OR status = 'review'"))['total'];
 
-// 3. Laporan Pending
-$active_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
+// 3. Laporan Pending (Transaksi + Chat)
+$transaction_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
+$chat_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM notifications WHERE user_id = '$admin_id' AND title = 'Laporan Chat' AND is_read = 0"))['total'];
+$active_reports = $transaction_reports + $chat_reports;
 
 // 4. Hitung Pendapatan Murni Admin (Hanya Fee Aplikasi)
 // Hitung jumlah transaksi 'completed' lalu kalikan dengan fee per transaksi
@@ -108,7 +114,7 @@ $admin_revenue = $total_sales_count * $fee_per_trx;
 
 // --- NOTIFIKASI BARU ---
 $pending_count = $pending_products;
-$report_count = $active_reports;
+$report_count = $active_reports; // Sudah termasuk laporan transaksi + chat
 $has_notif = ($pending_count > 0 || $report_count > 0);
 
 // --- PESANAN TERBARU ---

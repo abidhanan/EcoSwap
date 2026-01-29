@@ -281,7 +281,7 @@ while($row = mysqli_fetch_assoc($q_del)) { $deleted_prods[] = $row; }
             
             <form method="POST" class="modal-actions" id="modalActions">
                 <input type="hidden" name="product_id" id="mId">
-                </form>
+            </form>
         </div>
     </div>
 
@@ -294,6 +294,8 @@ while($row = mysqli_fetch_assoc($q_del)) { $deleted_prods[] = $row; }
         }
 
         function openModal(data, statusType) {
+            console.log('Opening modal with data:', data, 'Status:', statusType);
+            
             document.getElementById('mId').value = data.product_id;
             document.getElementById('mImg').src = data.image;
             document.getElementById('mName').innerText = data.name;
@@ -303,25 +305,26 @@ while($row = mysqli_fetch_assoc($q_del)) { $deleted_prods[] = $row; }
             document.getElementById('mCondition').innerText = data.condition;
 
             const actionsDiv = document.getElementById('modalActions');
-            actionsDiv.innerHTML = `<input type="hidden" name="product_id" value="${data.product_id}">`;
+            actionsDiv.innerHTML = '<input type="hidden" name="product_id" value="' + data.product_id + '">';
 
             if (statusType === 'pending') {
-                actionsDiv.innerHTML += `
-                    <button type="submit" name="action" value="reject" class="btn-reject" onclick="return confirm('Tolak produk ini?')"><i class="fas fa-times"></i> Tolak</button>
-                    <button type="submit" name="action" value="verify" class="btn-verify" onclick="return confirm('Setujui produk ini?')"><i class="fas fa-check"></i> Setujui & Publish</button>
-                `;
+                actionsDiv.innerHTML += '<button type="submit" name="action" value="reject" class="btn-reject" onclick="return confirm(\'Tolak produk ini?\')"><i class="fas fa-times"></i> Tolak</button>' +
+                    '<button type="submit" name="action" value="verify" class="btn-verify" onclick="return confirm(\'Setujui produk ini?\')"><i class="fas fa-check"></i> Setujui & Publish</button>';
             } else if (statusType === 'rejected') {
-                actionsDiv.innerHTML += `
-                    <button type="submit" name="action" value="delete" class="btn-reject" onclick="return confirm('Hapus permanen?')"><i class="fas fa-trash"></i> Hapus</button>
-                    <button type="submit" name="action" value="verify" class="btn-verify" onclick="return confirm('Aktifkan kembali produk ini?')"><i class="fas fa-check"></i> Terima Kembali</button>
-                `;
+                actionsDiv.innerHTML += '<button type="submit" name="action" value="delete" class="btn-reject" onclick="return confirm(\'Hapus permanen?\')"><i class="fas fa-trash"></i> Hapus</button>' +
+                    '<button type="submit" name="action" value="verify" class="btn-verify" onclick="return confirm(\'Aktifkan kembali produk ini?\')"><i class="fas fa-check"></i> Terima Kembali</button>';
             }
 
             document.getElementById('productModal').classList.add('open');
         }
 
-        function closeModal() { document.getElementById('productModal').classList.remove('open'); }
-        window.onclick = function(e) { if(e.target.classList.contains('modal-overlay')) closeModal(); }
+        function closeModal() { 
+            document.getElementById('productModal').classList.remove('open'); 
+        }
+        
+        window.onclick = function(e) { 
+            if(e.target.classList.contains('modal-overlay')) closeModal(); 
+        };
         
         // Real-Time Update Function
         function updateProducts() {
@@ -377,7 +380,7 @@ while($row = mysqli_fetch_assoc($q_del)) { $deleted_prods[] = $row; }
                                     '<td><div class="product-name">' + p.name + '</div><small style="color:#888;">' + p.category + '</small></td>' +
                                     '<td>' + p.shop_name + '</td>' +
                                     '<td>Rp ' + parseInt(p.price).toLocaleString('id-ID') + '</td>' +
-                                    '<td><button class="btn-action btn-view" onclick="openModal(' + pJson + ', "pending")"><i class="fas fa-search"></i> Tinjau</button></td>' +
+                                    '<td><button class="btn-action btn-view" onclick=\'openModal(' + pJson + ', "pending")\'><i class="fas fa-search"></i> Tinjau</button></td>' +
                                     '</tr>';
                             });
                             tbody.innerHTML = html;
