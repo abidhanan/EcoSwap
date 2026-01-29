@@ -7,6 +7,26 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit(); 
 }
 
+// AJAX Endpoint untuk Real-Time Update
+if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_products') {
+    header('Content-Type: application/json');
+    
+    $pending_count = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'review' OR status = 'pending'"))['total'];
+    $report_count = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
+    
+    // Ambil produk pending
+    $pending_prods = [];
+    $q_pen = mysqli_query($koneksi, "SELECT p.*, s.shop_name FROM products p JOIN shops s ON p.shop_id = s.shop_id WHERE p.status = 'pending' OR p.status = 'review' ORDER BY p.created_at DESC");
+    while($row = mysqli_fetch_assoc($q_pen)) { $pending_prods[] = $row; }
+    
+    echo json_encode([
+        'pending_count' => $pending_count,
+        'report_count' => $report_count,
+        'pending_products' => $pending_prods
+    ]);
+    exit();
+}
+
 // --- HITUNG BADGES SIDEBAR ---
 $pending_count = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'review' OR status = 'pending'"))['total'];
 $report_count = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
@@ -302,6 +322,78 @@ while($row = mysqli_fetch_assoc($q_del)) { $deleted_prods[] = $row; }
 
         function closeModal() { document.getElementById('productModal').classList.remove('open'); }
         window.onclick = function(e) { if(e.target.classList.contains('modal-overlay')) closeModal(); }
+        
+        // Real-Time Update Function
+        function updateProducts() {
+            fetch('produk.php?ajax=get_products')
+                .then(response => response.json())
+                .then(data => {
+                    // Update badge di sidebar
+                    const produkBadge = document.querySelector('.nav-links li:nth-child(2) .badge-count');
+                    const laporanBadge = document.querySelector('.nav-links li:nth-child(5) .badge-count');
+                    
+                    if (data.pending_count > 0) {
+                        if (produkBadge) {
+                            produkBadge.textContent = data.pending_count;
+                        } else {
+                            document.querySelector('.nav-links li:nth-child(2) a').insertAdjacentHTML('beforeend', '<span class="badge-count warn">' + data.pending_count + '</span>');
+                        }
+                    } else if (produkBadge) {
+                        produkBadge.remove();
+                    }
+                    
+                    if (data.report_count > 0) {
+                        if (laporanBadge) {
+                            laporanBadge.textContent = data.report_count;
+                        } else {
+                            document.querySelector('.nav-links li:nth-child(5) a').insertAdjacentHTML('beforeend', '<span class="badge-count">' + data.report_count + '</span>');
+                        }
+                    } else if (laporanBadge) {
+                        laporanBadge.remove();
+                    }
+                    
+                    // Update badge di tab
+                    const tabBadge = document.querySelector('.tab-btn span');
+                    if (data.pending_count > 0) {
+                        if (tabBadge) {
+                            tabBadge.textContent = data.pending_count;
+                        } else {
+                            document.querySelector('.tab-btn').insertAdjacentHTML('beforeend', '<span style="background:#f6c23e; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-left:5px; color:#fff;">' + data.pending_count + '</span>');
+                        }
+                    } else if (tabBadge) {
+                        tabBadge.remove();
+                    }
+                    
+                    // Update tabel produk pending (hanya jika tab pending aktif)
+                    const pendingTab = document.getElementById('tab-pending');
+                    if (pendingTab && pendingTab.classList.contains('active')) {
+                        const tbody = pendingTab.querySelector('tbody');
+                        if (data.pending_products.length > 0) {
+                            let html = '';
+                            data.pending_products.forEach(p => {
+                                const pJson = JSON.stringify(p).replace(/'/g, '&apos;');
+                                html += '<tr>' +
+                                    '<td><img src="' + p.image + '" class="img-thumb"></td>' +
+                                    '<td><div class="product-name">' + p.name + '</div><small style="color:#888;">' + p.category + '</small></td>' +
+                                    '<td>' + p.shop_name + '</td>' +
+                                    '<td>Rp ' + parseInt(p.price).toLocaleString('id-ID') + '</td>' +
+                                    '<td><button class="btn-action btn-view" onclick="openModal(' + pJson + ', "pending")"><i class="fas fa-search"></i> Tinjau</button></td>' +
+                                    '</tr>';
+                            });
+                            tbody.innerHTML = html;
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="5" align="center" style="padding:40px; color:#888;">Tidak ada produk baru.</td></tr>';
+                        }
+                    }
+                })
+                .catch(error => console.error('Error updating products:', error));
+        }
+        
+        // Update setiap 5 detik
+        setInterval(updateProducts, 5000);
+        
+        // Update pertama kali setelah 2 detik
+        setTimeout(updateProducts, 2000);
     </script>
 </body>
 </html>

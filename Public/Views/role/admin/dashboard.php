@@ -9,6 +9,72 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// AJAX Endpoint untuk Mark Notification as Read
+if (isset($_GET['ajax']) && $_GET['ajax'] == 'mark_notif_read') {
+    $notif_id = isset($_GET['notif_id']) ? (int)$_GET['notif_id'] : 0;
+    if ($notif_id > 0) {
+        mysqli_query($koneksi, "UPDATE notifications SET is_read = 1 WHERE notif_id = '$notif_id'");
+    }
+    exit();
+}
+
+// AJAX Endpoint untuk Real-Time Update
+if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_stats') {
+    header('Content-Type: application/json');
+    
+    // Ambil statistik terbaru
+    $total_users = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users WHERE role != 'admin'"))['total'];
+    $pending_products = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM products WHERE status = 'pending'"))['total'];
+    $active_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM reports WHERE status = 'pending'"))['total'];
+    
+    // Hitung pendapatan
+    $q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+    $d_fee = mysqli_fetch_assoc($q_fee);
+    $fee_per_trx = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
+    $q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed'");
+    $d_sales = mysqli_fetch_assoc($q_sales);
+    $total_sales_count = $d_sales['total'];
+    $admin_revenue = $total_sales_count * $fee_per_trx;
+    
+    // Transaksi terbaru
+    $recent_orders = [];
+    $q_recent = mysqli_query($koneksi, "
+        SELECT o.invoice_code, o.total_price, o.status, o.shipping_method,
+               u1.name as buyer_name, u1.profile_picture as buyer_pic,
+               s.shop_name, s.shop_image as seller_pic 
+        FROM orders o 
+        JOIN users u1 ON o.buyer_id = u1.user_id 
+        JOIN shops s ON o.shop_id = s.shop_id 
+        ORDER BY o.created_at DESC LIMIT 5
+    ");
+    
+    while($row = mysqli_fetch_assoc($q_recent)) {
+        $row['buyer_pic'] = !empty($row['buyer_pic']) ? $row['buyer_pic'] : "https://ui-avatars.com/api/?name=" . urlencode($row['buyer_name']);
+        $row['seller_pic'] = !empty($row['seller_pic']) ? $row['seller_pic'] : "https://ui-avatars.com/api/?name=" . urlencode($row['shop_name']);
+        
+        $parts = explode(' | ', $row['shipping_method']);
+        $ship_lbl_full = $parts[0]; 
+        $shipping_cost = 0;
+        if (preg_match('/\(Rp ([\d\.]+)\)/', $ship_lbl_full, $matches)) {
+            $shipping_cost = (int)str_replace('.', '', $matches[1]);
+        }
+        
+        $product_price = (int)$row['total_price'];
+        $grand_total = $product_price + $shipping_cost + $fee_per_trx;
+        $row['grand_total'] = $grand_total;
+        $recent_orders[] = $row;
+    }
+    
+    echo json_encode([
+        'total_users' => $total_users,
+        'pending_products' => $pending_products,
+        'active_reports' => $active_reports,
+        'admin_revenue' => $admin_revenue,
+        'recent_orders' => $recent_orders
+    ]);
+    exit();
+}
+
 $admin_id = $_SESSION['user_id'];
 
 // Ambil Data Admin Terbaru
@@ -203,6 +269,148 @@ while($row = mysqli_fetch_assoc($q_recent)) {
     </main>
 
     <?php include 'profil.php'; ?>
+
+    <script>
+        // Real-Time Update Function
+        function updateDashboard() {
+            // Console log untuk debugging
+            console.log('[Dashboard] Updating stats...', new Date().toLocaleTimeString());
+            
+            fetch('dashboard.php?ajax=get_stats')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('[Dashboard] Data received:', data);
+                    
+                    // Update statistik dengan animasi smooth
+                    const stat1 = document.querySelector('.stat-card:nth-child(1) .number');
+                    const stat2 = document.querySelector('.stat-card:nth-child(2) .number');
+                    const stat3 = document.querySelector('.stat-card:nth-child(3) .number');
+                    const stat4 = document.querySelector('.stat-card:nth-child(4) .number');
+                    
+                    // Update dengan check perubahan
+                    if (stat1.textContent !== data.pending_products.toLocaleString('id-ID')) {
+                        stat1.textContent = data.pending_products.toLocaleString('id-ID');
+                        stat1.style.animation = 'pulse 0.5s';
+                        setTimeout(() => stat1.style.animation = '', 500);
+                    }
+                    
+                    if (stat2.textContent !== data.total_users.toLocaleString('id-ID')) {
+                        stat2.textContent = data.total_users.toLocaleString('id-ID');
+                        stat2.style.animation = 'pulse 0.5s';
+                        setTimeout(() => stat2.style.animation = '', 500);
+                    }
+                    
+                    const newRevenue = 'Rp ' + data.admin_revenue.toLocaleString('id-ID');
+                    if (stat3.textContent !== newRevenue) {
+                        stat3.textContent = newRevenue;
+                        stat3.style.animation = 'pulse 0.5s';
+                        setTimeout(() => stat3.style.animation = '', 500);
+                    }
+                    
+                    if (stat4.textContent !== data.active_reports.toLocaleString('id-ID')) {
+                        stat4.textContent = data.active_reports.toLocaleString('id-ID');
+                        stat4.style.animation = 'pulse 0.5s';
+                        setTimeout(() => stat4.style.animation = '', 500);
+                    }
+                    
+                    // Update badge di sidebar
+                    const produkBadge = document.querySelector('.nav-links li:nth-child(2) .badge-count');
+                    const laporanBadge = document.querySelector('.nav-links li:nth-child(5) .badge-count');
+                    
+                    if (data.pending_products > 0) {
+                        if (produkBadge) {
+                            produkBadge.textContent = data.pending_products;
+                        } else {
+                            document.querySelector('.nav-links li:nth-child(2) a').insertAdjacentHTML('beforeend', '<span class="badge-count">' + data.pending_products + '</span>');
+                        }
+                    } else if (produkBadge) {
+                        produkBadge.remove();
+                    }
+                    
+                    if (data.active_reports > 0) {
+                        if (laporanBadge) {
+                            laporanBadge.textContent = data.active_reports;
+                        } else {
+                            document.querySelector('.nav-links li:nth-child(5) a').insertAdjacentHTML('beforeend', '<span class="badge-count danger">' + data.active_reports + '</span>');
+                        }
+                    } else if (laporanBadge) {
+                        laporanBadge.remove();
+                    }
+                    
+                    // Update tabel transaksi terbaru
+                    const tbody = document.querySelector('.simple-table tbody');
+                    if (data.recent_orders.length > 0) {
+                        let html = '';
+                        data.recent_orders.forEach(order => {
+                            let badgeClass = 'badge-blue';
+                            if (order.status == 'completed' || order.status == 'reviewed') {
+                                badgeClass = 'badge-green';
+                            } else if (order.status == 'pending') {
+                                badgeClass = 'badge-yellow';
+                            }
+                            
+                            html += `
+                                <tr>
+                                    <td class="font-bold" style="color:#555;">${order.invoice_code}</td>
+                                    <td>
+                                        <div class="user-flex">
+                                            <img src="${order.buyer_pic}" class="user-avatar-sm">
+                                            <div class="user-text">
+                                                <span class="user-name">${order.buyer_name}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="user-flex">
+                                            <img src="${order.seller_pic}" class="user-avatar-sm">
+                                            <div class="user-text">
+                                                <span class="user-name">${order.shop_name}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge ${badgeClass}">${order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
+                                    </td>
+                                    <td class="text-right font-bold">Rp ${order.grand_total.toLocaleString('id-ID')}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Belum ada transaksi terbaru.</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('[Dashboard] Error updating:', error);
+                });
+        }
+        
+        // Update setiap 5 detik
+        const updateInterval = setInterval(updateDashboard, 5000);
+        console.log('[Dashboard] Real-time update started. Interval: 5 seconds');
+        
+        // Update pertama kali setelah 2 detik
+        setTimeout(() => {
+            console.log('[Dashboard] Initial update...');
+            updateDashboard();
+        }, 2000);
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            clearInterval(updateInterval);
+            console.log('[Dashboard] Real-time update stopped');
+        });
+        
+        // Animasi pulse untuk update
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
 
 </body>
 </html>

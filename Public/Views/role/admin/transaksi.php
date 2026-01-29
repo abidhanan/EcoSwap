@@ -8,6 +8,49 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// AJAX Endpoint untuk Real-Time Update
+if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_transactions') {
+    header('Content-Type: application/json');
+    
+    // Filter
+    $where_clause = "WHERE 1=1"; 
+    $status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
+    
+    if ($status_filter != 'all') {
+        $status = mysqli_real_escape_string($koneksi, $status_filter);
+        if ($status == 'dikemas') {
+            $where_clause .= " AND o.status = 'processed'";
+        } elseif ($status == 'dikirim') {
+            $where_clause .= " AND (o.status = 'shipping' OR o.status = 'delivered')";
+        } elseif ($status == 'selesai') {
+            $where_clause .= " AND (o.status = 'completed' OR o.status = 'reviewed')";
+        }
+    } else {
+        $where_clause .= " AND o.status != 'pending' AND o.status != 'cancelled'";
+    }
+    
+    // Ambil data transaksi
+    $logistics = [];
+    $query = "SELECT o.*, p.name as item_name, p.image, p.description, 
+                     s.shop_name as seller_name, u.name as buyer_name 
+              FROM orders o 
+              JOIN products p ON o.product_id = p.product_id 
+              JOIN shops s ON o.shop_id = s.shop_id 
+              JOIN users u ON o.buyer_id = u.user_id 
+              $where_clause
+              ORDER BY o.created_at DESC";
+    
+    $q_log = mysqli_query($koneksi, $query);
+    while($row = mysqli_fetch_assoc($q_log)) {
+        $logistics[] = $row;
+    }
+    
+    echo json_encode([
+        'transactions' => $logistics
+    ]);
+    exit();
+}
+
 // --- LOGIKA UPDATE BIAYA ADMIN ---
 if (isset($_POST['action']) && $_POST['action'] == 'update_fee') {
     $new_fee = mysqli_real_escape_string($koneksi, $_POST['admin_fee']);
@@ -351,6 +394,53 @@ while($row = mysqli_fetch_assoc($q_log)) {
             if (e.target == modal) closeModal();
             if (e.target == feeModal) closeFeeModal();
         }
+        
+        // Real-Time Update Function
+        function updateTransactions() {
+            const currentStatus = new URLSearchParams(window.location.search).get('status') || 'all';
+            fetch('transaksi.php?ajax=get_transactions&status=' + currentStatus)
+                .then(response => response.json())
+                .then(data => {
+                    // Update tabel transaksi
+                    const tbody = document.querySelector('#trxTable tbody');
+                    if (data.transactions.length > 0) {
+                        let html = '';
+                        data.transactions.forEach(log => {
+                            const parts = log.shipping_method.split(' | ');
+                            const kurirFull = parts[0];
+                            const kurirName = kurirFull.split(' (')[0];
+                            const resi = log.tracking_number ? log.tracking_number : '-';
+                            
+                            html += '<tr data-id="' + log.invoice_code + '" ' +
+                                'data-item="' + log.item_name + '" ' +
+                                'data-resi="' + resi + '" ' +
+                                'data-kurir="' + kurirName + '" ' +
+                                'data-deskripsi="' + log.description + '" ' +
+                                'data-foto="' + log.image + '" ' +
+                                'data-penerima="' + log.buyer_name + '" ' +
+                                'data-penjual="' + log.seller_name + '" ' +
+                                'data-status="' + log.status.charAt(0).toUpperCase() + log.status.slice(1) + '">' +
+                                '<td style="font-weight:bold; color:#555;">' + log.invoice_code + '</td>' +
+                                '<td>' + log.item_name + '</td>' +
+                                '<td>' + log.seller_name + '</td>' +
+                                '<td>' + log.buyer_name + '</td>' +
+                                '<td><span class="status-badge status-' + log.status + '">' + log.status.charAt(0).toUpperCase() + log.status.slice(1) + '</span></td>' +
+                                '<td><button class="btn-view" onclick="openModal(this)"><i class="fas fa-eye"></i> Detail</button></td>' +
+                                '</tr>';
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 40px; color: #888;">Tidak ada data transaksi.</td></tr>';
+                    }
+                })
+                .catch(error => console.error('Error updating transactions:', error));
+        }
+        
+        // Update setiap 5 detik
+        setInterval(updateTransactions, 5000);
+        
+        // Update pertama kali setelah 2 detik
+        setTimeout(updateTransactions, 2000);
     </script>
 </body>
 </html>
