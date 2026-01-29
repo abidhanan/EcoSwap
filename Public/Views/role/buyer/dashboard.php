@@ -269,16 +269,31 @@ if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') {
     $shipping = [];
     if(is_array($shipping_raw)) {
         foreach($shipping_raw as $ship_name) {
-            // Ambil cost dari shipping_costs, default 15000 jika tidak ada
+            // Ambil cost dari shipping_costs berdasarkan mapping yang akurat
             $cost = 15000; // default
+            
+            // Mapping nama kurir lengkap ke key di shipping_costs
+            $courier_mapping = [
+                'JNE' => ['JNE', 'JNE Reguler', 'JNE Regular'],
+                'JNT' => ['JNT', 'J&T', 'J&T Express', 'JNT Express'],
+                'SiCepat' => ['SiCepat', 'Si Cepat', 'Sicepat'],
+                'GoSend' => ['GoSend', 'Go Send', 'GoSend Instant', 'Gosend'],
+                'Grab' => ['Grab', 'GrabExpress', 'Grab Express'],
+                'AnterAja' => ['AnterAja', 'Anter Aja', 'AnterAja Express']
+            ];
             
             // Cek apakah ada di shipping_costs
             if(is_array($shipping_costs_raw)) {
-                // Coba cari berdasarkan nama kurir (JNE, JNT, dll)
-                foreach($shipping_costs_raw as $key => $value) {
-                    if(stripos($ship_name, $key) !== false) {
-                        $cost = (int)$value;
-                        break;
+                foreach($courier_mapping as $key => $variations) {
+                    // Cek apakah shipping_costs memiliki key ini
+                    if(isset($shipping_costs_raw[$key])) {
+                        // Cek apakah ship_name cocok dengan salah satu variasi
+                        foreach($variations as $variation) {
+                            if(stripos($ship_name, $variation) !== false) {
+                                $cost = (int)$shipping_costs_raw[$key];
+                                break 2; // Keluar dari kedua loop
+                            }
+                        }
                     }
                 }
             }
