@@ -153,41 +153,17 @@ $transaction_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*
 $chat_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM notifications WHERE user_id = '$admin_id' AND title = 'Laporan Chat' AND is_read = 0"))['total'];
 $active_reports = $transaction_reports + $chat_reports;
 
-// 4. Hitung Pendapatan Murni Admin (Hanya Fee Aplikasi)
-// Hitung jumlah transaksi 'completed' dan 'reviewed' lalu kalikan dengan fee per transaksi
-$q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed' OR status = 'reviewed'");
-$d_sales = mysqli_fetch_assoc($q_sales);
-$total_sales_count = $d_sales['total'];
-
-$admin_revenue = $total_sales_count * $fee_per_trx;
-
-// 5. Ambil Saldo Admin yang Tersedia untuk Ditarik
+// 4. Ambil Saldo Admin (Pendapatan) Langsung dari Database
+// Saldo ini sudah otomatis bertambah saat ada transaksi selesai (di histori.php)
+// dan berkurang saat admin melakukan penarikan
 $q_admin_balance = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_balance'");
 $d_admin_balance = mysqli_fetch_assoc($q_admin_balance);
 $admin_balance = isset($d_admin_balance['setting_value']) ? (int)$d_admin_balance['setting_value'] : 0;
 
-// Jika admin_balance belum ada, inisialisasi dengan admin_revenue
+// Jika admin_balance belum ada di database, inisialisasi dengan 0
 if (!isset($d_admin_balance['setting_value'])) {
-    mysqli_query($koneksi, "INSERT INTO system_settings (setting_key, setting_value) VALUES ('admin_balance', '$admin_revenue')");
-    $admin_balance = $admin_revenue;
-} else {
-    // Update admin_balance jika ada transaksi baru yang completed/reviewed
-    // Hitung total fee yang seharusnya sudah masuk
-    $expected_balance = $admin_revenue;
-    
-    // Hitung total penarikan admin (transaksi keluar)
-    $q_withdrawals = mysqli_query($koneksi, "SELECT COALESCE(SUM(amount), 0) as total_withdrawn FROM transactions WHERE shop_id = 0 AND type = 'out'");
-    $d_withdrawals = mysqli_fetch_assoc($q_withdrawals);
-    $total_withdrawn = (int)$d_withdrawals['total_withdrawn'];
-    
-    // Saldo yang seharusnya = Total pendapatan - Total penarikan
-    $correct_balance = $expected_balance - $total_withdrawn;
-    
-    // Update jika ada perbedaan (ada transaksi baru)
-    if ($admin_balance != $correct_balance) {
-        mysqli_query($koneksi, "UPDATE system_settings SET setting_value = '$correct_balance' WHERE setting_key = 'admin_balance'");
-        $admin_balance = $correct_balance;
-    }
+    mysqli_query($koneksi, "INSERT INTO system_settings (setting_key, setting_value) VALUES ('admin_balance', '0')");
+    $admin_balance = 0;
 }
 
 // --- NOTIFIKASI BARU ---

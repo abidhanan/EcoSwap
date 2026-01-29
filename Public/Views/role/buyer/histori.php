@@ -26,14 +26,60 @@ if (isset($_POST['action']) && $_POST['action'] == 'confirm_received') {
     if ($d_ord) {
         mysqli_begin_transaction($koneksi);
         try {
+            // Update status order menjadi completed
             mysqli_query($koneksi, "UPDATE orders SET status='completed' WHERE order_id='$oid' AND buyer_id='$user_id'");
+            
+            // Kirim notifikasi ke seller
             $msg = "Pesanan #{$d_ord['invoice_code']} telah diterima pembeli. Dana masuk ke saldo Anda.";
             mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('{$d_ord['seller_id']}', 'Pesanan Selesai', '$msg', 0, NOW())");
-            $parts = explode(' | ', $d_ord['shipping_method']); $ship_lbl_full = $parts[0]; $shipping_cost = 0; if (preg_match('/\(Rp ([\d\.]+)\)/', $ship_lbl_full, $matches)) { $shipping_cost = (int)str_replace('.', '', $matches[1]); }
-            $product_price = $d_ord['total_price']; $net_income = $product_price + $shipping_cost;
-            if ($net_income > 0) { mysqli_query($koneksi, "UPDATE shops SET balance = balance + $net_income WHERE shop_id='{$d_ord['shop_id']}'"); $desc = "Pendapatan pesanan #{$d_ord['invoice_code']}"; mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) VALUES ('{$d_ord['shop_id']}', 'in', '$net_income', '$desc', NOW())"); }
-            mysqli_commit($koneksi); echo "<script>alert('Terima kasih! Pesanan selesai.'); window.location.href='histori.php';</script>";
-        } catch (Exception $e) { mysqli_rollback($koneksi); echo "<script>alert('Terjadi kesalahan saat memproses pesanan.');</script>"; }
+            
+            // Hitung pendapatan seller (produk + ongkir)
+            $parts = explode(' | ', $d_ord['shipping_method']); 
+            $ship_lbl_full = $parts[0]; 
+            $shipping_cost = 0; 
+            if (preg_match('/\(Rp ([\d\.]+)\)/', $ship_lbl_full, $matches)) { 
+                $shipping_cost = (int)str_replace('.', '', $matches[1]); 
+            }
+            $product_price = $d_ord['total_price']; 
+            $net_income = $product_price + $shipping_cost;
+            
+            // Tambahkan saldo ke seller
+            if ($net_income > 0) { 
+                mysqli_query($koneksi, "UPDATE shops SET balance = balance + $net_income WHERE shop_id='{$d_ord['shop_id']}'"); 
+                $desc = "Pendapatan pesanan #{$d_ord['invoice_code']}"; 
+                mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) VALUES ('{$d_ord['shop_id']}', 'in', '$net_income', '$desc', NOW())"); 
+            }
+            
+            // === TAMBAHKAN FEE KE ADMIN BALANCE ===
+            // Ambil fee yang berlaku saat transaksi ini
+            $q_current_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
+            $d_current_fee = mysqli_fetch_assoc($q_current_fee);
+            $admin_fee_amount = isset($d_current_fee['setting_value']) ? (int)$d_current_fee['setting_value'] : 1000;
+            
+            // Cek apakah admin_balance sudah ada
+            $q_admin_bal = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_balance'");
+            $d_admin_bal = mysqli_fetch_assoc($q_admin_bal);
+            
+            if (mysqli_num_rows($q_admin_bal) > 0) {
+                // Update admin_balance (tambahkan fee)
+                $current_admin_balance = (int)$d_admin_bal['setting_value'];
+                $new_admin_balance = $current_admin_balance + $admin_fee_amount;
+                mysqli_query($koneksi, "UPDATE system_settings SET setting_value = '$new_admin_balance' WHERE setting_key = 'admin_balance'");
+            } else {
+                // Insert admin_balance baru
+                mysqli_query($koneksi, "INSERT INTO system_settings (setting_key, setting_value) VALUES ('admin_balance', '$admin_fee_amount')");
+            }
+            
+            // Catat transaksi admin (pendapatan)
+            $admin_desc = "Fee dari pesanan #{$d_ord['invoice_code']}";
+            mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) VALUES (0, 'in', '$admin_fee_amount', '$admin_desc', NOW())");
+            
+            mysqli_commit($koneksi); 
+            echo "<script>alert('Terima kasih! Pesanan selesai.'); window.location.href='histori.php';</script>";
+        } catch (Exception $e) { 
+            mysqli_rollback($koneksi); 
+            echo "<script>alert('Terjadi kesalahan saat memproses pesanan.');</script>"; 
+        }
     }
 }
 if (isset($_POST['action']) && $_POST['action'] == 'submit_review') {
