@@ -445,7 +445,8 @@ while($row = mysqli_fetch_assoc($q_chat)) {
         const modal = document.getElementById("reportModal");
         
         function openModal(btn) {
-            const data = JSON.parse(btn.closest('tr').getAttribute('data-json'));
+            const jsonStr = btn.closest('tr').getAttribute('data-json');
+            const data = JSON.parse(jsonStr.replace(/"/g, '"').replace(/&#39;/g, "'"));
             
             // Isi Data Modal
             document.getElementById("mId").innerText = data.report_id;
@@ -560,9 +561,9 @@ while($row = mysqli_fetch_assoc($q_chat)) {
                             else if (r.status === 'rejected') statusClass = 'status-rejected';
                             
                             const reasonShort = r.reason.substring(0, 35) + '...';
-                            const dataJson = JSON.stringify(r).replace(/"/g, '"');
+                            const dataJson = JSON.stringify(r).replace(/'/g, '&#39;').replace(/"/g, '"');
                             
-                            html += '<tr data-json="' + dataJson + '">' +
+                            html += '<tr data-json=\'' + dataJson + '\'>' +
                                 '<td>#R' + r.report_id + '</td>' +
                                 '<td><span style="font-family:monospace; font-weight:bold;">' + r.invoice_code + '</span></td>' +
                                 '<td>' + reasonShort + '</td>' +
