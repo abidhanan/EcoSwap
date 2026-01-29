@@ -1017,6 +1017,388 @@ while($r = mysqli_fetch_assoc($q_partner)){
     // carousel
     const track=document.getElementById('carouselTrack'); let ci=0;
     setInterval(()=>{ ci=(ci+1)%2; track.style.transform=`translateX(-${ci*100}%)`; },5000);
+
+    // ========== CART & CHECKOUT FUNCTIONS ==========
+    
+    function addToCart() {
+        if (!currentActiveProduct) {
+            alert('Produk tidak ditemukan');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'add_to_cart');
+        formData.append('product_id', currentActiveProduct.id);
+
+        fetch('dashboard.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Produk berhasil ditambahkan ke keranjang!');
+                
+                // Update cart badge
+                const badge = document.getElementById('navCartBadge');
+                if (badge) {
+                    badge.textContent = data.new_count;
+                    badge.style.display = data.new_count > 0 ? 'block' : 'none';
+                }
+                
+                // Reload cart items
+                location.reload();
+            } else {
+                alert('Gagal menambahkan ke keranjang');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Terjadi kesalahan');
+        });
+    }
+
+    function buyNow() {
+        if (!currentActiveProduct) {
+            alert('Produk tidak ditemukan');
+            return;
+        }
+
+        // Close product modal first
+        closeModal();
+
+        // Open checkout modal with single product
+        openCheckoutModal([{
+            id: currentActiveProduct.id,
+            name: currentActiveProduct.title,
+            price: currentActiveProduct.price,
+            img: currentActiveProduct.img,
+            shop_id: currentActiveProduct.shop_id,
+            cart_id: null // not from cart
+        }]);
+    }
+
+    // ========== CHECKOUT MODAL FUNCTIONS ==========
+    
+    function openCheckoutModal(items) {
+        if (!items || items.length === 0) {
+            alert('Tidak ada produk yang dipilih');
+            return;
+        }
+
+        // Check if address exists
+        <?php if (!$default_addr): ?>
+            alert('Silakan atur alamat pengiriman terlebih dahulu di menu Profil > Alamat');
+            return;
+        <?php endif; ?>
+
+        // Render product list in checkout
+        const productListContainer = document.getElementById('checkoutProductList');
+        productListContainer.innerHTML = '';
+        
+        let subtotal = 0;
+        items.forEach(item => {
+            subtotal += parseInt(item.price);
+            productListContainer.innerHTML += `
+                <div style="display:flex; gap:12px; padding:12px; border:1px solid #eee; border-radius:8px; margin-bottom:10px;">
+                    <img src="${item.img}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600; margin-bottom:4px;">${item.name}</div>
+                        <div style="color:var(--primary); font-weight:600;">Rp ${Number(item.price).toLocaleString('id-ID')}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Update summary
+        document.getElementById('summaryProdPrice').textContent = formatRupiah(subtotal);
+        
+        // Load shipping & payment options for the shop
+        const shopId = items[0].shop_id;
+        loadShopSettings(shopId, subtotal);
+
+        // Store items globally for checkout
+        window.checkoutItems = items;
+
+        // Show checkout modal
+        document.getElementById('checkoutModal').classList.add('open');
+    }
+
+    function closeCheckoutModal() {
+        document.getElementById('checkoutModal').classList.remove('open');
+        window.checkoutItems = null;
+    }
+
+    async function loadShopSettings(shopId, subtotal) {
+        const fd = new FormData();
+        fd.append('action', 'get_shop_settings');
+        fd.append('shop_id', shopId);
+
+        const res = await fetch('dashboard.php', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            renderShippingOptions(data.shipping || [], subtotal);
+            renderPaymentOptions(data.payment || []);
+        }
+    }
+
+    let selectedShipping = null;
+    let selectedPayment = null;
+
+    function renderShippingOptions(options, subtotal) {
+        const container = document.getElementById('shippingContainer');
+        container.innerHTML = '';
+
+        if (options.length === 0) {
+            container.innerHTML = '<div style="color:#888; text-align:center; padding:15px;">Belum ada opsi pengiriman</div>';
+            return;
+        }
+
+        options.forEach((opt, idx) => {
+            const isActive = idx === 0;
+            if (isActive) {
+                selectedShipping = { name: opt.name, cost: opt.cost };
+                updateCheckoutSummary(subtotal);
+            }
+
+            container.innerHTML += `
+                <div class="shipping-option-card ${isActive ? 'active' : ''}" onclick="selectShipping(this, '${opt.name}', ${opt.cost}, ${subtotal})">
+                    <div class="ship-info">
+                        <div class="ship-name">${opt.name}</div>
+                        <div class="ship-price">Rp ${Number(opt.cost).toLocaleString('id-ID')}</div>
+                    </div>
+                    <i class="fas fa-check-circle" style="color:var(--primary); font-size:1.2rem; display:${isActive ? 'block' : 'none'};"></i>
+                </div>
+            `;
+        });
+    }
+
+    function selectShipping(element, name, cost, subtotal) {
+        document.querySelectorAll('.shipping-option-card').forEach(el => {
+            el.classList.remove('active');
+            el.querySelector('i').style.display = 'none';
+        });
+        
+        element.classList.add('active');
+        element.querySelector('i').style.display = 'block';
+        
+        selectedShipping = { name, cost };
+        updateCheckoutSummary(subtotal);
+    }
+
+    function renderPaymentOptions(options) {
+        const container = document.getElementById('paymentContainer');
+        container.innerHTML = '';
+
+        if (options.length === 0) {
+            container.innerHTML = '<div style="color:#888; text-align:center; padding:15px;">Belum ada metode pembayaran</div>';
+            return;
+        }
+
+        const grouped = {};
+        options.forEach(opt => {
+            if (!grouped[opt.category]) grouped[opt.category] = [];
+            grouped[opt.category].push(opt.name);
+        });
+
+        let firstSelected = false;
+        Object.keys(grouped).forEach(cat => {
+            const catId = cat.replace(/\s+/g, '');
+            const methods = grouped[cat];
+            
+            container.innerHTML += `
+                <div class="payment-category" id="cat-${catId}">
+                    <div class="payment-header" onclick="togglePaymentCategory('${catId}')">
+                        <div class="ph-left">
+                            <i class="fas fa-${cat === 'E-Wallet' ? 'wallet' : cat === 'Transfer Bank' ? 'university' : 'money-bill-wave'}"></i>
+                            <span>${cat}</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="payment-options-list" id="list-${catId}">
+                        ${methods.map(m => {
+                            const isFirst = !firstSelected;
+                            if (isFirst) {
+                                firstSelected = true;
+                                selectedPayment = m;
+                            }
+                            return `<div class="sub-option ${isFirst ? 'selected' : ''}" onclick="selectPayment(this, '${m}')">${m}</div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function togglePaymentCategory(catId) {
+        const list = document.getElementById('list-' + catId);
+        const cat = document.getElementById('cat-' + catId);
+        
+        if (list.classList.contains('show')) {
+            list.classList.remove('show');
+            cat.classList.remove('active');
+        } else {
+            // Close all others
+            document.querySelectorAll('.payment-options-list').forEach(el => el.classList.remove('show'));
+            document.querySelectorAll('.payment-category').forEach(el => el.classList.remove('active'));
+            
+            list.classList.add('show');
+            cat.classList.add('active');
+        }
+    }
+
+    function selectPayment(element, method) {
+        document.querySelectorAll('.sub-option').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        selectedPayment = method;
+    }
+
+    function updateCheckoutSummary(subtotal) {
+        const shippingCost = selectedShipping ? selectedShipping.cost : 0;
+        const adminFee = <?php echo $admin_fee; ?>;
+        const total = subtotal + shippingCost + adminFee;
+
+        document.getElementById('summaryShipPrice').textContent = formatRupiah(shippingCost);
+        document.getElementById('summaryTotal').textContent = formatRupiah(total);
+        document.getElementById('bottomTotal').textContent = formatRupiah(total);
+    }
+
+    function openAddressModal() {
+        document.getElementById('addressModal').classList.add('open');
+    }
+
+    function closeAddressModal() {
+        document.getElementById('addressModal').classList.remove('open');
+    }
+
+    function selectAddress(element, name, address, phone) {
+        document.querySelectorAll('.address-option').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        closeAddressModal();
+        
+        // Update display in checkout
+        const addrBox = document.querySelector('.address-box');
+        if (addrBox) {
+            addrBox.innerHTML = `
+                <div class="addr-header-row">
+                    <span class="addr-recipient">${name}</span>
+                    <span class="addr-divider">|</span>
+                    <span class="addr-phone">${phone}</span>
+                </div>
+                <div class="addr-body-text">${address}</div>
+                <div class="addr-change-text">Ubah Alamat <i class="fas fa-chevron-right"></i></div>
+            `;
+        }
+    }
+
+    async function processOrder() {
+        if (!window.checkoutItems || window.checkoutItems.length === 0) {
+            alert('Tidak ada produk yang dipilih');
+            return;
+        }
+
+        if (!selectedShipping) {
+            alert('Pilih metode pengiriman terlebih dahulu');
+            return;
+        }
+
+        if (!selectedPayment) {
+            alert('Pilih metode pembayaran terlebih dahulu');
+            return;
+        }
+
+        if (!selectedAddressId) {
+            alert('Pilih alamat pengiriman terlebih dahulu');
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('action', 'create_order');
+        fd.append('address_id', selectedAddressId);
+        fd.append('shipping_method', selectedShipping.name);
+        fd.append('shipping_cost', selectedShipping.cost);
+        fd.append('payment_method', selectedPayment);
+        fd.append('items', JSON.stringify(window.checkoutItems));
+
+        const res = await fetch('dashboard.php', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alert('Pesanan berhasil dibuat! Silakan cek menu Histori untuk detail pesanan.');
+            closeCheckoutModal();
+            location.reload();
+        } else {
+            alert('Gagal membuat pesanan: ' + (data.message || 'Unknown error'));
+        }
+    }
+
+    // ========== CART ITEM FUNCTIONS ==========
+    
+    function toggleCartItem(element) {
+        const checkbox = element.querySelector('.cart-checkbox');
+        if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            updateCartTotal();
+        }
+    }
+
+    function deleteCartItem(event, cartId) {
+        event.stopPropagation();
+        
+        if (!confirm('Hapus produk dari keranjang?')) return;
+
+        const fd = new FormData();
+        fd.append('action', 'delete_item');
+        fd.append('cart_id', cartId);
+
+        fetch('dashboard.php', { method: 'POST', body: fd })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update badge
+                    const badge = document.getElementById('navCartBadge');
+                    if (badge) {
+                        badge.textContent = data.new_count;
+                        badge.style.display = data.new_count > 0 ? 'block' : 'none';
+                    }
+                    
+                    // Reload page
+                    location.reload();
+                } else {
+                    alert('Gagal menghapus item');
+                }
+            });
+    }
+
+    function checkoutFromCart() {
+        const selectedItems = [];
+        
+        document.querySelectorAll('.cart-item').forEach(el => {
+            const checkbox = el.querySelector('.cart-checkbox');
+            if (checkbox && checkbox.checked) {
+                selectedItems.push({
+                    id: parseInt(el.getAttribute('data-id')),
+                    name: el.getAttribute('data-name'),
+                    price: parseInt(el.getAttribute('data-price')),
+                    img: el.getAttribute('data-img'),
+                    shop_id: parseInt(el.getAttribute('data-shop-id')),
+                    cart_id: parseInt(el.getAttribute('data-id'))
+                });
+            }
+        });
+
+        if (selectedItems.length === 0) {
+            alert('Pilih minimal 1 produk untuk checkout');
+            return;
+        }
+
+        // Close cart sidebar
+        toggleCart();
+
+        // Open checkout modal
+        openCheckoutModal(selectedItems);
+    }
 </script>
 
 </body>
