@@ -18,6 +18,59 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'mark_notif_read') {
     exit();
 }
 
+// ==========================================
+// LOGIKA TARIK SALDO ADMIN (WITHDRAW)
+// ==========================================
+if (isset($_POST['action']) && $_POST['action'] == 'withdraw') {
+    $amount = (int)$_POST['amount'];
+    $method = mysqli_real_escape_string($koneksi, $_POST['destination_method']); 
+    $account = mysqli_real_escape_string($koneksi, $_POST['account_number']);
+    
+    // Ambil saldo admin saat ini
+    $q_balance = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_balance'");
+    $d_balance = mysqli_fetch_assoc($q_balance);
+    $current_balance = isset($d_balance['setting_value']) ? (int)$d_balance['setting_value'] : 0;
+    
+    // Validasi Saldo
+    if ($amount > $current_balance) {
+        echo "<script>alert('Saldo tidak mencukupi untuk penarikan ini.'); window.location.href='dashboard.php';</script>";
+    } elseif ($amount <= 0) {
+        echo "<script>alert('Nominal penarikan tidak valid.'); window.location.href='dashboard.php';</script>";
+    } else {
+        // Mulai Transaksi Database (agar aman)
+        mysqli_begin_transaction($koneksi);
+        
+        try {
+            // 1. Kurangi Saldo Admin
+            $new_balance = $current_balance - $amount;
+            
+            // Cek apakah admin_balance sudah ada
+            if (mysqli_num_rows($q_balance) > 0) {
+                $update_saldo = mysqli_query($koneksi, "UPDATE system_settings SET setting_value = '$new_balance' WHERE setting_key = 'admin_balance'");
+            } else {
+                $update_saldo = mysqli_query($koneksi, "INSERT INTO system_settings (setting_key, setting_value) VALUES ('admin_balance', '$new_balance')");
+            }
+            
+            // 2. Catat di Riwayat Transaksi (shop_id = 0 untuk admin)
+            $desc = "Penarikan Admin ke $method ($account)";
+            $insert_trans = mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) 
+                                                    VALUES (0, 'out', '$amount', '$desc', NOW())");
+            
+            if ($update_saldo && $insert_trans) {
+                mysqli_commit($koneksi);
+                echo "<script>alert('Permintaan penarikan berhasil diproses!'); window.location.href='dashboard.php';</script>";
+            } else {
+                throw new Exception("Gagal update database");
+            }
+            
+        } catch (Exception $e) {
+            mysqli_rollback($koneksi);
+            echo "<script>alert('Terjadi kesalahan sistem. Silakan coba lagi.'); window.location.href='dashboard.php';</script>";
+        }
+    }
+    exit();
+}
+
 // AJAX Endpoint untuk Real-Time Update
 if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_stats') {
     header('Content-Type: application/json');
@@ -31,14 +84,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_stats') {
     $chat_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM notifications WHERE user_id = '$admin_id' AND title = 'Laporan Chat' AND is_read = 0"))['total'];
     $active_reports = $transaction_reports + $chat_reports;
     
-    // Hitung pendapatan - termasuk transaksi completed dan reviewed
-    $q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
-    $d_fee = mysqli_fetch_assoc($q_fee);
-    $fee_per_trx = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
-    $q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed' OR status = 'reviewed'");
-    $d_sales = mysqli_fetch_assoc($q_sales);
-    $total_sales_count = $d_sales['total'];
-    $admin_revenue = $total_sales_count * $fee_per_trx;
+    // Ambil saldo admin dari database (bukan hitung ulang)
+    $q_admin_bal = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_balance'");
+    $d_admin_bal = mysqli_fetch_assoc($q_admin_bal);
+    $admin_balance_ajax = isset($d_admin_bal['setting_value']) ? (int)$d_admin_bal['setting_value'] : 0;
     
     // Transaksi terbaru
     $recent_orders = [];
@@ -73,7 +122,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_stats') {
         'total_users' => $total_users,
         'pending_products' => $pending_products,
         'active_reports' => $active_reports,
-        'admin_revenue' => $admin_revenue,
+        'admin_balance' => $admin_balance_ajax,
         'recent_orders' => $recent_orders
     ]);
     exit();
@@ -111,6 +160,35 @@ $d_sales = mysqli_fetch_assoc($q_sales);
 $total_sales_count = $d_sales['total'];
 
 $admin_revenue = $total_sales_count * $fee_per_trx;
+
+// 5. Ambil Saldo Admin yang Tersedia untuk Ditarik
+$q_admin_balance = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_balance'");
+$d_admin_balance = mysqli_fetch_assoc($q_admin_balance);
+$admin_balance = isset($d_admin_balance['setting_value']) ? (int)$d_admin_balance['setting_value'] : 0;
+
+// Jika admin_balance belum ada, inisialisasi dengan admin_revenue
+if (!isset($d_admin_balance['setting_value'])) {
+    mysqli_query($koneksi, "INSERT INTO system_settings (setting_key, setting_value) VALUES ('admin_balance', '$admin_revenue')");
+    $admin_balance = $admin_revenue;
+} else {
+    // Update admin_balance jika ada transaksi baru yang completed/reviewed
+    // Hitung total fee yang seharusnya sudah masuk
+    $expected_balance = $admin_revenue;
+    
+    // Hitung total penarikan admin (transaksi keluar)
+    $q_withdrawals = mysqli_query($koneksi, "SELECT COALESCE(SUM(amount), 0) as total_withdrawn FROM transactions WHERE shop_id = 0 AND type = 'out'");
+    $d_withdrawals = mysqli_fetch_assoc($q_withdrawals);
+    $total_withdrawn = (int)$d_withdrawals['total_withdrawn'];
+    
+    // Saldo yang seharusnya = Total pendapatan - Total penarikan
+    $correct_balance = $expected_balance - $total_withdrawn;
+    
+    // Update jika ada perbedaan (ada transaksi baru)
+    if ($admin_balance != $correct_balance) {
+        mysqli_query($koneksi, "UPDATE system_settings SET setting_value = '$correct_balance' WHERE setting_key = 'admin_balance'");
+        $admin_balance = $correct_balance;
+    }
+}
 
 // --- NOTIFIKASI BARU ---
 $pending_count = $pending_products;
@@ -215,7 +293,14 @@ while($row = mysqli_fetch_assoc($q_recent)) {
         <section class="stats-grid">
             <div class="stat-card"><div class="stat-icon black-bg"><i class="fas fa-box-open"></i></div><div class="stat-details"><h3>Perlu Persetujuan</h3><p class="number"><?php echo number_format($pending_products); ?></p></div></div>
             <div class="stat-card"><div class="stat-icon yellow-bg"><i class="fas fa-users"></i></div><div class="stat-details"><h3>Total Pengguna</h3><p class="number"><?php echo number_format($total_users); ?></p></div></div>
-            <div class="stat-card"><div class="stat-icon gray-bg"><i class="fas fa-wallet"></i></div><div class="stat-details"><h3>Pendapatan</h3><p class="number">Rp <?php echo number_format($admin_revenue, 0, ',', '.'); ?></p></div></div>
+            <div class="stat-card stat-card-clickable" onclick="openWithdrawModal()" style="cursor: pointer;" title="Klik untuk tarik saldo">
+                <div class="stat-icon gray-bg"><i class="fas fa-wallet"></i></div>
+                <div class="stat-details">
+                    <h3>Pendapatan <i class="fas fa-hand-pointer" style="font-size: 0.7rem; opacity: 0.6;"></i></h3>
+                    <p class="number">Rp <?php echo number_format($admin_balance, 0, ',', '.'); ?></p>
+                    <small style="font-size: 0.75rem; color: #888; margin-top: 5px; display: block;">Klik untuk tarik saldo</small>
+                </div>
+            </div>
             <div class="stat-card"><div class="stat-icon red-bg"><i class="fas fa-exclamation-circle"></i></div><div class="stat-details"><h3>Laporan</h3><p class="number"><?php echo number_format($active_reports); ?></p></div></div>
         </section>
 
@@ -276,6 +361,114 @@ while($row = mysqli_fetch_assoc($q_recent)) {
 
     <?php include 'profil.php'; ?>
 
+    <!-- Modal Tarik Saldo Admin -->
+    <div class="modal-overlay" id="withdrawModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">Tarik Saldo Admin</div>
+                <span class="close-modal" onclick="closeWithdrawModal()">&times;</span>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="withdraw">
+                
+                <div class="form-group">
+                    <label class="form-label">Pilih Metode Tujuan</label>
+                    <div class="method-toggle">
+                        <button type="button" class="method-btn active" onclick="toggleMethod('ewallet', this)"><i class="fas fa-wallet"></i> E-Wallet</button>
+                        <button type="button" class="method-btn" onclick="toggleMethod('bank', this)"><i class="fas fa-university"></i> Bank</button>
+                    </div>
+                </div>
+
+                <div id="ewalletOptions" class="bank-options">
+                    <label>
+                        <input type="radio" name="destination_method" value="Dana" class="bank-radio" checked>
+                        <div class="bank-card"><img src="https://placehold.co/100x50/118EEA/ffffff?text=DANA" class="payment-logo"><span>DANA</span></div>
+                    </label>
+                    <label>
+                        <input type="radio" name="destination_method" value="OVO" class="bank-radio">
+                        <div class="bank-card"><img src="https://placehold.co/100x50/4C2A86/ffffff?text=OVO" class="payment-logo"><span>OVO</span></div>
+                    </label>
+                    <label>
+                        <input type="radio" name="destination_method" value="GoPay" class="bank-radio">
+                        <div class="bank-card"><img src="https://placehold.co/100x50/00A5CF/ffffff?text=GoPay" class="payment-logo"><span>GoPay</span></div>
+                    </label>
+                </div>
+
+                <div id="bankOptions" class="bank-options" style="display:none;">
+                    <label>
+                        <input type="radio" name="destination_method" value="BCA" class="bank-radio">
+                        <div class="bank-card"><img src="https://placehold.co/100x50/003399/ffffff?text=BCA" class="payment-logo"><span>BCA</span></div>
+                    </label>
+                    <label>
+                        <input type="radio" name="destination_method" value="Mandiri" class="bank-radio">
+                        <div class="bank-card"><img src="https://placehold.co/100x50/FFB700/000000?text=Mandiri" class="payment-logo"><span>Mandiri</span></div>
+                    </label>
+                    <label>
+                        <input type="radio" name="destination_method" value="BRI" class="bank-radio">
+                        <div class="bank-card"><img src="https://placehold.co/100x50/00529C/ffffff?text=BRI" class="payment-logo"><span>BRI</span></div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nomor Rekening / HP</label>
+                    <input type="text" name="account_number" class="form-input" placeholder="Contoh: 08123456789" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nominal Penarikan</label>
+                    <div class="input-wrapper">
+                        <span class="input-prefix">Rp</span>
+                        <input type="number" name="amount" class="form-input has-prefix" placeholder="0" min="10000" max="<?php echo $admin_balance; ?>" required>
+                    </div>
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">Saldo tersedia: Rp <?php echo number_format($admin_balance, 0, ',', '.'); ?> | Min. Penarikan Rp 10.000</div>
+                </div>
+
+                <div class="withdraw-note"><i class="fas fa-info-circle"></i> Penarikan akan diproses maksimal 1x24 jam kerja.</div>
+                
+                <button type="submit" class="btn-submit">Konfirmasi Penarikan</button>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Withdraw Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-container { background: #fff; padding: 25px; border-radius: 12px; width: 100%; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: fadeIn 0.3s ease-out; max-height: 85vh; overflow-y: auto; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 1.3rem; font-weight: bold; }
+        .close-modal { cursor: pointer; font-size: 1.5rem; color: #888; transition: 0.2s; }
+        .close-modal:hover { color: #dc3545; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
+        .method-toggle { display: flex; background-color: #f0f0f0; padding: 5px; border-radius: 8px; gap: 5px; }
+        .method-btn { flex: 1; padding: 10px; border: none; background: transparent; font-weight: 600; color: #666; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .method-btn.active { background-color: #fff; color: #1e1e1e; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .method-btn:hover:not(.active) { background-color: #e0e0e0; }
+        .input-wrapper { position: relative; }
+        .input-prefix { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888; font-weight: bold; }
+        .form-input { width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 1rem; outline: none; transition: border 0.2s; }
+        .form-input.has-prefix { padding-left: 45px; }
+        .form-input:focus { border-color: #ffd700; }
+        .bank-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .bank-radio { display: none; }
+        .bank-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; height: 80px; background-color: #fff; }
+        .payment-logo { height: 30px; width: auto; object-fit: contain; margin-bottom: 2px; }
+        .bank-card span { font-size: 0.9rem; font-weight: 500; }
+        .bank-card:hover { border-color: #ffd700; background-color: #fffde7; }
+        .bank-radio:checked + .bank-card { border-color: #ffd700; background-color: #ffd700; color: #1e1e1e; font-weight: bold; }
+        .bank-card .payment-logo { filter: grayscale(100%); opacity: 0.7; transition: all 0.2s; }
+        .bank-card:hover .payment-logo, .bank-radio:checked + .bank-card .payment-logo { filter: grayscale(0%); opacity: 1; }
+        .withdraw-note { font-size: 0.85rem; color: #666; background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
+        .btn-submit { width: 100%; padding: 15px; background: #1e1e1e; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #ffd700; font-size: 1rem; transition: opacity 0.2s; }
+        .btn-submit:hover { opacity: 0.9; }
+        
+        /* Stat Card Clickable Hover Effect */
+        .stat-card-clickable { transition: all 0.3s ease; }
+        .stat-card-clickable:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    </style>
+
     <script>
         // Real-Time Update Function
         function updateDashboard() {
@@ -306,9 +499,9 @@ while($row = mysqli_fetch_assoc($q_recent)) {
                         setTimeout(() => stat2.style.animation = '', 500);
                     }
                     
-                    const newRevenue = 'Rp ' + data.admin_revenue.toLocaleString('id-ID');
-                    if (stat3.textContent !== newRevenue) {
-                        stat3.textContent = newRevenue;
+                    const newBalance = 'Rp ' + data.admin_balance.toLocaleString('id-ID');
+                    if (stat3.textContent !== newBalance) {
+                        stat3.textContent = newBalance;
                         stat3.style.animation = 'pulse 0.5s';
                         setTimeout(() => stat3.style.animation = '', 500);
                     }
@@ -416,6 +609,47 @@ while($row = mysqli_fetch_assoc($q_recent)) {
             }
         `;
         document.head.appendChild(style);
+        
+        // ==========================================
+        // MODAL WITHDRAW FUNCTIONS
+        // ==========================================
+        const modal = document.getElementById('withdrawModal');
+        
+        function openWithdrawModal() { 
+            modal.classList.add('open'); 
+        }
+        
+        function closeWithdrawModal() { 
+            modal.classList.remove('open'); 
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(e) { 
+            if (e.target == modal) closeWithdrawModal(); 
+        }
+
+        // Toggle Metode Penarikan (Bank vs E-Wallet)
+        function toggleMethod(type, btnElement) {
+            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active')); 
+            btnElement.classList.add('active');
+            
+            const ewalletDiv = document.getElementById('ewalletOptions'); 
+            const bankDiv = document.getElementById('bankOptions');
+            
+            // Reset radio buttons saat switch
+            const radios = document.querySelectorAll('input[name="destination_method"]');
+            radios.forEach(r => r.checked = false);
+
+            if (type === 'bank') { 
+                ewalletDiv.style.display = 'none'; 
+                bankDiv.style.display = 'grid'; 
+                bankDiv.querySelector('input').checked = true; // Auto select first option
+            } else { 
+                bankDiv.style.display = 'none'; 
+                ewalletDiv.style.display = 'grid'; 
+                ewalletDiv.querySelector('input').checked = true; 
+            }
+        }
     </script>
 
 </body>

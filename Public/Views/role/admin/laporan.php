@@ -86,7 +86,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'update_status') {
                 // --- KASUS DISETUJUI (VALID) ---
                 
                 // 1. Notifikasi ke Buyer (Pelapor)
-                $msg_buyer = "Laporan Anda untuk pesanan #$invoice (Toko: $shop_name) telah DISETUJUI. Terima kasih atas laporannya. Silakan blokir penjual di halaman Pengguna jika diperlukan.";
+                $msg_buyer = "Laporan Anda untuk pesanan #$invoice (Toko: $shop_name) telah DISETUJUI. Terima kasih atas laporannya. Tim kami akan menindaklanjuti masalah ini.";
                 mysqli_query($koneksi, "INSERT INTO notifications (user_id, title, message, is_read, created_at) VALUES ('$pelapor_id', 'Laporan Disetujui', '$msg_buyer', 0, NOW())");
 
                 // 2. Notifikasi ke Seller (Terlapor)
