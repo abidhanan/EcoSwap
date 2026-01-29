@@ -255,7 +255,62 @@ if (isset($_POST['action']) && $_POST['action'] == 'create_order') {
 }
 
 if (isset($_POST['action']) && $_POST['action'] == 'mark_read') { $nid = $_POST['notif_id']; mysqli_query($koneksi, "UPDATE notifications SET is_read=1 WHERE notif_id='$nid'"); exit; }
-if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') { header('Content-Type: application/json'); $shop_id = $_POST['shop_id']; $query = mysqli_query($koneksi, "SELECT shipping_options, payment_methods FROM shops WHERE shop_id='$shop_id'"); $data = mysqli_fetch_assoc($query); $shipping = !empty($data['shipping_options']) ? json_decode($data['shipping_options']) : []; $payment = !empty($data['payment_methods']) ? json_decode($data['payment_methods']) : []; echo json_encode(['status' => 'success', 'shipping' => $shipping, 'payment' => $payment]); exit; }
+if (isset($_POST['action']) && $_POST['action'] == 'get_shop_settings') { 
+    header('Content-Type: application/json'); 
+    $shop_id = $_POST['shop_id']; 
+    
+    $query = mysqli_query($koneksi, "SELECT shipping_options, payment_methods, shipping_costs FROM shops WHERE shop_id='$shop_id'"); 
+    $data = mysqli_fetch_assoc($query); 
+    
+    // Parse shipping options dari array string menjadi array objek dengan name & cost
+    $shipping_raw = !empty($data['shipping_options']) ? json_decode($data['shipping_options'], true) : [];
+    $shipping_costs_raw = !empty($data['shipping_costs']) ? json_decode($data['shipping_costs'], true) : [];
+    
+    $shipping = [];
+    if(is_array($shipping_raw)) {
+        foreach($shipping_raw as $ship_name) {
+            // Ambil cost dari shipping_costs, default 15000 jika tidak ada
+            $cost = 15000; // default
+            
+            // Cek apakah ada di shipping_costs
+            if(is_array($shipping_costs_raw)) {
+                // Coba cari berdasarkan nama kurir (JNE, JNT, dll)
+                foreach($shipping_costs_raw as $key => $value) {
+                    if(stripos($ship_name, $key) !== false) {
+                        $cost = (int)$value;
+                        break;
+                    }
+                }
+            }
+            
+            $shipping[] = ['name' => $ship_name, 'cost' => $cost];
+        }
+    }
+    
+    // Parse payment methods dari array string menjadi array objek dengan category & name
+    $payment_raw = !empty($data['payment_methods']) ? json_decode($data['payment_methods'], true) : [];
+    $payment = [];
+    
+    if(is_array($payment_raw)) {
+        foreach($payment_raw as $pay_name) {
+            $category = 'Lainnya';
+            
+            // Deteksi kategori berdasarkan nama
+            if(stripos($pay_name, 'Transfer Bank') !== false || stripos($pay_name, 'BCA') !== false || stripos($pay_name, 'BRI') !== false || stripos($pay_name, 'Mandiri') !== false) {
+                $category = 'Transfer Bank';
+            } elseif(stripos($pay_name, 'E-Wallet') !== false || stripos($pay_name, 'GoPay') !== false || stripos($pay_name, 'OVO') !== false || stripos($pay_name, 'Dana') !== false) {
+                $category = 'E-Wallet';
+            } elseif(stripos($pay_name, 'COD') !== false) {
+                $category = 'COD';
+            }
+            
+            $payment[] = ['category' => $category, 'name' => $pay_name];
+        }
+    }
+    
+    echo json_encode(['status' => 'success', 'shipping' => $shipping, 'payment' => $payment]); 
+    exit; 
+}
 if (isset($_POST['action']) && $_POST['action'] == 'toggle_follow') { header('Content-Type: application/json'); $target_shop_id = $_POST['shop_id']; $check = mysqli_query($koneksi, "SELECT * FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'"); if (mysqli_num_rows($check) > 0) { mysqli_query($koneksi, "DELETE FROM shop_followers WHERE shop_id='$target_shop_id' AND user_id='$user_id'"); echo json_encode(['status' => 'unfollowed']); } else { mysqli_query($koneksi, "INSERT INTO shop_followers (shop_id, user_id) VALUES ('$target_shop_id', '$user_id')"); echo json_encode(['status' => 'followed']); } exit; }
 
 if (isset($_GET['action']) && $_GET['action'] == 'filter_products') {
@@ -1272,7 +1327,7 @@ while($r = mysqli_fetch_assoc($q_partner)){
         document.getElementById('addressModal').classList.remove('open');
     }
 
-    function selectAddress(element, name, address, phone) {
+    function selectAddress(element, name, address, phone, label) {
         document.querySelectorAll('.address-option').forEach(el => el.classList.remove('selected'));
         element.classList.add('selected');
         closeAddressModal();
@@ -1285,6 +1340,7 @@ while($r = mysqli_fetch_assoc($q_partner)){
                     <span class="addr-recipient">${name}</span>
                     <span class="addr-divider">|</span>
                     <span class="addr-phone">${phone}</span>
+                    <span class="addr-label-tag">${label || ''}</span>
                 </div>
                 <div class="addr-body-text">${address}</div>
                 <div class="addr-change-text">Ubah Alamat <i class="fas fa-chevron-right"></i></div>

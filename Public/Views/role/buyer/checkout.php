@@ -13,20 +13,20 @@
                 <div class="address-box" onclick="openAddressModal()">
                     <?php if($default_addr): ?>
                         <div class="addr-header-row">
-                            <span class="addr-recipient"><?php echo $default_addr['recipient_name']; ?></span>
+                            <span class="addr-recipient"><?php echo htmlspecialchars($default_addr['recipient_name']); ?></span>
                             <span class="addr-divider">|</span>
-                            <span class="addr-phone"><?php echo $default_addr['phone_number']; ?></span>
-                            <span class="addr-label-tag"><?php echo $default_addr['label']; ?></span>
+                            <span class="addr-phone"><?php echo htmlspecialchars($default_addr['phone_number']); ?></span>
+                            <span class="addr-label-tag"><?php echo htmlspecialchars($default_addr['label']); ?></span>
                         </div>
                         <div class="addr-body-text">
-                            <?php echo $default_addr['full_address']; ?><br>
-                            <?php echo $default_addr['formatted_details']; ?>
+                            <?php echo htmlspecialchars($default_addr['full_address']); ?><br>
+                            <?php echo htmlspecialchars($default_addr['formatted_details']); ?>
                         </div>
                         <div class="addr-change-text">Ubah Alamat <i class="fas fa-chevron-right"></i></div>
                     <?php else: ?>
                         <div class="addr-empty-state">
                             <i class="fas fa-exclamation-circle"></i> Belum ada alamat tersimpan.
-                            <br><span style="font-size:0.85rem; color:var(--primary);">Silakan atur alamat di menu Profil terlebih dahulu.</span>
+                            <br><span style="font-size:0.85rem; color:var(--primary);">Silakan atur alamat di menu Profil > Alamat terlebih dahulu.</span>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -34,19 +34,30 @@
 
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Produk Dipesan</div>
-                <div class="product-list-container" id="checkoutProductList"></div>
+                <div class="product-list-container" id="checkoutProductList">
+                    <div style="text-align:center; padding:20px; color:#888;">
+                        <i class="fas fa-box-open" style="font-size:2rem; opacity:0.5;"></i><br>
+                        Memuat produk...
+                    </div>
+                </div>
             </div>
 
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Opsi Pengiriman</div>
                 <div id="shippingContainer" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding:15px; color:#888;">
+                        <i class="fas fa-spinner fa-spin"></i> Memuat opsi pengiriman...
                     </div>
+                </div>
             </div>
 
             <div class="section-card-checkout">
                 <div class="section-title-checkout">Metode Pembayaran</div>
                 <div id="paymentContainer" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding:15px; color:#888;">
+                        <i class="fas fa-spinner fa-spin"></i> Memuat metode pembayaran...
                     </div>
+                </div>
             </div>
 
             <div class="section-card-checkout" style="margin-bottom: 20px; background-color: #fafafa;">
@@ -56,7 +67,7 @@
                 
                 <div class="summary-row">
                     <span>Biaya Admin</span>
-                    <span class="price-val">Rp <?php echo number_format($admin_fee, 0, ',', '.'); ?></span>
+                    <span class="price-val" id="summaryAdminFee">Rp <?php echo number_format($admin_fee, 0, ',', '.'); ?></span>
                 </div>
                 
                 <div class="summary-row total"><span>Total Pembayaran</span><span class="price-val" id="summaryTotal" style="color:var(--primary)">Rp 0</span></div>
@@ -79,22 +90,30 @@
             <i class="fas fa-times" onclick="closeAddressModal()" style="cursor:pointer;"></i>
         </div>
         <div style="max-height: 400px; overflow-y: auto;">
-            <?php foreach($addresses as $addr): ?>
-            <div class="address-option <?php echo ($addr['is_primary']) ? 'selected' : ''; ?>" 
-                 onclick="selectedAddressId = <?php echo $addr['address_id']; ?>; selectAddress(this, '<?php echo $addr['recipient_name']; ?>', '<?php echo $addr['full_address'] . ', ' . $addr['formatted_details']; ?>', '<?php echo $addr['phone_number']; ?>')">
-                <div style="font-weight:bold; margin-bottom:4px;">
-                    <?php echo $addr['label']; ?> 
-                    <?php if($addr['is_primary']): ?> <span style="background:var(--primary); font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:5px;">Utama</span> <?php endif; ?>
+            <?php if(!empty($addresses)): ?>
+                <?php foreach($addresses as $addr): ?>
+                <div class="address-option <?php echo ($addr['is_primary']) ? 'selected' : ''; ?>" 
+                     onclick="selectedAddressId = <?php echo $addr['address_id']; ?>; selectAddress(this, '<?php echo htmlspecialchars($addr['recipient_name']); ?>', '<?php echo htmlspecialchars($addr['full_address'] . ', ' . $addr['formatted_details']); ?>', '<?php echo htmlspecialchars($addr['phone_number']); ?>', '<?php echo htmlspecialchars($addr['label']); ?>')">
+                    <div style="font-weight:bold; margin-bottom:4px;">
+                        <?php echo htmlspecialchars($addr['label']); ?> 
+                        <?php if($addr['is_primary']): ?> <span style="background:var(--primary); font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:5px; color:#fff;">Utama</span> <?php endif; ?>
+                    </div>
+                    <div style="font-size:0.9rem; color:#333;"><?php echo htmlspecialchars($addr['recipient_name']); ?></div>
+                    <div style="font-size:0.85rem; color:#666; margin-top:2px;">
+                        <?php echo htmlspecialchars($addr['full_address']); ?><br>
+                        <?php echo htmlspecialchars($addr['formatted_details']); ?>
+                    </div>
                 </div>
-                <div style="font-size:0.9rem; color:#333;"><?php echo $addr['recipient_name']; ?></div>
-                <div style="font-size:0.85rem; color:#666; margin-top:2px;">
-                    <?php echo $addr['full_address']; ?><br>
-                    <?php echo $addr['formatted_details']; ?>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div style="text-align:center; padding:30px; color:#888;">
+                    <i class="fas fa-map-marker-alt" style="font-size:2rem; opacity:0.5;"></i><br>
+                    Belum ada alamat tersimpan.<br>
+                    <a href="alamat.php" style="color:var(--primary); text-decoration:none; font-weight:600;">Tambah Alamat</a>
                 </div>
-            </div>
-            <?php endforeach; ?>
+            <?php endif; ?>
         </div>
-        </div>
+    </div>
 </div>
 
 <style>
