@@ -31,11 +31,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_stats') {
     $chat_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as total FROM notifications WHERE user_id = '$admin_id' AND title = 'Laporan Chat' AND is_read = 0"))['total'];
     $active_reports = $transaction_reports + $chat_reports;
     
-    // Hitung pendapatan
+    // Hitung pendapatan - termasuk transaksi completed dan reviewed
     $q_fee = mysqli_query($koneksi, "SELECT setting_value FROM system_settings WHERE setting_key = 'admin_fee'");
     $d_fee = mysqli_fetch_assoc($q_fee);
     $fee_per_trx = isset($d_fee['setting_value']) ? (int)$d_fee['setting_value'] : 1000;
-    $q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed'");
+    $q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed' OR status = 'reviewed'");
     $d_sales = mysqli_fetch_assoc($q_sales);
     $total_sales_count = $d_sales['total'];
     $admin_revenue = $total_sales_count * $fee_per_trx;
@@ -105,8 +105,8 @@ $chat_reports = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as to
 $active_reports = $transaction_reports + $chat_reports;
 
 // 4. Hitung Pendapatan Murni Admin (Hanya Fee Aplikasi)
-// Hitung jumlah transaksi 'completed' lalu kalikan dengan fee per transaksi
-$q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed'");
+// Hitung jumlah transaksi 'completed' dan 'reviewed' lalu kalikan dengan fee per transaksi
+$q_sales = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM orders WHERE status = 'completed' OR status = 'reviewed'");
 $d_sales = mysqli_fetch_assoc($q_sales);
 $total_sales_count = $d_sales['total'];
 
