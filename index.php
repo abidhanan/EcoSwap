@@ -145,8 +145,8 @@ if ($result_prod) {
 
             <div class="product-grid">
                 <?php if(empty($featured_products)): ?>
-                    <div style="grid-column: 1/-1; text-align: center; color: #666; padding: 40px; background: #f9f9f9; border-radius: 8px;">
-                        <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.5;"></i>
+                    <div class="empty-products-wrapper">
+                        <i class="fas fa-box-open empty-products-icon"></i>
                         Belum ada produk yang aktif.
                     </div>
                 <?php else: ?>

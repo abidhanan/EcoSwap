@@ -402,6 +402,7 @@ img { max-width: 100%; display: block; }
     margin-bottom: 10px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -515,6 +516,25 @@ footer {
     text-align: center;
     font-size: 0.9rem;
     background-color: #151515;
+}
+
+/* ===========================
+   EMPTY STATE STYLES
+   =========================== */
+.empty-products-wrapper {
+    grid-column: 1/-1;
+    text-align: center;
+    color: #666;
+    padding: 40px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.empty-products-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+    opacity: 0.5;
 }
 
 /* ===========================
