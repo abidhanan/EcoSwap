@@ -14,7 +14,11 @@
 }
 
 body {
-    background-color: var(--color-primary-bg); /* Background halaman Kuning */
+    background-image: url('../../img/auth/background.jpeg'); /* Ganti dengan path gambar Anda */
+    background-size: contain;  /* Memastikan gambar menutupi seluruh area */
+    background-repeat: repeat-x; /* Mencegah gambar berulang */
+    background-position: center; /* Memusatkan gambar */
+    background-attachment: fixed;
     display: flex;
     justify-content: center;
     align-items: center;
