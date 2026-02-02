@@ -14,9 +14,9 @@
 }
 
 body {
-    background-image: url('../../img/auth/background.jpeg'); /* Ganti dengan path gambar Anda */
+    background-image: url('../../img/auth/background.png'); /* Ganti dengan path gambar Anda */
     background-size: contain;  /* Memastikan gambar menutupi seluruh area */
-    background-repeat: repeat-x; /* Mencegah gambar berulang */
+    background-repeat: repeat; /* Mencegah gambar berulang */
     background-position: center; /* Memusatkan gambar */
     background-attachment: fixed;
     display: flex;
