@@ -14,10 +14,9 @@
 }
 
 body {
-    background-image: url('../../img/auth/background.png'); /* Ganti dengan path gambar Anda */
-    background-size: contain;  /* Memastikan gambar menutupi seluruh area */
-    background-repeat: repeat; /* Mencegah gambar berulang */
-    background-position: center; /* Memusatkan gambar */
+    background-image: url('https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=1600');
+    background-size: cover;
+    background-position: center;
     background-attachment: fixed;
     display: flex;
     justify-content: center;

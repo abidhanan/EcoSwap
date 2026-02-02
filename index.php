@@ -75,7 +75,8 @@ if ($result_prod) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecoswap - Jual Beli Barang Bekas Berkualitas</title>
+    <title>EcoSwap - Home</title>
+    <link rel="icon" type="image/png" href="Public/Assets/img/auth/logo.png">
     <link rel="stylesheet" href="index.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
@@ -140,7 +141,7 @@ if ($result_prod) {
         <div class="container">
             <div class="section-header">
                 <h2>Baru Diupload</h2>
-                <a href="#" class="view-all" onclick="promptLogin()">Lihat Semua <i class="fas fa-arrow-right"></i></a>
+                <a href="Public/Views/guest/login.php" class="view-all" onclick="promptLogin()">Lihat Semua <i class="fas fa-arrow-right"></i></a>
             </div>
 
             <div class="product-grid">
@@ -191,22 +192,26 @@ if ($result_prod) {
                 <div class="logo footer-logo">ECO<span>SWAP</span></div>
                 <p>Platform jual beli barang bekas terpercaya.</p>
                 <div class="social-links">
-                    <a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.instagram.com/ahawi_channel?igsh=MWI3ZmlxaWFycm5z"><i class="fab fa-instagram"></i></a><a href="https://www.facebook.com/share/1KgQpzwwwF/"><i class="fab fa-facebook-f"></i></a>
                 </div>
             </div>
             <div class="footer-col">
                 <h4>Navigasi</h4>
-                <ul><li><a href="#home">Beranda</a></li><li><a href="#products">Belanja</a></li></ul>
+                <ul><li><a href="#home">Beranda</a></li>
+                    <li><a href="#features">Keunggulan</a></li>
+                    <li><a href="#products">Produk</a></li>
+                    <li><a href="#contact">Kontak</a></li>
+                </ul>
             </div>
             <div class="footer-col">
                 <h4>Hubungi Kami</h4>
                 <ul class="contact-info">
-                    <li><i class="fas fa-envelope"></i> support@ecoswap.id</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Jakarta, Indonesia</li>
+                    <li><i class="fas fa-envelope"></i>ecoswap@gmail.com</li>
+                    <li><i class="fas fa-map-marker-alt"></i>Surakarta, Indonesia</li>
                 </ul>
             </div>
         </div>
-        <div class="footer-bottom"><div class="container"><p>&copy; 2024 Ecoswap Indonesia.</p></div></div>
+        <div class="footer-bottom"><div class="container"><p>&copy; 2026 Ecoswap Indonesia.</p></div></div>
     </footer>
 
     <script>
