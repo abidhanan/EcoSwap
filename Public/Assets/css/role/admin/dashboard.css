@@ -67,13 +67,8 @@ body {
     color: var(--light);
 }
 
-.logo i {
-    color: var(--primary); /* Ikon Eco jadi Emas */
-    margin-right: 8px;
-}
-
 .logo span {
-    color: var(--gray); /* Teks SWAP jadi abu agar kontras */
+    color: var(--primary); /* Teks SWAP jadi abu agar kontras */
 }
 
 .nav-links {

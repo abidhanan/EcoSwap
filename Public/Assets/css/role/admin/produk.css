@@ -70,8 +70,7 @@ body {
     color: var(--light);
 }
 
-.logo i { color: var(--primary); margin-right: 8px; }
-.logo span { color: var(--gray); }
+.logo span { color: var(--primary); }
 
 .nav-links {
     flex: 1;
@@ -319,6 +318,7 @@ body {
     position: fixed;
     inset: 0;
     background: rgba(30, 30, 30, 0.6); /* Darker backdrop */
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px); /* Efek Blur modern */
     display: none;
     align-items: center;

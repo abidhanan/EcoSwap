@@ -71,8 +71,7 @@ body {
     color: var(--light);
 }
 
-.logo i { color: var(--primary); margin-right: 8px; }
-.logo span { color: var(--gray); }
+.logo span { color: var(--primary); }
 
 .nav-links {
     flex: 1;
@@ -296,6 +295,7 @@ body {
     position: fixed;
     inset: 0;
     background: rgba(30, 30, 30, 0.6);
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
     display: none;
     align-items: center;
