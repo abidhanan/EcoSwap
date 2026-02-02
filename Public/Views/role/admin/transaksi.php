@@ -186,7 +186,7 @@ while($row = mysqli_fetch_assoc($q_log)) {
 
     <aside class="sidebar">
         <div class="sidebar-header">
-            <div class="logo"><i class="fas fa-recycle"></i> ECO<span>SWAP</span></div>
+            <div class="logo">ECO<span>SWAP</span></div>
         </div>
         <ul class="nav-links">
             <li><a href="dashboard.php"><i class="fas fa-th-large"></i> <span>Dashboard</span></a></li>
