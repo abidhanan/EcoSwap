@@ -14,10 +14,10 @@
 }
 
 body {
-    background-image: url('https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=1600');
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=1600');
     background-size: cover;
     background-position: center;
-    background-attachment: fixed; /* (Opsional) Agar background tetap diam saat discroll */
+    background-attachment: fixed;
     display: flex;
     justify-content: center;
     align-items: center;
