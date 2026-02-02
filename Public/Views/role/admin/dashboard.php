@@ -211,7 +211,7 @@ while($row = mysqli_fetch_assoc($q_recent)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoSwap - Dashboard Admin</title>
+    <title>EcoSwap Admin - Dashboard</title>
     <link rel="icon" type="image/png" href="../../../Assets/img/auth/logo.png">
     <link rel="stylesheet" href="../../../Assets/css/role/admin/dashboard.css">
     <link rel="stylesheet" href="../../../Assets/css/role/admin/notifikasi.css">
