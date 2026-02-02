@@ -87,7 +87,8 @@ if (!$is_banned) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toko Saya - Ecoswap</title>
+    <title>EcoSwap - Toko Saya</title>
+    <link rel="icon" type="image/png" href="../../../Assets/img/auth/logo.png">
     <link rel="stylesheet" href="../../../Assets/css/role/seller/dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -244,7 +245,7 @@ if (!$is_banned) {
                             <div class="shop-menu-grid">
                                 <a href="produkSaya.php" class="shop-menu-item">
                                     <div class="menu-icon-circle icon-products"><i class="fas fa-box-open"></i></div>
-                                    <span class="menu-label">Produk Saya</span>
+                                    <span class="menu-label">Produk</span>
                                 </a>
                                 <a href="pesanan.php" class="shop-menu-item">
                                     <div class="menu-icon-circle icon-orders"><i class="fas fa-clipboard-list"></i></div>

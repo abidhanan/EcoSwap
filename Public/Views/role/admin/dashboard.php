@@ -211,7 +211,8 @@ while($row = mysqli_fetch_assoc($q_recent)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - EcoSwap</title>
+    <title>EcoSwap - Dashboard Admin</title>
+    <link rel="icon" type="image/png" href="../../../Assets/img/auth/logo.png">
     <link rel="stylesheet" href="../../../Assets/css/role/admin/dashboard.css">
     <link rel="stylesheet" href="../../../Assets/css/role/admin/notifikasi.css">
     <link rel="stylesheet" href="../../../Assets/css/role/admin/profil.css">
@@ -291,7 +292,7 @@ while($row = mysqli_fetch_assoc($q_recent)) {
                         <tr>
                             <th width="20%">Invoice</th>
                             <th width="25%">Pembeli</th>
-                            <th width="25%">Penjual (Toko)</th>
+                            <th width="25%">Penjual</th>
                             <th width="15%">Status</th>
                             <th width="15%">Total</th>
                         </tr>
