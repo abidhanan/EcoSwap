@@ -72,7 +72,8 @@ if (isset($_POST['action']) && $_POST['action'] == 'confirm_received') {
             
             // Catat transaksi admin (pendapatan)
             $admin_desc = "Fee dari pesanan #{$d_ord['invoice_code']}";
-            mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) VALUES (0, 'in', '$admin_fee_amount', '$admin_desc', NOW())");
+            // Gunakan NULL bukan 0
+            mysqli_query($koneksi, "INSERT INTO transactions (shop_id, type, amount, description, created_at) VALUES (NULL, 'in', '$admin_fee_amount', '$admin_desc', NOW())");
             
             mysqli_commit($koneksi); 
             echo "<script>alert('Terima kasih! Pesanan selesai.'); window.location.href='histori.php';</script>";
@@ -425,10 +426,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <span class="detail-value">${data.price_product_fmt}</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Metode Kirim</span>
-                        <span class="detail-value" style="font-size:0.85rem;">${data.shipping_clean}</span>
-                    </div>
-                    <div class="detail-row">
                         <span class="detail-label">Biaya Ongkir</span>
                         <span class="detail-value">${data.price_shipping_fmt}</span>
                     </div>
@@ -448,6 +445,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <div class="detail-row" style="margin-bottom:5px;">
                             <span class="detail-label">Pembayaran</span>
                             <span class="detail-value" style="color:var(--primary); font-weight:bold;">${data.payment}</span>
+                        </div>
+                        <div class="detail-row">
+                        <span class="detail-label">Metode Kirim</span>
+                        <span class="detail-value" style="font-size:0.85rem;">${data.shipping_clean}</span>
                         </div>
                         <div class="detail-row" style="margin-bottom:5px;">
                             <span class="detail-label">No. Resi</span>
