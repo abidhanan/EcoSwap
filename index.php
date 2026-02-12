@@ -192,7 +192,7 @@ if ($result_prod) {
                 <div class="logo footer-logo">ECO<span>SWAP</span></div>
                 <p>Platform jual beli barang bekas terpercaya.</p>
                 <div class="social-links">
-                    <a href="https://www.instagram.com/ahawi_channel?igsh=MWI3ZmlxaWFycm5z"><i class="fab fa-instagram"></i></a><a href="https://www.facebook.com/share/1KgQpzwwwF/"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.instagram.com/ecoswap_id?igsh=dG9hbWpuMHlyYXpj"><i class="fab fa-instagram"></i></a><a href="https://www.facebook.com/share/18K4err7uS/"><i class="fab fa-facebook-f"></i></a>
                 </div>
             </div>
             <div class="footer-col">
