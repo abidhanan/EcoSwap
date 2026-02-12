@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Waktu pembuatan: 03 Feb 2026 pada 12.17
+-- Waktu pembuatan: 12 Feb 2026 pada 22.40
 -- Versi server: 8.0.30
 -- Versi PHP: 8.3.16
 
@@ -42,6 +42,14 @@ CREATE TABLE `addresses` (
   `is_primary` tinyint(1) DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `addresses`
+--
+
+INSERT INTO `addresses` (`address_id`, `user_id`, `label`, `recipient_name`, `phone_number`, `full_address`, `village`, `subdistrict`, `city`, `postal_code`, `landmark`, `is_primary`) VALUES
+(1, 3, 'Rumah', 'Lionel Messi', '080987654321', 'Dungpring RT 10 RW 10', 'Dungpring', 'Eromoko', 'Wonogiri', '57123', 'Rumah Pinggir Sawah Warna Hijau', 1),
+(2, 1, 'Rumah', 'Abid Hanan', '085326513324', 'Pucangsawit RT 02 RW 02', 'Pucangsawit', 'Jebres', 'Surakarta', '57125', 'Rumah Pak RT 02 RW 02', 1);
+
 -- --------------------------------------------------------
 
 --
@@ -54,6 +62,14 @@ CREATE TABLE `cart` (
   `product_id` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `cart`
+--
+
+INSERT INTO `cart` (`cart_id`, `user_id`, `product_id`, `created_at`) VALUES
+(2, 3, 2, '2026-02-09 11:14:55'),
+(4, 3, 3, '2026-02-12 03:27:20');
 
 -- --------------------------------------------------------
 
@@ -73,6 +89,15 @@ CREATE TABLE `chats` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `attachment` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `chats`
+--
+
+INSERT INTO `chats` (`chat_id`, `sender_id`, `receiver_id`, `message`, `image_path`, `is_read`, `is_deleted`, `is_reported`, `created_at`, `attachment`) VALUES
+(2, 3, 1, 'jaket pria kulit hitam ready kan kak??', NULL, 0, 0, 0, '2026-02-09 10:57:00', NULL),
+(3, 1, 3, 'ready kakk silahkan diorder...', NULL, 0, 0, 0, '2026-02-09 10:57:59', NULL),
+(5, 3, 1, '', '../../../Assets/img/chats/1770866801_e8f9219693.png', 0, 0, 0, '2026-02-12 03:26:41', NULL);
 
 -- --------------------------------------------------------
 
@@ -107,6 +132,18 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `notifications`
+--
+
+INSERT INTO `notifications` (`notif_id`, `user_id`, `title`, `message`, `link`, `is_read`, `created_at`) VALUES
+(1, 1, 'Pesanan Baru', 'Pesanan baru #INV/20260209/432DEE masuk.', NULL, 0, '2026-02-09 10:53:36'),
+(2, 3, 'Pesanan Diproses', 'Pesanan #INV/20260209/432DEE sedang disiapkan oleh penjual.', NULL, 0, '2026-02-09 10:58:24'),
+(3, 3, 'Pesanan Dikirim', 'Pesanan #INV/20260209/432DEE telah dikirim. No Resi: 0987654321', NULL, 0, '2026-02-09 10:58:34'),
+(4, 3, 'Paket Sampai', 'Paket untuk pesanan #INV/20260209/432DEE telah tiba. Mohon konfirmasi penerimaan.', NULL, 1, '2026-02-09 10:58:48'),
+(14, 1, 'Pesanan Selesai', 'Pesanan #INV/20260209/432DEE telah diterima pembeli. Dana masuk ke saldo Anda.', NULL, 0, '2026-02-11 16:31:36'),
+(15, 2, 'Laporan Chat', 'LAPORAN CHAT\n- Pelapor (buyer) ID: 3\n- Terlapor ID: 1 (Abid Hanan)\n- Chat ID: 3\n- Waktu: 2026-02-09 17:57:59\n- Isi: ready kakk silahkan diorder...\n- Alasan: sok asik', NULL, 0, '2026-02-12 03:26:58');
+
 -- --------------------------------------------------------
 
 --
@@ -128,6 +165,13 @@ CREATE TABLE `orders` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `orders`
+--
+
+INSERT INTO `orders` (`order_id`, `invoice_code`, `buyer_id`, `address_id`, `shop_id`, `product_id`, `total_price`, `shipping_method`, `shipping_address`, `status`, `tracking_number`, `created_at`) VALUES
+(1, 'INV/20260209/432DEE', 3, 1, 1, 1, 75000.00, 'AnterAja (Rp 20.000) | Transfer Bank (BRI)', 'Dungpring RT 10 RW 10, Dungpring, Eromoko, Wonogiri 57123 (Lionel Messi - 080987654321)', 'reviewed', '0987654321', '2026-02-09 10:53:36');
+
 -- --------------------------------------------------------
 
 --
@@ -148,6 +192,16 @@ CREATE TABLE `products` (
   `category` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `products`
+--
+
+INSERT INTO `products` (`product_id`, `shop_id`, `name`, `price`, `description`, `condition`, `image`, `views`, `status`, `created_at`, `category`) VALUES
+(1, 1, 'Jaket Kulit Pria Hitam', 60000.00, 'Ukuran XL', 'Bekas - Seperti Baru', '../../../Assets/img/products/1770632602_oem_jaket-pria-jaket-motor-pria-jaket-kulit-pria-hitam-coklat_full07.webp', 1, 'sold', '2026-02-09 10:23:22', 'Fashion Pria'),
+(2, 1, 'Sweater Crop Wanita Biru', 40000.00, 'Ukuran M', 'Bekas - Seperti Baru', '../../../Assets/img/products/1770632700_id-11134207-7r98y-llkakoon558c8d.jpg', 4, 'active', '2026-02-09 10:25:00', 'Fashion Wanita'),
+(3, 1, 'Sepatu Kulit Pria Hitam', 75000.00, 'Ukuran 42', 'Bekas - Baik', '../../../Assets/img/products/1770633937_6c59e1da297eb1e91ac9262a848eed6d.jpg', 10, 'active', '2026-02-09 10:45:37', 'Fashion Pria'),
+(4, 1, 'Sandal Wanita Dewasa Coklat', 50000.00, 'Ukuran 38', 'Bekas - Baik', '../../../Assets/img/products/1770634058_S2fcc22c93ea642a3b402deebbf12a0efN.webp', 0, 'review', '2026-02-09 10:47:38', 'Fashion Wanita');
+
 -- --------------------------------------------------------
 
 --
@@ -165,6 +219,13 @@ CREATE TABLE `reports` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `reports`
+--
+
+INSERT INTO `reports` (`report_id`, `shop_id`, `user_id`, `order_id`, `reason`, `proof_image`, `status`, `created_at`) VALUES
+(1, 1, 3, 1, 'Ukuranya kekecilan min, tapi yaudah gapapa dimaafin aja...', '../../../Assets/img/reports/1770827562_rep_oem_jaket-pria-jaket-motor-pria-jaket-kulit-pria-hitam-coklat_full07.webp', 'pending', '2026-02-11 16:32:42');
+
 -- --------------------------------------------------------
 
 --
@@ -181,6 +242,13 @@ CREATE TABLE `reviews` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `photo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `reviews`
+--
+
+INSERT INTO `reviews` (`review_id`, `order_id`, `product_id`, `user_id`, `rating`, `comment`, `created_at`, `photo`) VALUES
+(1, 1, 1, 3, 5, 'Bagus masih kelihatan seperti baru!', '2026-02-11 16:33:20', '../../../Assets/img/reviews/1770827600_oem_jaket-pria-jaket-motor-pria-jaket-kulit-pria-hitam-coklat_full07.webp');
 
 -- --------------------------------------------------------
 
@@ -211,6 +279,13 @@ CREATE TABLE `shops` (
   `shop_city` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `shops`
+--
+
+INSERT INTO `shops` (`shop_id`, `user_id`, `shop_name`, `shop_description`, `shop_street`, `shop_village`, `shop_subdistrict`, `shop_postcode`, `shop_address`, `shop_phone`, `shop_image`, `balance`, `created_at`, `address_id`, `shipping_options`, `shipping_costs`, `payment_methods`, `shop_kelurahan`, `shop_kecamatan`, `shop_city`) VALUES
+(1, 1, 'EcoSwap Official', 'Fashion Pria dan Fashion Wanita', 'Pucangsawit RT 02 RW 02', 'Pucangsawit', 'Jebres', '57125', NULL, '085326513324', '../../../Assets/img/shops/1770631910_logo.png', 0.00, '2026-02-09 10:11:50', NULL, '[\"JNE Reguler\", \"J&T Express\", \"SiCepat\", \"AnterAja\"]', '{\"JNE\": \"15000\", \"JNT\": \"16000\", \"Grab\": \"19000\", \"GoSend\": \"18000\", \"SiCepat\": \"17000\", \"AnterAja\": \"20000\"}', '[\"Transfer Bank (BCA)\", \"Transfer Bank (BRI)\", \"E-Wallet (GoPay)\", \"E-Wallet (Dana)\"]', NULL, NULL, 'Surakarta');
+
 -- --------------------------------------------------------
 
 --
@@ -223,6 +298,13 @@ CREATE TABLE `shop_followers` (
   `user_id` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `shop_followers`
+--
+
+INSERT INTO `shop_followers` (`id`, `shop_id`, `user_id`, `created_at`) VALUES
+(3, 1, 3, '2026-02-12 03:26:14');
 
 -- --------------------------------------------------------
 
@@ -240,7 +322,7 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
-('admin_balance', '0'),
+('admin_balance', '1000'),
 ('admin_fee', '1000');
 
 -- --------------------------------------------------------
@@ -251,12 +333,21 @@ INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
 
 CREATE TABLE `transactions` (
   `transaction_id` int NOT NULL,
-  `shop_id` int NOT NULL,
+  `shop_id` int DEFAULT NULL,
   `type` enum('in','out') COLLATE utf8mb4_general_ci NOT NULL,
   `amount` decimal(15,2) NOT NULL,
   `description` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `transactions`
+--
+
+INSERT INTO `transactions` (`transaction_id`, `shop_id`, `type`, `amount`, `description`, `created_at`) VALUES
+(19, 1, 'in', 95000.00, 'Pendapatan pesanan #INV/20260209/432DEE', '2026-02-11 16:31:36'),
+(20, NULL, 'in', 1000.00, 'Fee dari pesanan #INV/20260209/432DEE', '2026-02-11 16:31:36'),
+(21, 1, 'out', 95000.00, 'Penarikan ke Dana (085326513324)', '2026-02-12 03:32:13');
 
 -- --------------------------------------------------------
 
@@ -277,6 +368,15 @@ CREATE TABLE `users` (
   `profile_picture` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `status` enum('active','banned') COLLATE utf8mb4_general_ci DEFAULT 'active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `users`
+--
+
+INSERT INTO `users` (`user_id`, `email`, `name`, `password`, `phone_number`, `address`, `role`, `created_at`, `updated_at`, `profile_picture`, `status`) VALUES
+(1, 'abid@email.com', 'Abid Hanan', '$2y$10$wx1FREF4xMCyAqAG5w.OWefbE0Sl38qJzhQ53040PzALWcyp7YfRi', '085326513324', 'Pucangsawit', 'seller', '2026-02-03 13:36:39', '2026-02-09 10:34:54', '../../../Assets/img/profiles/1770633294_FotoProfil .png', 'active'),
+(2, 'ahawi@email.com', 'Ahawi Channel', '$2y$10$q5iEU25xf1PstciQ393Bte5LlsiskfYzXpKntSeMKf/xmAHlcbRwG', '081234567890', 'Grogol', 'admin', '2026-02-09 10:28:24', '2026-02-09 10:32:06', '../../../Assets/img/profiles/1770633126_WhatsApp Image 2026-01-09 at 11.33.20.jpeg', 'active'),
+(3, 'messi@email.com', 'Lionel Messi', '$2y$10$NyY2pdv6/KDa7KB4Gkos5.yHfMPq6a9/qunX1tZ0JHKm2JIkDJRBy', '080987654321', 'Dungpring', 'buyer', '2026-02-09 10:37:17', '2026-02-12 03:28:38', '../../../Assets/img/profiles/1770866918_Lionel-Messi-x.com-x.com-@ID_Albiceleste.jpg', 'active');
 
 --
 -- Indexes for dumped tables
@@ -399,19 +499,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT untuk tabel `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `address_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `address_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT untuk tabel `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `cart_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `cart_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT untuk tabel `chats`
 --
 ALTER TABLE `chats`
-  MODIFY `chat_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `chat_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT untuk tabel `chat_reports`
@@ -423,55 +523,55 @@ ALTER TABLE `chat_reports`
 -- AUTO_INCREMENT untuk tabel `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notif_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `notif_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT untuk tabel `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `order_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `order_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT untuk tabel `products`
 --
 ALTER TABLE `products`
-  MODIFY `product_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `product_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT untuk tabel `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT untuk tabel `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `review_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `review_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT untuk tabel `shops`
 --
 ALTER TABLE `shops`
-  MODIFY `shop_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `shop_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT untuk tabel `shop_followers`
 --
 ALTER TABLE `shop_followers`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT untuk tabel `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `transaction_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `transaction_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
