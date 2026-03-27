@@ -17,8 +17,9 @@
             <?php foreach($cart_items as $item): ?>
             <div class="cart-item" onclick="toggleCartItem(this)" 
                  data-id="<?php echo $item['cart_id']; ?>" 
+                 data-product-id="<?php echo $item['product_id']; ?>" 
                  data-price="<?php echo $item['price']; ?>" 
-                 data-name="<?php echo $item['name']; ?>" 
+                 data-name="<?php echo htmlspecialchars($item['name']); ?>" 
                  data-img="<?php echo $item['image']; ?>" 
                  data-shop-id="<?php echo $item['shop_id']; ?>" 
                  style="cursor:pointer;">

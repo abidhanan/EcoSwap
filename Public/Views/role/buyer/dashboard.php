@@ -1444,33 +1444,104 @@ while($r = mysqli_fetch_assoc($q_partner)){
     }
 
     function checkoutFromCart() {
-        const selectedItems = [];
-        
-        document.querySelectorAll('.cart-item').forEach(el => {
-            const checkbox = el.querySelector('.cart-checkbox');
-            if (checkbox && checkbox.checked) {
-                selectedItems.push({
-                    id: parseInt(el.getAttribute('data-id')),
-                    name: el.getAttribute('data-name'),
-                    price: parseInt(el.getAttribute('data-price')),
-                    img: el.getAttribute('data-img'),
-                    shop_id: parseInt(el.getAttribute('data-shop-id')),
-                    cart_id: parseInt(el.getAttribute('data-id'))
-                });
+    const selectedItems = [];
+    let targetShopId = null;
+    let isMultipleShops = false;
+
+    document.querySelectorAll('.cart-item').forEach(el => {
+        const checkbox = el.querySelector('.cart-checkbox');
+        if (checkbox && checkbox.checked) {
+            const shopId = parseInt(el.getAttribute('data-shop-id'));
+            
+            // Validasi agar hanya bisa checkout dari 1 toko yang sama
+            if (targetShopId === null) {
+                targetShopId = shopId;
+            } else if (targetShopId !== shopId) {
+                isMultipleShops = true;
             }
-        });
 
-        if (selectedItems.length === 0) {
-            alert('Pilih minimal 1 produk untuk checkout');
-            return;
+            selectedItems.push({
+                cart_id: parseInt(el.getAttribute('data-id')), // ID Keranjang
+                id: parseInt(el.getAttribute('data-product-id')), // ID Produk Asli
+                name: el.getAttribute('data-name'),
+                price: parseInt(el.getAttribute('data-price')),
+                img: el.getAttribute('data-img'),
+                shop_id: shopId
+            });
         }
+    });
 
-        // Close cart sidebar
-        toggleCart();
-
-        // Open checkout modal
-        openCheckoutModal(selectedItems);
+    if (selectedItems.length === 0) {
+        alert('Pilih minimal 1 produk untuk checkout');
+        return;
     }
+
+    if (isMultipleShops) {
+        alert('Gagal! Anda hanya bisa melakukan checkout produk dari toko yang sama dalam 1 pesanan.');
+        return;
+    }
+
+    // Tutup cart sidebar
+    toggleCart();
+
+    // Buka checkout modal
+    openCheckoutModal(selectedItems);
+}
+
+async function processOrder() {
+    // Validasi Kelengkapan
+    if (!window.checkoutItems || window.checkoutItems.length === 0) {
+        alert('Tidak ada produk yang dipilih');
+        return;
+    }
+    if (!selectedAddressId) {
+        alert('Pilih alamat pengiriman terlebih dahulu');
+        return;
+    }
+    if (!selectedShipping) {
+        alert('Pilih opsi pengiriman terlebih dahulu');
+        return;
+    }
+    if (!selectedPayment) {
+        alert('Pilih metode pembayaran terlebih dahulu');
+        return;
+    }
+
+    // Efek Loading pada tombol agar tidak terlihat nge-bug / diam saja
+    const btn = document.querySelector('.btn-order');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+    btn.disabled = true;
+
+    // Menyiapkan Data
+    const fd = new FormData();
+    fd.append('action', 'create_order');
+    fd.append('address_id', selectedAddressId);
+    fd.append('shipping_method', selectedShipping.name);
+    fd.append('shipping_cost', selectedShipping.cost);
+    fd.append('payment_method', selectedPayment);
+    fd.append('items', JSON.stringify(window.checkoutItems));
+
+    try {
+        const res = await fetch('dashboard.php', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alert('Pesanan berhasil dibuat! Anda akan diarahkan ke halaman Histori Pesanan.');
+            closeCheckoutModal();
+            window.location.href = 'histori.php'; // Atau biarkan location.reload() jika belum ada histori.php
+        } else {
+            alert('Gagal membuat pesanan: ' + (data.message || 'Error Database.'));
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        console.error("Kesalahan jaringan/server:", error);
+        alert('Terjadi kesalahan sistem saat menghubungi server.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 </script>
 
 </body>
