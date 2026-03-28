@@ -14,16 +14,12 @@ body { background-color: var(--bg-body); color: var(--dark); overflow-x: hidden;
 a { text-decoration: none; color: inherit; }
 ul { list-style: none; }
 
-/* NAVBAR */
+/* NAVBAR DESKTOP */
 .navbar { background-color: var(--light); height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-
-/* ---> KUNCI PERBAIKAN SEARCH BAR DESKTOP <--- */
 .nav-left { display: flex; align-items: center; gap: 30px; flex: 1; }
 .logo { font-size: 1.5rem; font-weight: 800; color: var(--dark); letter-spacing: -0.5px; white-space: nowrap; }
 .logo span { color: var(--primary); }
-.search-container { position: relative; width: 100%; max-width: 1095px; }
-/* ------------------------------------------- */
-
+.search-container { position: relative; width: 100%; max-width: 1095px; margin: 0 30px; }
 .search-input { width: 100%; padding: 10px 40px 10px 20px; border-radius: 25px; border: 1px solid var(--border); background-color: #f9f9f9; outline: none; transition: all 0.3s; }
 .search-input:focus { border-color: var(--primary); background-color: #fff; box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2); }
 .search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--gray); }
@@ -105,10 +101,38 @@ ul { list-style: none; }
     .section-title { font-size: 1.1rem !important; }
     .section-title::before { height: 18px !important; }
 
-    .navbar { height: 60px !important; padding: 0 15px !important; }
-    .logo { font-size: 1.2rem !important; }
-    .search-container { display: none !important; }
-    .nav-right { gap: 12px !important; }
+    /* --- PERBAIKAN NAVBAR MOBILE (2 BARIS) --- */
+    .navbar { 
+        height: auto !important; 
+        padding: 15px !important; 
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-areas: 
+            "logo icons"
+            "search search" !important;
+        gap: 15px !important;
+    }
+    .nav-left { display: contents !important; }
+    .logo { 
+        grid-area: logo !important; 
+        display: flex !important; 
+        align-items: center !important; 
+        font-size: 1.3rem !important; 
+    }
+    .nav-right { 
+        grid-area: icons !important; 
+        gap: 12px !important; 
+        justify-content: flex-end !important; 
+    }
+    .search-container { 
+        grid-area: search !important; 
+        display: block !important; 
+        margin: 0 !important; 
+        width: 100% !important; 
+        max-width: 100% !important; 
+    }
+    /* ----------------------------------------- */
+
     .user-avatar { width: 32px !important; height: 32px !important; }
 
     .hero-section { height: 160px !important; border-radius: 12px !important; margin-bottom: 20px !important; }
